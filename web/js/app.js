@@ -4,8 +4,10 @@ document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go-msg]');
   if(g){
     $$('.m.mark').forEach(m=>m.classList.remove('mark'));
-    void document.body.offsetWidth;
-    [...g.closest('.ev').querySelectorAll('[data-go-msg]')].forEach(b=>$('#m'+b.dataset.goMsg).classList.add('mark'));
+    [...g.closest('.ev').querySelectorAll('[data-go-msg]')].forEach(b=>{
+      const m=$('#m'+b.dataset.goMsg);m.classList.add('mark');
+      motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300);
+    });
     $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
   }
   const ap=e.target.closest('[data-ap]');if(ap)openAppeal(+ap.dataset.ap);
@@ -17,25 +19,72 @@ document.addEventListener('click',e=>{
     if(!reason){toast('Укажите причину');box.querySelector('[data-r]').focus();return}
     if(act==='change'&&String(sel)===String(resOf(d,c).v)){toast('Выберите оценку, отличную от текущей');return}
     saveDecision(d,id,sel,reason,act);syncCount();
-    if(!$('#v-card').hidden){renderScore();renderCrit()}else renderAppeals();
+    if(!$('#v-card').hidden){const t=total(cur);renderScore(t);renderCrit(t)}else renderAppeals();
     toast(act==='confirm'?'Оценка подтверждена':'Оценка изменена, итог пересчитан');
   }
 });
 
-/* прогресс оценки */
-function runProgress(title,sub,rows,done){
+const CHECK_SVG='<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 4.2 3.2 6.2 7 1.8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+
+/* Демонстрационный прогресс: шаг 120 мс, весь список около секунды. */
+function runProgress(title,sub,rows,done,step=120){
   $('#runTitle').textContent=title;$('#runSub').textContent=sub;
-  $('#runList').innerHTML=rows.map(r=>`<div ${r.cache?'class="cache"':''}><i></i>${esc(r.t)}</div>`).join('');
+  $('#runList').innerHTML=rows.map(r=>`<div ${r.cache?'class="cache"':''}><i></i><span>${esc(r.t)}</span></div>`).join('');
   $('#runClose').disabled=true;$('#runDlg').showModal();
   const els=$$('#runList div');
   (async()=>{
     for(const el of els){
-      if(el.classList.contains('cache')){await new Promise(r=>setTimeout(r,200));continue}
-      el.classList.add('go');await new Promise(r=>setTimeout(r,500));el.classList.remove('go');el.classList.add('ok');el.firstChild.innerHTML='<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 4.2 3.2 6.2 7 1.8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+      if(el.classList.contains('cache')){await new Promise(r=>setTimeout(r,step/2));continue}
+      el.classList.add('go');await new Promise(r=>setTimeout(r,step));
+      el.classList.remove('go');el.classList.add('ok');el.firstChild.innerHTML=CHECK_SVG;
     }
     $('#runClose').disabled=false;
   })();
   $('#runClose').onclick=()=>{$('#runDlg').close();done&&done()};
+}
+
+/* Реальная обработка: по диалогу на строку, у каждой свой итог; из готовой строки можно открыть результат. */
+function runJobs(title,sub,names,worker){
+  $('#runTitle').textContent=title;$('#runSub').textContent=sub;
+  $('#runList').innerHTML=names.map(n=>`<div><i></i><span>${esc(n)}</span></div>`).join('');
+  const close=$('#runClose');close.disabled=true;close.onclick=()=>$('#runDlg').close();
+  $('#runDlg').showModal();
+  const els=$$('#runList div');let ok=0;
+  (async()=>{
+    for(let i=0;i<els.length;i++){
+      const el=els[i];el.classList.add('go');
+      try{
+        const key=await worker(i);ok++;
+        el.classList.remove('go');el.classList.add('ok');el.firstChild.innerHTML=CHECK_SVG;
+        if(key){
+          const b=document.createElement('button');b.className='tx';b.textContent='Открыть';
+          b.onclick=()=>{$('#runDlg').close();go('#/card/'+key)};el.append(b);
+        }
+      }catch(e){
+        el.classList.remove('go');el.classList.add('err');el.firstChild.textContent='!';
+        const s=document.createElement('span');s.className='ermsg';s.textContent=e.message;el.append(s);
+      }
+    }
+    $('#runSub').textContent=`Обработано ${ok} из ${els.length}`;
+    close.disabled=false;
+  })();
+}
+
+/* Ответ бэкенда: {results:{<id критерия>:{v,ev,why,q,conf}}, gross:{bad,checked}}; ev — номера реплик с 1. */
+function addEvaluated(record,resp){
+  const base=String(record.conversation_id||'eval').replace(/[^\w-]/g,'')||'eval';
+  let key=base,n=1;while(D[key])key=base+'-'+(++n);
+  const res={};
+  Object.entries(resp.results||{}).forEach(([id,r])=>{
+    const c=CRIT.find(x=>String(x.id)===String(id));
+    if(c)res[c.id]={v:r.v,ev:r.ev||[],why:r.why||'',q:r.q||'',conf:r.conf??1,sig:sigOf(c)};
+  });
+  D[key]={id:record.conversation_id||key,lang:String(record.language||'').toUpperCase(),
+    channel:record.channel||'agent chat',operator:record.operator||'—',
+    msgs:record.transcript.map(m=>[m.speaker,m.timestamp,m.text]),
+    res,gross:resp.gross||{bad:false,checked:'—'}};
+  appeals[key]={};refreshPick();
+  return key;
 }
 /* окно «Оценить диалог»: загрузка транскрипта и выбор чек-листа */
 let evRecords=[];
@@ -61,15 +110,16 @@ $('#runNew').onclick=()=>{
 $('#evFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#evText').value=await f.text();evCheck()}};
 $('#evText').oninput=evCheck;
 $('#evNo').onclick=()=>$('#evDlg').close();
-$('#evGo').onclick=async()=>{
+$('#evGo').onclick=()=>{
   const recs=evRecords.slice();$('#evDlg').close();
-  if(CQA_API.enabled){
-    try{await CQA_API.evaluate(recs[0],{version:ver,criteria:CRIT});toast('Ответ бэкенда получен')}
-    catch(e){toast('Ошибка бэкенда: '+e.message)}
+  if(!CQA_API.enabled){
+    runProgress(`Оценка: ${recs.length} диал.`,'Демонстрационный режим: результат не сохраняется',
+      CRIT.map(c=>({t:c.name})).concat([{t:'Грубые ошибки'}]),()=>toast('Демо: результат не сохраняется'));
     return;
   }
-  runProgress(`Оценка: ${recs.length} диал.`,'Демонстрационный режим: бэкенд не подключён',
-    CRIT.map(c=>({t:c.name})).concat([{t:'Грубые ошибки'}]),()=>toast('Демо: результат не сохраняется'));
+  runJobs(`Оценка: ${recs.length} диал.`,`Чек-лист v${ver}`,
+    recs.map(r=>r.conversation_id||'без ID'),
+    async i=>addEvaluated(recs[i],await CQA_API.evaluate(recs[i],{version:ver,criteria:CRIT})));
 };
 
 function syncTheme(){

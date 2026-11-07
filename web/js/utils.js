@@ -15,17 +15,27 @@ function syncCount(){const n=pendingAppeals();$('#apCount').hidden=!n;$('#apCoun
 /* Число «набегает» до значения. Без анимации, если в системе включено уменьшение движения. */
 const reduceMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 const countState={key:null,v:0,raf:0};
-function countUp(el,to,key,ms=480){
+function countUp(el,to,key,ms=1000){
   cancelAnimationFrame(countState.raf);
   const from=countState.key===key?countState.v:0;
   countState.key=key;countState.v=to===null?0:to;
   if(to===null||reduceMotion()||from===to){el.textContent=fmt(to);return}
+  /* число знаков после запятой не меняем по ходу, чтобы значение не «прыгало» в конце */
+  const digits=Number.isInteger(to)?0:2;
+  const f=new Intl.NumberFormat('ru-RU',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+  const ease=k=>-(Math.cos(Math.PI*k)-1)/2;   /* мягкий разгон и мягкая остановка */
   const t0=performance.now();
+  el.textContent=f.format(from);
   const tick=now=>{
-    const k=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-k,3);
-    el.textContent=k<1?fmt(Math.round((from+(to-from)*e)*100)/100):fmt(to);
-    if(k<1)countState.raf=requestAnimationFrame(tick);
+    const k=Math.min(1,(now-t0)/ms);
+    el.textContent=f.format(from+(to-from)*ease(k));
+    if(k<1)countState.raf=requestAnimationFrame(tick);else el.textContent=fmt(to);
   };
   countState.raf=requestAnimationFrame(tick);
   setTimeout(()=>{el.textContent=fmt(to)},ms+80);
+}
+/* Короткая анимация элемента без форсированного пересчёта раскладки (Web Animations API). */
+function motion(el,frames,ms=180){
+  if(!el||!el.animate||reduceMotion())return;
+  el.animate(frames,{duration:ms,easing:'cubic-bezier(.2,0,0,1)'});
 }

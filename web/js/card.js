@@ -1,7 +1,8 @@
 /* Экран «Карточка диалога»: транскрипт, плеер, критерии, апелляция. */
 /* ================= КАРТОЧКА ================= */
 function renderCard(){
-  $('#pick').value=cur;renderChat();renderScore();renderCrit();
+  const t=total(cur);   /* итог считаем один раз на обновление карточки */
+  $('#pick').value=cur;renderChat();renderScore(t);renderCrit(t);
 }
 function bubble(d,i,opt={}){
   const [who,t,text]=D[d].msgs[i],n=i+1;
@@ -27,7 +28,6 @@ function renderChat(){
   const chat=$('#chat');
   chat.innerHTML=msgList(cur,d.msgs.map((_,i)=>i));
   /* реплики появляются по очереди: шаг 50 мс, весь каскад не дольше секунды */
-  chat.classList.remove('in');void chat.offsetWidth;
   [...chat.children].forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
   chat.classList.add('in');
   $('#cardTitle').textContent=d.id;
@@ -41,12 +41,14 @@ const secOf=(d,n)=>{
   const [m,s]=ts.split(':').map(Number);return m*60+s;
 };
 
-function renderScore(){
-  renderScoreHtml();
-  countUp($('#score .n'),total(cur).score,cur);
+function renderScore(t=total(cur)){
+  renderScoreHtml(t);
+  countUp($('#score .n'),t.score,cur);
 }
-function renderScoreHtml(){
-  const t=total(cur),o=total(cur,true),d=D[cur];
+function renderScoreHtml(t){
+  /* исходный итог нужен только для сравнения после решения проверяющего */
+  const decided=Object.values(appeals[cur]).some(a=>a.decision);
+  const o=decided?total(cur,true):t,d=D[cur];
   const act=CRIT.filter(c=>!pending(cur,c)),nas=act.filter(c=>value(cur,c)==='na');
   const diff=t.score!==null&&o.score!==null?Math.round((t.score-o.score)*100)/100:0;
   const notes=[];
@@ -64,8 +66,8 @@ function decideForm(d,c,ap){
     <div class="f"><label class="fi">Новая оценка<select class="field" data-v="${c.id}">${opts}</select></label><label class="fi">Причина решения<input class="field" data-r="${c.id}"></label></div>
     <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${d}" data-act="confirm">Подтвердить оценку</button><button class="btn" data-save="${c.id}" data-d="${d}" data-act="change">Изменить на выбранную</button></div></div>`;
 }
-function renderCrit(){
-  const t=total(cur),secs=sectionScores(cur);let lastSec=null;
+function renderCrit(t=total(cur)){
+  const secs=sectionScores(cur);let lastSec=null;
   $('#crit').innerHTML=CRIT.map((c,i)=>{
     let head='';
     if(c.section&&c.section!==lastSec){
@@ -99,7 +101,10 @@ function saveDecision(d,id,sel,reason,act){
   const v=act==='confirm'?r.v:(c.type==='scale'&&sel!=='na'?Number(sel):sel);
   appeals[d][id].decision={v,reason,act};persist();
 }
-$('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${k}">${d.lang} · ${d.id}</option>`).join('');
+function refreshPick(){
+  $('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${k}">${d.lang} · ${d.id}</option>`).join('');
+}
+refreshPick();
 $('#pick').onchange=e=>go('#/card/'+e.target.value);
 $('#rev').onclick=function(){
   reviewer=!reviewer;this.setAttribute('aria-pressed',reviewer);

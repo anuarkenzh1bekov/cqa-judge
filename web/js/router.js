@@ -13,7 +13,7 @@ function route(){
   if(view==='checklist')renderEditor();
   if(view==='appeals')renderAppeals();
   scrollTo(0,0);
-  const el=$('#v-'+view);el.classList.remove('view-in');void el.offsetWidth;el.classList.add('view-in');
+  motion($('#v-'+view),[{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],180);
 }
 addEventListener('hashchange',()=>{if(location.hash.startsWith('#/')&&location.hash!==H){H=location.hash;route()}});
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.r==='card'?'#/card/'+cur:'#/'+b.dataset.r)};

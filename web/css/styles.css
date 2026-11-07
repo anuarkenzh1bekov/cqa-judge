@@ -239,14 +239,15 @@ dialog input[type=file]{padding:6px}
 .embed .wrap{padding-bottom:24px}
 
 /* движение: короткое и по делу */
-@keyframes view-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.view-in{animation:view-in .18s cubic-bezier(.2,0,0,1)}
 @keyframes dlg-in{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 @keyframes bd-in{from{opacity:0}to{opacity:1}}
 dialog[open]{animation:dlg-in .16s cubic-bezier(.2,0,0,1)}
 dialog[open]::backdrop{animation:bd-in .16s ease-out}
-@keyframes pop{from{transform:scale(1.025)}to{transform:none}}
-.m.mark .b{animation:pop .3s cubic-bezier(.2,0,0,1)}
 @keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .msgs.in .m,.msgs.in .gl{animation:msg-in .28s cubic-bezier(.2,0,0,1) both;animation-delay:var(--d,0ms)}
 @media(prefers-reduced-motion:reduce){.msgs.in .m,.msgs.in .gl{animation:none}}
+#fKinds,#fLangs{display:contents}
+.run div .tx,.run div .ermsg{margin-left:auto}
+.run div .ermsg{font-size:12px}
+.run div.err{color:var(--no)}
+.run div.err i{border-color:var(--no);color:var(--no)}

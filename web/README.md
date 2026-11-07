@@ -44,3 +44,21 @@ js/app.js       shared events, evaluation dialog, theme, startup
 assets/         logo
 build.py        single-file build
 ```
+
+## Backend contract
+
+With `?api=https://host` the evaluation dialog sends each uploaded conversation to `POST {api}/evaluate`:
+
+```json
+{ "record": { "conversation_id": "...", "language": "RU", "channel": "agent chat", "transcript": [ ... ] },
+  "checklist": { "version": 1, "criteria": [ ... ] } }
+```
+
+Expected response:
+
+```json
+{ "results": { "<criterion id>": { "v": "yes", "ev": [5, 8], "why": "...", "q": "...", "conf": 0.9 } },
+  "gross": { "bad": false, "checked": "#5–#15" } }
+```
+
+`v` is `"yes"`, `"no"`, `"na"` or a number from the criterion scale; `ev` are 1-based message numbers. Each conversation gets its own progress row, and a finished one can be opened from the dialog.
