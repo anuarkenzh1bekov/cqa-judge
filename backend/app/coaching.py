@@ -1,11 +1,13 @@
 """Operator coaching: a short personal plan built from the operator's own evaluated dialogs.
 
-Facts are chosen by code, not by the model: which criteria are weakest, which real quotes show the mistake and which
-dialog of a colleague shows the same criterion done well. The model only writes the advice around those facts
+Facts are chosen by code, not by the model: what the reviewer wrote (published comments and appeal decisions: the main
+source), which criteria are weakest, which real quotes show the mistake and which dialog of a colleague shows the same
+criterion done well. The plan is rebuilt whenever a dialog, a comment or an appeal decision changes. The model only writes the advice around those facts
 (tip, a phrase to practise, a summary, three actions for the week), so it cannot invent a quote or a dialog.
 Without a working model the plan is still produced from the criteria text and the feedback already stored.
 """
 import hashlib
+import json
 import logging
 from statistics import mean
 
@@ -42,6 +44,25 @@ def _criteria_meta(evs) -> dict[str, dict]:
     return meta
 
 
+def _feedback(evs) -> dict[str, list[dict]]:
+    """Reviewer feedback per criterion, newest first: published comments and decided appeals (with the reason)."""
+    out: dict[str, list[dict]] = {}
+    for e in sorted(evs, key=lambda e: -e.id):
+        r = e.review
+        if r and r.published:
+            for k, t in (r.comments or {}).items():
+                if str(t).strip():
+                    out.setdefault(k, []).append({"conversation_id": e.conversation_id, "source": "comment",
+                                                  "text": " ".join(str(t).split())[:400]})
+        for ap in e.appeals:
+            if ap.status != "open" and (ap.reason or "").strip():
+                verdict = "Апелляция принята" if ap.status == "changed" else "Апелляция отклонена"
+                out.setdefault(ap.criterion_key, []).append({
+                    "conversation_id": e.conversation_id, "source": "appeal",
+                    "text": f"{verdict}: {' '.join(ap.reason.split())[:400]}"})
+    return out
+
+
 def _safe_turns(ev) -> set[int]:
     return {f["turn"] for f in ((ev.facts or {}).get("security") or {}).get("attempts", [])}
 
@@ -75,11 +96,15 @@ def _mistakes(evs, key: str) -> list[dict]:
     return [r[2] for r in rows[:MAX_MISTAKES]]
 
 
-def _exemplar(peers, key: str, operator: str) -> dict | None:
+def _exemplar(peers, key: str, operator: str, lang: str | None = None) -> dict | None:
     """A dialog where this criterion was done in full, preferably by a colleague; never one with an injection attempt."""
     best = None
     for e in peers:
         if (e.facts or {}).get("security", {}).get("injection_detected"):
+            continue
+        if lang and e.conversation.language != lang:  # a quote the operator can read: same language as the mistake
+            continue
+        if (e.operator_name or "").startswith("["):  # masked name ("[Имя скрыто]"): not a person to point at
             continue
         v = (e.final_score or {}).get("criteria", {}).get(key)
         if not v or _pct(v) != 100:
@@ -113,17 +138,25 @@ def analyse(name: str, evs: list, all_evs: list) -> dict:
              for k, v in per.items() if _avg(v) is not None]
     for s in stats:
         s["gap"] = round2(s["avg_pct"] - s["team_pct"]) if s["team_pct"] is not None else None
-    weak = sorted((s for s in stats if s["avg_pct"] < 100), key=lambda s: (s["avg_pct"], s["gap"] or 0))[:MAX_FOCUS]
+    fb = _feedback(evs)
+    # what the reviewer wrote about goes first, then the lowest scores
+    weak = sorted((s for s in stats if s["avg_pct"] < 100 or fb.get(s["key"])),
+                  key=lambda s: (not fb.get(s["key"]), s["avg_pct"], s["gap"] or 0))[:MAX_FOCUS]
     strong = sorted((s for s in stats if s["avg_pct"] >= 90), key=lambda s: -s["avg_pct"])[:2]
     peers = [e for e in all_evs if e.final_score]
-    focus = [{**s, "description": meta[s["key"]]["description"], "mistakes": _mistakes(evs, s["key"]),
-              "exemplar": _exemplar(peers, s["key"], name)} for s in weak]
+    focus = [{**s, "description": meta[s["key"]]["description"], "reviewer_notes": fb.get(s["key"], [])[:3],
+              "mistakes": _mistakes(evs, s["key"]), "exemplar": None} for s in weak]
+    for f in focus:
+        lang = f["mistakes"][0]["language"] if f["mistakes"] else None
+        f["exemplar"] = _exemplar(peers, f["key"], name, lang)
     totals = [e.final_score["total"] for e in sorted(evs, key=lambda e: e.id) if e.final_score.get("total") is not None]
     half = len(totals) // 2
     trend = round2(mean(totals[half:]) - mean(totals[:half])) if len(totals) >= 4 else None
     return {"operator": name, "evaluated": len(evs), "avg_total": _avg(totals),
             "team_avg": _avg(e.final_score.get("total") for e in peers), "trend": trend,
             "strengths": strong, "focus": focus,
+            "basis": {"dialogs": len(evs), "reviewer_notes": sum(len(v) for v in fb.values()),
+                      "criteria_with_notes": sum(1 for v in fb.values() if v)},
             "injection_dialogs": sum(1 for e in evs if (e.facts or {}).get("security", {}).get("injection_detected"))}
 
 
@@ -146,6 +179,9 @@ def _prompt(plan: dict) -> str:
     for f in plan["focus"]:
         lines.append(f"### {f['key']} — {f['name']} (оператор {f['avg_pct']}%, команда {f['team_pct']}%)")
         lines.append(f"Правило: {f['description']}")
+        for n in f["reviewer_notes"]:
+            src = "Комментарий проверяющего" if n["source"] == "comment" else "Решение проверяющего"
+            lines.append(f"- {src} (диалог {n['conversation_id']}): «{guard.neutralize(n['text'])}»")
         for m in f["mistakes"]:
             q = f" Реплика оператора: «{guard.neutralize(m['quote']['text'])}»" if m["quote"] else ""
             lines.append(f"- Ошибка (диалог на {m['language']}): {guard.neutralize(m['explanation'] or '')}{q}")
@@ -165,6 +201,8 @@ def _prompt(plan: dict) -> str:
 
 ЗАДАНИЕ (по-русски, дружелюбно, без упрёков, конкретно)
 - summary: 2 предложения — что получается и над чем поработать.
+- Главный источник — комментарии и решения проверяющего: совет должен отвечать на них, а не пересказывать правило. Если их нет,
+  опирайся на ошибки и цитаты.
 - focus: для КАЖДОГО критерия выше (criterion_key как в заголовке): tip — одно конкретное действие на следующий диалог;
   practice_phrase — готовая фраза оператора для тренировки, на языке диалога из ошибки (RU / KZ / EN).
 - weekly_plan: ровно 3 коротких шага на неделю (что делать, как проверить себя).
@@ -182,7 +220,8 @@ def _fallback(plan: dict, evs: list) -> dict:
                 phrases.setdefault(k, i["example_phrase"])
             if k and i.get("text"):
                 tips.setdefault(k, i["text"])
-    focus = [{"criterion_key": f["key"], "tip": tips.get(f["key"]) or f["description"],
+    focus = [{"criterion_key": f["key"],
+              "tip": (f["reviewer_notes"][0]["text"] if f["reviewer_notes"] else tips.get(f["key"])) or f["description"],
               "practice_phrase": phrases.get(f["key"]) or ""} for f in plan["focus"]]
     names = ", ".join(f["name"] for f in plan["focus"]) or "—"
     return {"summary": f"Средний балл {plan['avg_total']}. Зоны роста: {names}.", "focus": focus,
@@ -191,7 +230,8 @@ def _fallback(plan: dict, evs: list) -> dict:
 
 
 def _cache_key(name: str, evs: list) -> str:
-    raw = name + "|" + ",".join(f"{e.id}:{(e.final_score or {}).get('total')}" for e in sorted(evs, key=lambda e: e.id))
+    raw = (name + "|" + ",".join(f"{e.id}:{(e.final_score or {}).get('total')}" for e in sorted(evs, key=lambda e: e.id))
+           + "|" + json.dumps(_feedback(evs), sort_keys=True, ensure_ascii=False))
     return hashlib.sha1(raw.encode()).hexdigest()
 
 

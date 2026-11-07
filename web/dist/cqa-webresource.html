@@ -618,6 +618,9 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .live-box[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.caret{animation:none}.live-box{scroll-behavior:auto}}
 
+.fbl.rn{margin:0 0 6px;padding-left:10px;border-left:2px solid var(--accent)}
+.fbl.rn li.ev{padding:4px 0;border-top:0;font-size:13px}
+
 </style>
 </head>
 <body>
@@ -1052,7 +1055,9 @@ function applyEvaluation(d,ev){
   ev.results.forEach(r=>{
     const sc=snap[r.key];if(!sc)return;
     if(r.type==='flag'){
-      const rng=r.checked_range?` (#${r.checked_range[0]+1}–#${r.checked_range[1]+1})`:'';
+      /* диапазон нужен, только если это не одна реплика и текст пояснения ещё не называет его границы */
+      const cr=r.checked_range,seen=shownRefs(r.explanation);
+      const rng=cr&&cr[0]!==cr[1]&&!(seen.has(cr[0]+1)&&seen.has(cr[1]+1))?` (#${cr[0]+1}–#${cr[1]+1})`:'';
       const hit=ev.final_score.gross_error_criteria.includes(r.key);
       const prev=d.gross&&d.gross.parts?d.gross:{parts:[],ev:[]};
       // several flags: show the ones that fired; if none fired, show all explanations
@@ -2437,6 +2442,7 @@ async function renderOperator(name){
     <ul class="fbl">${p.improvements.slice(0,12).map(i=>`<li class="ev"><button class="lk" data-conv="${esc(i.conversation_id)}">${esc(i.conversation_id)}</button> ${esc(i.text)}${i.example_phrase?`<span class="q">Можно сказать: «${esc(i.example_phrase)}»</span>`:''}</li>`).join('')||'<li class="mut">Рекомендаций нет</li>'}</ul><div id="coachBox"></div></div>`;
   loadCoaching(name,false);
 }
+const plural=(n,a,b,c)=>{const m=n%100,k=n%10;return m>10&&m<20?c:k===1?a:k>1&&k<5?b:c};
 const LVL=p=>p>=85?'yes':p>=60?'warn':'no';
 function coachHtml(c){
   const pct=v=>v==null?'—':Math.round(v)+'%';
@@ -2446,9 +2452,11 @@ function coachHtml(c){
     <div class="tr-h">План коучинга <small>· ${c.source==='ai'?'составлен ИИ по реальным диалогам':'по правилам критериев (ИИ недоступен)'}${c.cached?' · из кэша':''}</small>
       <button class="lk" id="coachRefresh">Обновить</button></div>
     <p class="why">${esc(c.summary)}</p>
+    <p class="mut">${c.basis&&c.basis.reviewer_notes?`План опирается на ${c.basis.reviewer_notes} ${plural(c.basis.reviewer_notes,'комментарий','комментария','комментариев')} проверяющего и на цифры по диалогам. Он пересчитывается при каждом новом диалоге и комментарии.`:'Комментариев проверяющего пока нет: план строится по оценкам. Он пересчитывается при каждом новом диалоге.'}</p>
     <p class="mut">Оценено диалогов: ${c.evaluated} · средний балл ${pct(c.avg_total)} (команда ${pct(c.team_avg)})${c.trend!=null?` · динамика ${c.trend>0?'+':''}${c.trend}`:''}${c.injection_dialogs?` · попыток повлиять на оценку: ${c.injection_dialogs}`:''}</p>
     ${c.strengths.length?`<p class="why">Сильные стороны: ${c.strengths.map(s=>`<span class="mood yes">${esc(s.name)} ${pct(s.avg_pct)}</span>`).join(' ')}</p>`:''}
     ${c.focus.map((f,i)=>`<div class="coach-f"><h4>${i+1}. ${esc(f.name)} <span class="mood ${LVL(f.avg_pct)}">${pct(f.avg_pct)}</span> <small>команда ${pct(f.team_pct)}</small></h4>
+      ${f.reviewer_notes&&f.reviewer_notes.length?`<ul class="fbl rn">${f.reviewer_notes.map(n=>`<li class="ev"><small>${n.source==='comment'?'Проверяющий':'Решение'} · </small>${go(n.conversation_id)} ${esc(n.text)}</li>`).join('')}</ul>`:''}
       ${f.tip?`<p class="why"><b>Что делать:</b> ${esc(f.tip)}</p>`:''}
       ${f.practice_phrase?`<span class="say"><small>Фраза для тренировки</small>«${esc(f.practice_phrase)}»</span>`:''}
       ${f.mistakes.length?`<ul class="fbl">${f.mistakes.map(m=>`<li class="ev">${go(m.conversation_id)} <small>${m.score_pct}%</small> ${esc(m.explanation||'')}${quote(m.quote)}</li>`).join('')}</ul>`:''}
@@ -2497,6 +2505,8 @@ function liveSchedule(){cancelAnimationFrame(liveRaf);liveRaf=requestAnimationFr
 function liveRender(){liveRows();liveModal()}
 
 const liveCrit=key=>{const id=BE.keyId&&BE.keyId[key];return id?CRIT.find(c=>c.id===id):null};
+/* название критерия или флага грубой ошибки (флагов нет среди CRIT) */
+const liveName=(key,c)=>c?c.name:((BE.flags||[]).find(f=>f.key===key)||{}).name||key;
 const liveAns=(c,a)=>{try{return label(c,ansToFront(c,a))}catch(_){return String(a)}};
 
 /* строки критериев в карточке: пока идёт оценка там «скелетоны», вместо них пишется ответ и текст модели */
@@ -2526,7 +2536,7 @@ function liveModal(){
     +keys.map((k,i)=>{
       const c=liveCrit(k),s=liveSnap.criteria[k],last=!s.done&&i===keys.length-1;
       const v=s.answer&&c?ansToFront(c,s.answer):null;
-      return `<div class="lv-i"><div class="lv-h"><span>${esc(c?c.name:k)}</span>${v!==null?`<span class="v ${kind(c,v)}">${esc(label(c,v))}</span>`:''}</div>
+      return `<div class="lv-i"><div class="lv-h"><span>${esc(liveName(k,c))}</span>${v!==null?`<span class="v ${kind(c,v)}">${esc(label(c,v))}</span>`:''}</div>
         ${s.text?`<p class="live-t">${esc(s.text)}${last?'<i class="caret"></i>':''}</p>`:''}</div>`;
     }).join('');
   if(stick)box.scrollTop=box.scrollHeight;

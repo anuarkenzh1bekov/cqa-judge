@@ -73,3 +73,39 @@ def test_injected_dialog_is_never_an_example_and_unknown_operator_is_404(client,
     ex = p["focus"][0]["exemplar"]
     assert ex is None or ex["conversation_id"] != "co-b"  # a dialog with an injection attempt is never held up as an example
     assert client.get("/api/operators/Никто/coaching").status_code == 404
+
+
+def test_plan_is_built_on_published_reviewer_feedback_and_changes_with_it(client, fake):
+    seed(client, fake)
+    evs = client.get("/api/conversations/co-1").json()["evaluations"]
+    eid = evs[0]["id"]
+    first = client.get("/api/operators/Коуч/coaching").json()
+    assert first["basis"]["reviewer_notes"] == 0 and fake.calls["coaching"] == 1
+
+    # a draft comment is not feedback yet: only published comments count, and the plan stays cached
+    client.put(f"/api/evaluations/{eid}/review", json={"comments": {"c07_closing": "Не попрощался, закрыл чат сразу"}})
+    assert client.get("/api/operators/Коуч/coaching").json()["basis"]["reviewer_notes"] == 0
+
+    client.put(f"/api/evaluations/{eid}/review", json={"published": True})
+    plan = client.get("/api/operators/Коуч/coaching").json()
+    assert plan["basis"]["reviewer_notes"] == 1 and fake.calls["coaching"] == 2  # new feedback -> a new plan
+    note = plan["focus"][0]["reviewer_notes"][0]
+    assert note["source"] == "comment" and "Не попрощался" in note["text"]
+    assert "Не попрощался" in fake.last_coaching_prompt  # the model is told what the reviewer wrote
+
+    evaluate(client, "co-4")  # a new dialog rebuilds the plan again (the test DB is shared: compare, don't hard-code)
+    after = client.get("/api/operators/Коуч/coaching").json()
+    assert after["evaluated"] == plan["evaluated"] + 1 and fake.calls["coaching"] == 3
+
+
+def test_decided_appeal_reason_counts_as_feedback_and_fallback_quotes_the_reviewer(client, fake):
+    seed(client, fake)
+    ev = client.get("/api/conversations/co-2").json()["evaluations"][0]
+    client.put(f"/api/evaluations/{ev['id']}/review", json={"published": True})
+    ap = client.post(f"/api/evaluations/{ev['id']}/appeals", json={"criterion_key": "c07_closing", "comment": "попрощался"}).json()
+    client.post(f"/api/appeals/{ap['id']}/decision", json={"decision": "confirm", "reason": "Прощания в реплике нет"})
+    fake.coaching_fail = True
+    p = client.get("/api/operators/Коуч/coaching").json()
+    note = p["focus"][0]["reviewer_notes"][0]
+    assert note["source"] == "appeal" and "Апелляция отклонена" in note["text"] and "Прощания" in note["text"]
+    assert p["source"] == "rules" and "Прощания" in p["focus"][0]["tip"]

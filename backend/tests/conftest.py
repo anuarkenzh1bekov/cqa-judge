@@ -81,6 +81,7 @@ class FakeModels:
                     "moments": [{"turn": 0, "mood": "anxious", "note": "n"}, {"turn": 99, "mood": "calm", "note": "x"}]}
         elif "weekly_plan" in props:  # operator coaching
             self.calls["coaching"] = self.calls.get("coaching", 0) + 1
+            self.last_coaching_prompt = prompt
             if self.coaching_fail:
                 raise RuntimeError("coaching down")
             import re

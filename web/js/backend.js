@@ -85,7 +85,9 @@ function applyEvaluation(d,ev){
   ev.results.forEach(r=>{
     const sc=snap[r.key];if(!sc)return;
     if(r.type==='flag'){
-      const rng=r.checked_range?` (#${r.checked_range[0]+1}–#${r.checked_range[1]+1})`:'';
+      /* диапазон нужен, только если это не одна реплика и текст пояснения ещё не называет его границы */
+      const cr=r.checked_range,seen=shownRefs(r.explanation);
+      const rng=cr&&cr[0]!==cr[1]&&!(seen.has(cr[0]+1)&&seen.has(cr[1]+1))?` (#${cr[0]+1}–#${cr[1]+1})`:'';
       const hit=ev.final_score.gross_error_criteria.includes(r.key);
       const prev=d.gross&&d.gross.parts?d.gross:{parts:[],ev:[]};
       // several flags: show the ones that fired; if none fired, show all explanations

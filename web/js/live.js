@@ -26,6 +26,8 @@ function liveSchedule(){cancelAnimationFrame(liveRaf);liveRaf=requestAnimationFr
 function liveRender(){liveRows();liveModal()}
 
 const liveCrit=key=>{const id=BE.keyId&&BE.keyId[key];return id?CRIT.find(c=>c.id===id):null};
+/* название критерия или флага грубой ошибки (флагов нет среди CRIT) */
+const liveName=(key,c)=>c?c.name:((BE.flags||[]).find(f=>f.key===key)||{}).name||key;
 const liveAns=(c,a)=>{try{return label(c,ansToFront(c,a))}catch(_){return String(a)}};
 
 /* строки критериев в карточке: пока идёт оценка там «скелетоны», вместо них пишется ответ и текст модели */
@@ -55,7 +57,7 @@ function liveModal(){
     +keys.map((k,i)=>{
       const c=liveCrit(k),s=liveSnap.criteria[k],last=!s.done&&i===keys.length-1;
       const v=s.answer&&c?ansToFront(c,s.answer):null;
-      return `<div class="lv-i"><div class="lv-h"><span>${esc(c?c.name:k)}</span>${v!==null?`<span class="v ${kind(c,v)}">${esc(label(c,v))}</span>`:''}</div>
+      return `<div class="lv-i"><div class="lv-h"><span>${esc(liveName(k,c))}</span>${v!==null?`<span class="v ${kind(c,v)}">${esc(label(c,v))}</span>`:''}</div>
         ${s.text?`<p class="live-t">${esc(s.text)}${last?'<i class="caret"></i>':''}</p>`:''}</div>`;
     }).join('');
   if(stick)box.scrollTop=box.scrollHeight;

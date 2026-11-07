@@ -610,3 +610,6 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .lv-h{display:flex;justify-content:space-between;gap:12px;margin-bottom:4px;font-size:13px;font-weight:500}
 .live-box[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.caret{animation:none}.live-box{scroll-behavior:auto}}
+
+.fbl.rn{margin:0 0 6px;padding-left:10px;border-left:2px solid var(--accent)}
+.fbl.rn li.ev{padding:4px 0;border-top:0;font-size:13px}

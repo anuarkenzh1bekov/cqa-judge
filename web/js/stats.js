@@ -94,6 +94,7 @@ async function renderOperator(name){
     <ul class="fbl">${p.improvements.slice(0,12).map(i=>`<li class="ev"><button class="lk" data-conv="${esc(i.conversation_id)}">${esc(i.conversation_id)}</button> ${esc(i.text)}${i.example_phrase?`<span class="q">Можно сказать: «${esc(i.example_phrase)}»</span>`:''}</li>`).join('')||'<li class="mut">Рекомендаций нет</li>'}</ul><div id="coachBox"></div></div>`;
   loadCoaching(name,false);
 }
+const plural=(n,a,b,c)=>{const m=n%100,k=n%10;return m>10&&m<20?c:k===1?a:k>1&&k<5?b:c};
 const LVL=p=>p>=85?'yes':p>=60?'warn':'no';
 function coachHtml(c){
   const pct=v=>v==null?'—':Math.round(v)+'%';
@@ -103,9 +104,11 @@ function coachHtml(c){
     <div class="tr-h">План коучинга <small>· ${c.source==='ai'?'составлен ИИ по реальным диалогам':'по правилам критериев (ИИ недоступен)'}${c.cached?' · из кэша':''}</small>
       <button class="lk" id="coachRefresh">Обновить</button></div>
     <p class="why">${esc(c.summary)}</p>
+    <p class="mut">${c.basis&&c.basis.reviewer_notes?`План опирается на ${c.basis.reviewer_notes} ${plural(c.basis.reviewer_notes,'комментарий','комментария','комментариев')} проверяющего и на цифры по диалогам. Он пересчитывается при каждом новом диалоге и комментарии.`:'Комментариев проверяющего пока нет: план строится по оценкам. Он пересчитывается при каждом новом диалоге.'}</p>
     <p class="mut">Оценено диалогов: ${c.evaluated} · средний балл ${pct(c.avg_total)} (команда ${pct(c.team_avg)})${c.trend!=null?` · динамика ${c.trend>0?'+':''}${c.trend}`:''}${c.injection_dialogs?` · попыток повлиять на оценку: ${c.injection_dialogs}`:''}</p>
     ${c.strengths.length?`<p class="why">Сильные стороны: ${c.strengths.map(s=>`<span class="mood yes">${esc(s.name)} ${pct(s.avg_pct)}</span>`).join(' ')}</p>`:''}
     ${c.focus.map((f,i)=>`<div class="coach-f"><h4>${i+1}. ${esc(f.name)} <span class="mood ${LVL(f.avg_pct)}">${pct(f.avg_pct)}</span> <small>команда ${pct(f.team_pct)}</small></h4>
+      ${f.reviewer_notes&&f.reviewer_notes.length?`<ul class="fbl rn">${f.reviewer_notes.map(n=>`<li class="ev"><small>${n.source==='comment'?'Проверяющий':'Решение'} · </small>${go(n.conversation_id)} ${esc(n.text)}</li>`).join('')}</ul>`:''}
       ${f.tip?`<p class="why"><b>Что делать:</b> ${esc(f.tip)}</p>`:''}
       ${f.practice_phrase?`<span class="say"><small>Фраза для тренировки</small>«${esc(f.practice_phrase)}»</span>`:''}
       ${f.mistakes.length?`<ul class="fbl">${f.mistakes.map(m=>`<li class="ev">${go(m.conversation_id)} <small>${m.score_pct}%</small> ${esc(m.explanation||'')}${quote(m.quote)}</li>`).join('')}</ul>`:''}

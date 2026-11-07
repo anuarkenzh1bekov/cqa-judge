@@ -1,29 +1,32 @@
-# CQA Judge — Conversation Quality Analytics
+# CQA Judge
 
-Prototype for the Freedom Broker hackathon: scoring an operator's work against a configurable checklist (RU / KZ / EN, chats and calls),
-with explanations that link to the exact message and to the moment in the recording, appeals with review, operator feedback and analytics.
-The interface is in Russian; Russian labels are shown in quotes with their English meaning.
+Scores operator chats and calls against a checklist you can edit. Every answer points to the message it rests on, and for calls to the moment in the recording. Built for the Freedom Broker hackathon. The interface is in Russian.
 
-![CQA Judge: from a conversation to an appeal decision](docs/demo.gif)
+![CQA Judge demo](docs/demo.gif)
 
-*A real run of the interface in demo mode: open a conversation, jump from "Требуют проверки" (Needs review) to the evidence, dispute a score, and see the outcome and the new total in one line.*
+The clip, left to right: the reviewer's list, a card with a gross error, an evaluation streaming in, rejecting an appeal with a written reason, an operator's own dialogs, and a coaching plan built from the reviewer's comments.
 
-## Run with Docker
+## Run
+
+With Docker:
 
 ```bash
 cp .env.example .env   # fill in the keys and DATASET_API_URL
 docker compose up -d --build
 ```
 
-Open http://localhost:8000. The SQLite database lives in the `cqa-data` volume and survives restarts; keys are read from `.env`
-at startup and are not baked into the image. Stop with `docker compose down` (data is kept), wipe the data with
-`docker compose down -v`.
+Without Docker (Python 3.10+):
 
-On first start with an empty database, the 65 DEV conversations are loaded from `datasets/DEV.json` (dialogs only, no
-scores: evaluate them from the interface, "Оценить новые" or a conversation's "Оценить"). Set `SEED_DATASET=` in `.env`
-to disable this.
+```bash
+cd backend
+pip install -r requirements.txt
+cp ../.env.example ../.env
+python -m uvicorn app.main:app --port 8000
+```
 
-To move an already evaluated local database into the container (all scores, appeals, checklist versions):
+Open http://localhost:8000. The backend serves `web/` itself. Swagger is at `/docs`, the API is described in [API.md](API.md), and `/?demo=1` runs the interface without a backend.
+
+On first start an empty database gets the 65 DEV conversations from `datasets/DEV.json`, unscored. Press "Оценить новые" (Evaluate new) to score them. Set `SEED_DATASET=` to skip the seeding. In Docker the SQLite file lives in the `cqa-data` volume, `docker compose down -v` wipes it, and to move a local database in:
 
 ```bash
 docker compose stop
@@ -32,45 +35,23 @@ docker run --rm -v cqa-judge_cqa-data:/data -v "$PWD/backend:/src:ro" alpine \
 docker compose up -d
 ```
 
-## Run without Docker
+## What it does
 
-Requires Python 3.10+.
+- Scores chats and calls in RU, KZ and EN. Criteria are edited in the interface, with no code change, and every evaluation keeps a snapshot of the checklist version it used. Versions have names (v1, v2 or your own) and can be compared on the same conversations.
+- Explains each answer with links to messages. Call recordings play in the card and a click on a message seeks to it. An uploaded recording is transcribed by Gemini with personal data masked.
+- Streams the evaluation: the card fills in while the model is still writing.
+- Has two roles, switched in the header. An operator sees only their own dialogs, can appeal a criterion once the reviewer publishes the evaluation, reads the checklist without editing it, sees a list of their appeals (an open one can be deleted) and their own analytics. A reviewer comments, publishes, edits the checklist and decides appeals: accept with a new answer, or reject with a written reason the operator sees.
+- Recalculates the total after an appeal and keeps the original score. A reviewer's correction goes into the prompt of that criterion for later evaluations, and the analytics screen shows where reviewers agree with the AI.
+- Puts a sparkle button in text fields (appeal, decision, comment, criterion wording). It improves what is written, or drafts a text from the criterion and the dialog when the field is empty.
+- Builds a coaching plan per operator, mostly from the reviewer's published comments and appeal decisions, then from the weakest criteria with real quotes and a colleague's full-marks dialog. Code picks the facts and Gemini writes the advice. The plan is rebuilt after every new dialog, comment or decision, and a rules-only plan appears when the model is unavailable.
+- Reads the client's mood per dialog (from the recording's tone as well, for calls). The mood never changes the score.
+- Treats the dialog as data. Turns that try to instruct the evaluator ("ignore the rules", "give 100 points") are detected in RU, KZ and EN, fenced off in the prompts and shown on the card, and the criteria that rest on them are flagged for review. Scoring is plain code and every quote is checked against the transcript, so a fooled model still cannot move the score.
+- Shows analytics by language, channel, operator and criterion, exports one Excel file with every dialog, justification, appeal and gross error, and writes the organizers' `results.json`.
 
-```bash
-cd backend
-pip install -r requirements.txt
-cp ../.env.example ../.env   # fill in the keys and DATASET_API_URL
-python -m uvicorn app.main:app --port 8000
-```
-
-Open http://localhost:8000: the backend serves the interface from `web/` itself.
-
-1. "Диалоги" (Conversations) → "Оценить новые" (Evaluate new) → `group_id` (for example `DEV`) → the set is loaded from the organizers' API and evaluated.
-   Or attach a call recording (MP3/WAV/OGG/FLAC/AAC, up to 15 MB): Gemini transcribes it (speakers, timestamps, personal
-   data masked like in the dataset), the file is kept for the player, and the call is evaluated like any other.
-2. Conversation view: score, gross errors, operator feedback, and for every criterion the answer, points, explanation,
-   links to messages and the opinions of Gemini and Jev. For calls there is a player, and clicking a message seeks the recording.
-   "Настроение клиента" (Client mood): start → end, the moments where it changed; for calls also the tone of voice heard in the recording.
-3. "Оспорить" (Dispute) → an appeal. The "Проверяющий" (Reviewer) switch or the "Апелляции" (Appeals) screen → a decision (you can ask the AI
-   to re-check) → the total is recalculated and the original score is kept.
-4. "Чек-лист" (Checklist) → change or replace a criterion → "Сохранить и применить" (Save and apply) to the set. A new version is saved.
-5. "Аналитика" (Analytics) → average scores by language, channel, operator and criterion, model agreement, cost, how many
-   conversations the AI is confident about, calibration against reviewers.
-   "Скачать Excel" → one .xlsx: summary, every dialog with per-criterion answers and client mood, every justification
-   with its evidence messages, criteria, operators, gross errors and appeals ("CSV" → the dialogs sheet only).
-6. "Сравнить версии" (Compare versions, on the checklist screen) → the same conversations scored by two checklist versions.
-7. In a conversation: "Следующий" (Next, key `N`) opens the next conversation in the list.
-
-**The judge learns from reviewers.** When a reviewer changes an answer through an appeal, the correction (with the reason)
-goes into the prompt of that criterion for later evaluations (`CALIBRATION_EXAMPLES` latest per criterion, the conversation
-being evaluated is excluded). The analytics screen shows where reviewers agree with the AI and how it changes.
-
-Swagger: http://localhost:8000/docs · API description: [API.md](API.md) · Demo without a backend: http://localhost:8000/?demo=1
-
-## How the evaluation works
+## How scoring works
 
 ```
-conversation ─┬─► Gemini  (facts about the conversation, an answer per criterion, explanation, evidence messages, feedback)
+conversation ─┬─► Gemini  (facts, an answer per criterion, explanation, evidence messages, feedback)
               └─► Jev     (an independent answer per criterion + a calibrated probability)
                        │
                        ▼  merge per criterion
@@ -78,130 +59,79 @@ conversation ─┬─► Gemini  (facts about the conversation, an answer per c
    disagree, Jev confident (≥0.8)    ─► Gemini re-checks the criterion, flagged "disputed"
    disagree, Jev not confident       ─► Gemini's answer, flagged "needs review"
                        │
-                       ▼  code (not a model)
-   quote check against the transcript → N/A rules → points by weight → N/A redistribution → total (2 decimals) → gross errors
+                       ▼  code, not a model
+   quote check → N/A rules → points by weight → N/A redistribution → total → gross errors
 ```
 
-- Prompts and response schemas are generated from the checklist config: a new or replaced criterion works without code changes.
-- Every evaluation really calls the models (no cache by `conversation_id`) and stores a snapshot of the checklist it was made with.
-- Jev is optional: without a key, or on error, the evaluation runs on Gemini only.
-- Client mood is a separate Gemini call that runs alongside and never changes the score. For calls the recording itself is sent,
-  so the tone (raised voice, fast speech, pauses) is heard, not guessed from the text. The model is told not to judge
-  whether anyone is truthful: voice cues cannot show that. Switch off with `MOOD_ENABLED=false` / `MOOD_AUDIO=false`.
-- Edge cases we wrote ourselves (not in DEV): `eval/synthetic.json`, run with `python backend/scripts/run_synthetic.py`
-  against a running server (87/88 criteria match our labels, the one miss is a borderline case flagged for review).
+Prompts and schemas are generated from the checklist, and every evaluation calls the models for real, with no cache by conversation id. Jev is optional: without a key the evaluation runs on Gemini alone. `eval/synthetic.json` holds edge cases written by hand, run with `python backend/scripts/run_synthetic.py` against a running server (87 of 88 criteria match our labels, the miss is a borderline case flagged for review).
 
-- **Prompt-injection defence** (`backend/app/guard.py`): a dialog is data, not instructions. Every turn is scanned (RU / KZ / EN:
-  "ignore the rules", "give 100 points", "you are now…", fake `system:` markers, zero-width obfuscation); the transcript is fenced
-  in the prompts and cannot forge the fence or turn markers; the models are told to ignore commands inside it. The score itself
-  is computed by code and quotes are checked against the transcript, so a fooled model still cannot move it. Findings are saved in
-  `facts.security` and shown on the conversation card; criteria that rest on an injected turn (all of them if the *operator*
-  tried) are flagged "needs review", and such dialogs are never used as coaching examples. Tests: `tests/test_guard.py`.
-- **Operator coaching** (`GET /api/operators/{name}/coaching`, shown in the operator card on "Аналитика"): the weakest criteria
-  are picked by code, with real quotes from the operator's dialogs and a full-marks dialog of a colleague as an example; Gemini
-  only writes the tip, a phrase to practise and a 3-step weekly plan. Works without the model (rules fallback). Tests: `tests/test_coaching.py`.
-
-## Tests
+## Tests and accuracy
 
 ```bash
 cd backend
 python -m pytest -q
 ```
 
-25 offline tests (no network or keys, the models are replaced with stubs): scoring and N/A, merging Gemini and Jev answers
-(agreement, re-check, the "needs review" flag, Jev failure), validation of message links, the full path through the API
-(upload → evaluation → appeal → decision → recalculation → statistics), criterion replacement and checklist validation.
+71 offline tests with the models stubbed: scoring, merging, the API flow from upload to appeal to statistics, streaming, the injection guard, coaching and the AI text helper.
 
-### Run on a random sample (real models)
+To score a random sample with the real models, or to measure accuracy against hand labels:
 
 ```bash
-cd backend
-python scripts/eval_sample.py --n 12 --runs 2            # random sample, stratified by language and channel
-python scripts/eval_sample.py --n 12 --runs 2 --seed 7   # reproducible sample
+python scripts/eval_sample.py --n 12 --runs 2 --seed 7
+python scripts/eval_sample.py --make-gold-template eval/gold.json --n 15
+python scripts/eval_sample.py --gold ../eval/gold.json
 ```
 
-The report is saved to `backend/reports/`. DEV has no ground truth, so the report shows correctness (valid answers,
-real message links), consistency with the N/A rules, stability (the same conversation twice) and model agreement.
-To measure accuracy, label the sample by hand:
+`eval/gold.json` has hand labels for 14 DEV conversations (7 RU, 3 KZ, 3 EN, 1 call), made from the transcripts and the checklist PDF without looking at the system's answers. They are a second opinion, not the organizers' truth. The system agrees on 94% of criteria, with a total-score error of 4.38 points (`backend/reports/eval_DEV_20261107_160116.md`). Most of the misses come from two criteria: consultation (the system gives 20 where the PDF says 15 when a secondary question got no next step) and needs discovery (sometimes N/A on account-specific requests). Tightening the guidance for them lowered agreement to 92%, so it was reverted.
 
-```bash
-python scripts/eval_sample.py --make-gold-template eval/gold.json --n 15   # template with empty answers
-python scripts/eval_sample.py --gold ../eval/gold.json                      # per-criterion accuracy and total MAE
-```
+## Configuration
 
-`eval/gold.json` holds hand labels for 14 DEV conversations (7 RU, 3 KZ, 3 EN, 1 call), made by reading each
-transcript against the checklist PDF **without looking at the system's answers**. They are an independent second
-opinion, not the organizers' ground truth; every label has a note explaining it. Result
-(`backend/reports/eval_DEV_20261107_160116.md`): **94% per-criterion agreement, total-score MAE 4.38**. The remaining
-disagreements are systematic: the system gives 20 for consultation when a secondary question was left without a next
-step (the PDF says 15), and sometimes N/A for needs discovery on account-specific requests. Tightening the guidance for
-these two criteria was tried and made agreement worse (92%), so it was reverted.
-
-## Configuration (`.env`)
+Set in `.env`:
 
 | Variable | Purpose |
 |---|---|
-| `GOOGLE_API_KEY`, `GEMINI_MODEL` | Gemini (default `gemini-3.8-flash`) |
-| `TYPESAFE_API_KEY`, `JEV_MODEL`, `JEV_ENABLED` | Jev by TypeSafe AI (`jev-latest`) |
-| `JEV_ADJUDICATE_THRESHOLD` | Jev probability above which a disagreement is sent for a re-check (0.8) |
-| `DATASET_API_URL` | the organizers' GET link **without** `group_id` (it contains a signature, do not commit it) |
-| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | price per 1M tokens for cost estimates (defaults: Gemini 3.8 Flash paid tier, $0.75 in / $3.75 out, through 2026) |
+| `GOOGLE_API_KEY`, `GEMINI_MODEL` | Gemini, default `gemini-3.8-flash` |
+| `TYPESAFE_API_KEY`, `JEV_MODEL`, `JEV_ENABLED` | Jev by TypeSafe AI |
+| `JEV_ADJUDICATE_THRESHOLD` | Jev probability above which a disagreement is re-checked (0.8) |
+| `DATASET_API_URL` | the organizers' link without `group_id`. It contains a signature, do not commit it |
+| `STREAM_ENABLED`, `COACHING_ENABLED` | live evaluation and the coaching plan, both on by default |
+| `MOOD_ENABLED`, `MOOD_AUDIO` | client mood, and whether it listens to the recording |
 | `MAX_CONCURRENCY` | parallel evaluations in a batch (4) |
+| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | prices for cost estimates ($0.75 and $3.75 per 1M tokens) |
 | `DATABASE_URL` | defaults to SQLite `backend/cqa.db` |
 
 ## Cost and time
 
-Models: **Gemini 3.8 Flash** (`gemini-3.8-flash`, paid Standard tier: $0.75 / 1M input, $3.75 / 1M output including
-thinking tokens, valid through 2026-12-31; doubles from 2027-01-01; audio is billed as input, no separate audio price is
-listed) and **Jev** (`jev-1.14.0`, $0.042 / 1M input, output free).
+Gemini 3.8 Flash costs $0.75 per 1M input tokens and $3.75 per 1M output tokens including thinking, through 2026-12-31 (double from 2027-01-01). Jev costs $0.042 per 1M input tokens. One evaluation is the main Gemini call, Jev and the mood call in parallel, and a Gemini re-check only when the models disagree confidently. Measured on 108 evaluations (DEV plus our edge cases, 2026-11-07):
 
-One evaluation = the main Gemini call + Jev in parallel + the client-mood call in parallel (for calls it also listens to
-the recording), and a Gemini re-check only when the models disagree confidently. Measured on 108 evaluations with the
-current pipeline (DEV + our edge cases, 2026-11-07):
-
-| | cost per dialog | time per dialog (median / p90) |
+| | cost per dialog | time (median / p90) |
 |---|---|---|
-| chat | $0.015 avg (median $0.013, p90 $0.022) | 20 s / 41 s |
-| call (transcript given) | $0.020 avg, up to ~$0.035 with voice-tone analysis | 20 s / 29 s |
-| call from a recording (transcription + evaluation) | ≈ $0.05 for a 5–6 min call (transcription ≈ $0.018, 25 s) | ≈ 50 s |
-| AI criterion draft / dialog summary | ≈ $0.003 / ≈ $0.002 | 3–5 s |
+| chat | $0.015 average | 20 s / 41 s |
+| call with a transcript | $0.020 average, up to $0.035 with tone analysis | 20 s / 29 s |
+| call from a recording | about $0.05 for 5 to 6 minutes | about 50 s |
 
-Throughput: 4 dialogs in parallel (`MAX_CONCURRENCY`), so the 65 DEV dialogs take **6.5–7 min and ≈ $0.95**; the
-10 control transcripts take about **1.5 min and ≈ $0.15**. At 10 000 dialogs a month: ≈ $150 (≈ $300 after the
-2027 price change). The actual cost and time of every evaluation are stored and shown on the "Аналитика" (Analytics)
-screen and in the Excel export.
+With 4 dialogs in parallel the 65 DEV dialogs take 6.5 to 7 minutes and about $0.95. At 10,000 dialogs a month that is about $150, or $300 after the 2027 price change. The real cost and time of each evaluation are stored and shown in the analytics screen and the Excel file.
 
 ## Structure
 
 | Path | What it is |
 |---|---|
-| `backend/app/checklist.py` | checklist schema + the starter checklist from the PDF |
-| `backend/app/scoring.py` | deterministic scoring (tests: `cd backend && python -m pytest -q`) |
-| `backend/app/prompts.py` | prompts and JSON schemas, generated from the checklist |
-| `backend/app/llm/` | Gemini and Jev clients |
-| `backend/app/pipeline.py` | evaluation: Gemini ∥ Jev → merge → quote check → points |
-| `backend/app/routers/` | API: conversations, checklists, evaluations, appeals, stats |
-| `backend/tests/` | offline tests (`python -m pytest -q`) |
-| `backend/scripts/eval_sample.py` | random-sample run with a report |
-| `Dockerfile`, `docker-compose.yml` | image and one-command startup |
-| `datasets/DEV.json` | copy of the DEV set (65 conversations). Signed links to real call recordings are removed (`has_audio: true`); if the organizers' API is down, import by `group_id` falls back to this file. Refresh: `python backend/scripts/download_dataset.py --group DEV` |
-| `web/` | interface in plain HTML, CSS and JavaScript, no build step; `web/js/backend.js` talks to the API |
-| `web/dist/cqa-webresource.html` | the whole interface in one file for Dynamics 365 (`python web/build.py`) |
+| `backend/app/` | FastAPI: `pipeline.py` (evaluation), `scoring.py` (deterministic points), `prompts.py`, `guard.py` (injection defence), `coaching.py`, `live.py` (streaming), `routers/`, `llm/` (Gemini and Jev clients) |
+| `backend/tests/` | offline tests |
+| `backend/scripts/` | sample runs, dataset download, `results.json` export |
+| `web/` | the interface in plain HTML, CSS and JavaScript, no build step. Parameters and Dynamics 365 are in [web/README.md](web/README.md) |
+| `web/dist/cqa-webresource.html` | the whole interface in one file for Dynamics 365, built with `python web/build.py` |
+| `datasets/DEV.json` | the DEV set, 65 conversations, with signed audio links removed. Import by `group_id` falls back to it when the organizers' API is down |
+| `Dockerfile`, `docker-compose.yml` | image and one-command start |
 
-Interface parameters (`?api=`, `?embed=1`, `?theme=`, `?demo=1`) and Dynamics 365: [web/README.md](web/README.md).
+## Submission file
 
-## Submission file (`results/dev|prod/results.json`)
-
-The organizers' format 1.0 ("Как сдать результаты") is built from the latest evaluation of each conversation, with
-final answers after appeals. Turn numbers are 1-based, also inside the explanations (`[3]` in the model text becomes `[4]`).
-A conversation that was not evaluated or failed is written as `status: "error"`, never as a zero score.
+The organizers' format 1.0 is built from the latest evaluation of each conversation with final answers after appeals. Turn numbers are 1-based, also inside explanations. A conversation that was not evaluated is written as `status: "error"`, never as a zero.
 
 ```bash
 cd backend
-python scripts/export_results.py --group DEV --set dev --expect 65     # results/dev/results.json
+python scripts/export_results.py --group DEV --set dev --expect 65
 python scripts/export_results.py --group <prod group_id> --set prod --expect 10
-git add ../results && git commit -m "Results" && git push
 ```
 
-The script validates the file (all 8 criteria once, allowed values, unique IDs, record count) and refuses to write it
-if something is wrong. The same data with a `problems` list: `GET /api/results?group=DEV&expect=65`.
+The script checks the file (all 8 criteria once, allowed values, unique ids, record count) and refuses to write a broken one. The same data with a `problems` list is at `GET /api/results?group=DEV&expect=65`.
