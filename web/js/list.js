@@ -16,7 +16,7 @@ function restoreListFocus(){
   if(tr)tr.focus({preventScroll:true});
 }
 function listRows(){
-  return Object.entries(D).map(([key,dialog])=>{
+  return Object.entries(D).filter(([k])=>reviewer||mine(k)).map(([key,dialog])=>{
     const s=dialog.summary;
     if(!dialog.loaded&&CQA_API.enabled){
       const done=s&&s.status==='done';
@@ -37,7 +37,7 @@ const statusTag=r=>r.status==='running'||r.status==='pending'?'<span class="fl">
 function renderList(){rowsCache=listRows();renderListChrome();renderRows()}
 /* фильтры и счётчики; поле поиска не пересоздаётся */
 function renderListChrome(){
-  const seg=[['all','Все'],['low','ИИ не уверен'],['appeal','Апелляции'],['gross','Грубые ошибки']];
+  const seg=[['all','Все'],['low','ИИ не уверен'],['appeal','Апелляции'],['gross','Грубые ошибки']].filter(([k])=>reviewer||k!=='low');
   $('#fKinds').innerHTML=seg.map(([k,t])=>`<button class="seg ${fKind===k?'on':''}" data-kind="${k}">${t}<small>${rowsCache.filter(KINDS[k]).length}</small></button>`).join('');
   $('#fLangs').innerHTML=['RU','KZ','EN'].map(l=>`<button class="seg ${fLang.has(l)?'on':''}" data-lang="${l}">${l}</button>`).join('');
   $('#fGroups').innerHTML=CQA_API.enabled&&BE.groups.length>1?'<span class="sep"></span>'+[['','Все наборы'],...BE.groups.map(g=>[g,g])]

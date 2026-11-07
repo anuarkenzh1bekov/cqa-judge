@@ -18,7 +18,7 @@ const kind=(c,v)=>v==='na'?'na':c.type==='yn'?v:'scale';
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2400)}
 const nAppeals=d=>D[d]&&!D[d].loaded&&D[d].summary?(D[d].summary.open_appeals||0)
   :Object.values(appeals[d]||{}).filter(a=>!a.decision).length;
-const pendingAppeals=()=>Object.keys(D).reduce((s,d)=>s+nAppeals(d),0);
+const pendingAppeals=()=>visKeys().reduce((s,d)=>s+nAppeals(d),0);
 function syncCount(){const n=pendingAppeals();$('#apCount').hidden=!n;$('#apCount').textContent=n}
 
 /* Число «набегает» до значения. Без анимации, если в системе включено уменьшение движения. */

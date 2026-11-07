@@ -1,6 +1,7 @@
 /* Экран «Апелляции»: очередь и решение проверяющего. */
 /* ================= АПЕЛЛЯЦИИ ================= */
 function renderAppeals(){
+  if(!reviewer)return renderMyAppeals();
   const items=[];
   Object.keys(D).forEach(d=>Object.keys(appeals[d]||{}).forEach(id=>{const c=CRIT.find(x=>x.id==id);if(c&&!pending(d,c))items.push({d,c})}));
   /* открытые — сверху */
@@ -17,14 +18,13 @@ function renderAppeals(){
   anchors.forEach(n=>[n-1,n,n+1].forEach(k=>{if(k>=1&&k<=D[d].msgs.length)idx.add(k)}));
   const frag=msgList(d,[...idx].sort((x,y)=>x-y).map(n=>n-1),{noId:true,marks:r.ev});
   $('#apDetail').innerHTML=`<div class="panel ap-d">
-    <div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div>
+    <div class="ap-top"><div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div><button class="tx" data-open="${esc(d)}">Открыть диалог →</button></div>
     <h2>${esc(c.name)}</h2>
     ${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:`<div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>Итог сейчас</small><b>${fmt(total(d).score)}</b></div></div>`}
     <div class="st">${esc(a.text)}</div>
     <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
     <div class="frag">${frag}</div>
     ${a.decision?'':decideForm(d,c,a)}
-    <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>
   </div>`;
 }
 $('#apList').onclick=e=>{const b=e.target.closest('.ap-item');if(!b)return;apSel={d:b.dataset.d,id:+b.dataset.id};renderAppeals()};

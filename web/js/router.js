@@ -15,9 +15,12 @@ let routeSeq=0,curView=null;
 async function route(){
   const seq=++routeSeq;
   if(curView==='list'){listUI.scroll=scrollY;listUI.has=true}   /* уходим из списка: запоминаем место */
+  syncRoleUI();
   const [,view='list',raw]=H.split('/');
   const arg=raw?decodeURIComponent(raw):raw;
   if(view==='card'&&D[arg])cur=arg;
+  /* оператор не открывает чужие диалоги */
+  if(view==='card'&&!reviewer&&D[cur]&&!mine(cur)){const k=visKeys()[0];go(k?'#/card/'+encodeURIComponent(k):'#/list');return}
   ['list','card','checklist','appeals','stats'].forEach(v=>{const el=$('#v-'+v);if(el)el.hidden=v!==view});
   $$('#nav button').forEach(t=>t.classList.toggle('on',t.dataset.r===view));
   syncCount();
@@ -29,9 +32,9 @@ async function route(){
     if(CQA_API.enabled&&view==='appeals')await beLoadAppealDialogs();
   }catch(e){toast('Ошибка загрузки: '+e.message)}
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
-  if(view==='list'){renderList();if(CQA_API.enabled)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
-  if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
-  if(view==='checklist')renderEditor();
+  if(view==='list'){renderList();if(CQA_API.enabled&&reviewer)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
+  if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled&&reviewer){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
+  if(view==='checklist'){renderEditor();lockChecklist()}
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
   syncCount();

@@ -42,6 +42,7 @@ function calibrationHtml(c){
     ${c.by_model_agreement.length?`<p class="mut cal-m">Как часто проверяющий менял ответ в зависимости от согласия моделей: ${c.by_model_agreement.map(x=>`${kinds[x.agreement]||x.agreement} — ${pct(x.changed_pct)} (${x.changed}/${x.decided})`).join('; ')}.</p>`:''}</div>`;
 }
 async function renderStats(){
+  if(!reviewer)return renderMyStats();
   const box=$('#statsBody');
   if(!CQA_API.enabled){box.innerHTML='<div class="empty">Аналитика доступна при подключённом бэкенде</div>';return}
   const xb=$('#xlsBtn');xb.href=CQA_API.url('/api/export/stats.xlsx');xb.hidden=false;

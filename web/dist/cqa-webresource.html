@@ -494,8 +494,6 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .m .b{transition:background-color .2s,box-shadow .2s}
 
 /* подсветка нарушений в транскрипте и на дорожке записи */
-.m.viol .b{box-shadow:inset 3px 0 0 var(--no)}
-.m.system.viol{box-shadow:inset 3px 0 0 var(--no);padding-left:8px}
 .vls{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .vl2{font-size:11px;line-height:1.4;padding:1px 8px;border-radius:999px;color:var(--no);box-shadow:inset 0 0 0 1px var(--no);background:transparent}
 .apw{position:relative;flex:1;min-width:40px;display:flex;align-items:center}
@@ -530,6 +528,70 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .coach-f h4 small{font-weight:400;color:var(--muted);margin-left:6px}
 .coach-w{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.55}
 
+/* прогресс пакетной оценки */
+.run-prog{position:relative;height:6px;margin:12px 0 4px;border-radius:3px;background:var(--line);overflow:hidden}
+.run-prog i{position:relative;display:block;height:100%;width:0;border-radius:3px;overflow:hidden;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 65%,#fff));transition:width .6s cubic-bezier(.22,1,.36,1)}
+.run-prog.busy i::after{content:"";position:absolute;inset:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:sweep 1.3s ease-in-out infinite}
+.run-prog.busy{animation:rpulse 1.6s ease-in-out infinite}
+.run-prog.full i{background:var(--accent)}
+@keyframes rpulse{50%{box-shadow:0 0 10px color-mix(in srgb,var(--accent) 45%,transparent)}}
+.load.sm{display:inline-flex;height:auto;gap:4px;margin-left:6px;vertical-align:middle}
+.load.sm i{width:5px;height:5px}
+.run div.go .rid{background:linear-gradient(90deg,var(--ink) 30%,var(--accent) 50%,var(--ink) 70%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 1.6s linear infinite}
+.run div:not(.ok):not(.go):not(.err) i{animation:dotp 1.4s ease-in-out infinite}
+.run div.ok{animation:ok-in .35s ease-out}
+@keyframes ok-in{from{opacity:.4;transform:translateX(-4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.run-prog.busy i::after,.run-prog.busy,.run div.go .rid,.run div:not(.ok):not(.go):not(.err) i,.run div.ok{animation:none}.run div.go .rid{color:var(--ink);background:none}}
+
+/* Роль «оператор»: лишнее скрыто, чек-лист и апелляции — только просмотр и удаление своей */
+.field.me{padding:4px 8px;max-width:160px}
+.role-op #runNew,.role-op #fGroups,.role-op #evalNow,.role-op .rv,.role-op #xlsBtn,.role-op #expCsv,
+.role-op #aiCrit,.role-op #cmpBtn,.role-op #addCrit,.role-op #applyTo,.role-op #applyBtn,
+.role-op .side .box:first-child,.role-op #apDetail,.role-op #v-list th:nth-child(4),.role-op #v-list td:nth-child(4){display:none!important}
+.role-op #ed [data-mv],.role-op #ed [data-del],.role-op #ed [data-fdel],.role-op #ed [data-fadd]{display:none}
+.role-op .ap-grid{display:block}
+.ap-row{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--line)}
+.ap-row:first-child{border-top:0}
+.ap-row .mut{margin:6px 0 0}
+
+/* блок «Состояние» чек-листа */
+.vn{margin:0 0 6px;font-size:13px;font-weight:500}
+.vn.clean{color:var(--ink)}
+.vn-s{margin:0 0 6px;font-size:12px;line-height:1.5;color:var(--muted)}
+#verNameBox{margin-bottom:12px}
+#me[hidden],#verNameBox[hidden]{display:none!important}
+
+/* select.field оборачивается в .dd с кнопкой (dropdown.js): прячем и обёртку, иначе кнопка остаётся на экране */
+.dd:has(>select[hidden]){display:none!important}
+.role-op .dd:has(>#applyTo){display:none!important}
+
+/* выбор оператора в шапке: в стиле соседних переключателей, а не как поле формы */
+.tools .dd{width:auto}
+.tools .ddb{width:auto;padding:5px 26px 5px 10px;border:0;border-radius:6px;background-color:transparent;color:var(--muted);font:inherit;
+  background-position:right 8px center;background-size:10px}
+.tools .ddb:hover{color:var(--ink);background-color:var(--raised)}
+.tools .ddb[aria-expanded="true"]{color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+
+/* отклонение апелляции: плашка с объяснением */
+.decide.rej{margin-top:10px;border-color:var(--line-2);background:var(--raised)}
+.decide.rej textarea.field{min-height:84px;resize:vertical}
+.decide.rej[hidden]{display:none}
+
+.ap-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ap-top .tx{white-space:nowrap}
+
+/* ✨ в текстовых полях (aitext.js) */
+.aiw{position:relative;display:block;flex:1;min-width:0}
+.aiw>.field{width:100%;padding-right:40px}
+.aib{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:30px;height:30px;display:grid;place-items:center;
+  border-radius:6px;color:var(--accent);opacity:.9;transition:opacity .15s,background-color .15s}
+.aiw.ta .aib{top:6px;transform:none}
+.aib:hover{opacity:1;background-color:var(--raised)}
+.aib:disabled{cursor:progress}
+.aib.busy svg{animation:sp 1s linear infinite}
+.aiw:has(>:disabled) .aib{display:none}
+@media(prefers-reduced-motion:reduce){.aib.busy svg{animation:none;opacity:.5}}
+
 </style>
 </head>
 <body>
@@ -550,7 +612,8 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
     </nav>
     <span class="grow"></span>
     <div class="tools">
-      <button class="toggle" id="rev" aria-pressed="false">Проверяющий</button>
+      <select class="field me" id="me" aria-label="Я — оператор" hidden></select>
+      <button class="toggle" id="rev" aria-pressed="false">Режим: оператор</button>
       <div class="theme-sw" role="group" aria-label="Тема">
         <button data-theme-set="light" aria-label="Светлая тема" title="Светлая тема" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
         <button data-theme-set="dark" aria-label="Ночная тема" title="Ночная тема" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
@@ -595,7 +658,7 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
-        <div class="panel box"><h3>Состояние</h3><div id="verNote"></div><button class="tx" id="resetState" style="margin-top:12px">Сбросить к исходным</button></div>
+        <div class="panel box"><h3>Состояние</h3><div id="verNameBox" class="fld"><label for="verName">Название версии</label><input class="field" id="verName" placeholder="v1" maxlength="60"></div><div id="verNote"></div><button class="tx" id="resetState" style="margin-top:12px">Сбросить к исходным</button></div>
         <div class="panel box"><h3>Веса</h3><div id="wlist"></div></div>
       </aside>
     </div>
@@ -620,7 +683,7 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 <dialog id="dlg">
   <h3>Оспорить оценку</h3>
   <p id="dlgSub"></p>
-  <textarea class="field" id="dlgText" placeholder="Что в оценке неверно? Можно сослаться на реплику, например #12"></textarea>
+  <textarea class="field" id="dlgText" data-aitext="appeal" placeholder="Что в оценке неверно? Можно сослаться на реплику, например #12"></textarea>
   <div class="f"><button class="btn" id="dlgNo">Отмена</button><button class="btn primary" id="dlgYes">Отправить</button></div>
 </dialog>
 <dialog id="evDlg">
@@ -652,6 +715,7 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 <dialog id="runDlg">
   <h3 id="runTitle"></h3>
   <p id="runSub"></p>
+  <div class="run-prog" id="runProg" aria-hidden="true"><i></i></div>
   <div class="run" id="runList"></div>
   <div class="f"><button class="btn primary" id="runClose" disabled>Готово</button></div>
 </dialog>
@@ -691,6 +755,7 @@ const CQA_API={
   get(p){return this.req('GET',p)},
   post(p,b){return this.req('POST',p,b||{})},
   put(p,b){return this.req('PUT',p,b)},
+  del(p){return this.req('DELETE',p)},
 
   health(){return this.get('/api/health')},
   conversations(){return this.get('/api/conversations')},
@@ -990,7 +1055,7 @@ function applyEvaluation(d,ev){
 /* ISO-время звонков с 7 знаками дробной части Date.parse понимает не везде — обрезаем до миллисекунд */
 function normTs(ts){return String(ts).replace(/(\.\d{3})\d+/,'$1')}
 function fillPick(){
-  $('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${esc(k)}">${d.lang} · ${esc(d.id)}</option>`).join('');
+  $('#pick').innerHTML=visKeys().map(k=>`<option value="${esc(k)}">${D[k].lang} · ${esc(D[k].id)}</option>`).join('');
   if(cur)$('#pick').value=cur;
   syncPick();
 }
@@ -1008,7 +1073,10 @@ async function beDecide(d,critId,sel,reason,act){
   await beLoadDialog(d,true);
 }
 async function beSaveChecklist(){
-  const body={name:(BE.checklist&&BE.checklist.name||'Чек-лист').replace(/\s*·\s*v\d+$/,'')+' · v'+(ver+1),
+  const curName=verLabel(BE.checklist&&BE.checklist.name);
+  let nm=($('#verName').value||'').trim();
+  if(!nm||nm===curName){const m=curName.match(/^(.*?)(\d+)$/);nm=m?m[1]+(+m[2]+1):curName+' (2)'}  /* имя не меняли: v1 -> v2 */
+  const body={name:nm,
     description:BE.checklist&&BE.checklist.description,criteria:CRIT.map(critToBack).concat(BE.flags)};
   const cl=await CQA_API.createChecklist(body);
   await beLoadChecklist();
@@ -1029,7 +1097,10 @@ function beRunBatch(title,body){
   function render(){
     const all=[...rows.values()],n=s=>all.filter(r=>r.status===s).length;
     const work=n('pending')+n('running'),bad=failed();
-    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work}`:'')
+    const prog=$('#runProg');
+    prog.classList.toggle('busy',work>0);prog.classList.toggle('full',!work&&!bad.length);
+    prog.firstElementChild.style.width=(work?Math.max(8,(n('done')+bad.length)/rows.size*100):100)+'%';
+    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work} <span class="load sm" aria-hidden="true"><i></i><i></i><i></i></span>`:'')
       +(bad.length&&!work?` · ${bad.length===1?'не обработан':'не обработаны'}: ${bad.map(esc).join(', ')}`:'');
     $('#runList').innerHTML=[...rows].map(([id,r])=>{
       const cls=r.status==='done'?'ok':r.status==='running'?'go':r.status==='error'?'err':'';
@@ -1222,7 +1293,7 @@ const kind=(c,v)=>v==='na'?'na':c.type==='yn'?v:'scale';
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2400)}
 const nAppeals=d=>D[d]&&!D[d].loaded&&D[d].summary?(D[d].summary.open_appeals||0)
   :Object.values(appeals[d]||{}).filter(a=>!a.decision).length;
-const pendingAppeals=()=>Object.keys(D).reduce((s,d)=>s+nAppeals(d),0);
+const pendingAppeals=()=>visKeys().reduce((s,d)=>s+nAppeals(d),0);
 function syncCount(){const n=pendingAppeals();$('#apCount').hidden=!n;$('#apCount').textContent=n}
 
 /* Число «набегает» до значения. Без анимации, если в системе включено уменьшение движения. */
@@ -1356,9 +1427,12 @@ let routeSeq=0,curView=null;
 async function route(){
   const seq=++routeSeq;
   if(curView==='list'){listUI.scroll=scrollY;listUI.has=true}   /* уходим из списка: запоминаем место */
+  syncRoleUI();
   const [,view='list',raw]=H.split('/');
   const arg=raw?decodeURIComponent(raw):raw;
   if(view==='card'&&D[arg])cur=arg;
+  /* оператор не открывает чужие диалоги */
+  if(view==='card'&&!reviewer&&D[cur]&&!mine(cur)){const k=visKeys()[0];go(k?'#/card/'+encodeURIComponent(k):'#/list');return}
   ['list','card','checklist','appeals','stats'].forEach(v=>{const el=$('#v-'+v);if(el)el.hidden=v!==view});
   $$('#nav button').forEach(t=>t.classList.toggle('on',t.dataset.r===view));
   syncCount();
@@ -1370,9 +1444,9 @@ async function route(){
     if(CQA_API.enabled&&view==='appeals')await beLoadAppealDialogs();
   }catch(e){toast('Ошибка загрузки: '+e.message)}
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
-  if(view==='list'){renderList();if(CQA_API.enabled)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
-  if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
-  if(view==='checklist')renderEditor();
+  if(view==='list'){renderList();if(CQA_API.enabled&&reviewer)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
+  if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled&&reviewer){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
+  if(view==='checklist'){renderEditor();lockChecklist()}
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
   syncCount();
@@ -1421,7 +1495,7 @@ function restoreListFocus(){
   if(tr)tr.focus({preventScroll:true});
 }
 function listRows(){
-  return Object.entries(D).map(([key,dialog])=>{
+  return Object.entries(D).filter(([k])=>reviewer||mine(k)).map(([key,dialog])=>{
     const s=dialog.summary;
     if(!dialog.loaded&&CQA_API.enabled){
       const done=s&&s.status==='done';
@@ -1442,7 +1516,7 @@ const statusTag=r=>r.status==='running'||r.status==='pending'?'<span class="fl">
 function renderList(){rowsCache=listRows();renderListChrome();renderRows()}
 /* фильтры и счётчики; поле поиска не пересоздаётся */
 function renderListChrome(){
-  const seg=[['all','Все'],['low','ИИ не уверен'],['appeal','Апелляции'],['gross','Грубые ошибки']];
+  const seg=[['all','Все'],['low','ИИ не уверен'],['appeal','Апелляции'],['gross','Грубые ошибки']].filter(([k])=>reviewer||k!=='low');
   $('#fKinds').innerHTML=seg.map(([k,t])=>`<button class="seg ${fKind===k?'on':''}" data-kind="${k}">${t}<small>${rowsCache.filter(KINDS[k]).length}</small></button>`).join('');
   $('#fLangs').innerHTML=['RU','KZ','EN'].map(l=>`<button class="seg ${fLang.has(l)?'on':''}" data-lang="${l}">${l}</button>`).join('');
   $('#fGroups').innerHTML=CQA_API.enabled&&BE.groups.length>1?'<span class="sep"></span>'+[['','Все наборы'],...BE.groups.map(g=>[g,g])]
@@ -1494,7 +1568,7 @@ function violsOf(d){
     if(pending(d,c))return;
     const r=resOf(d,c);
     if(!missed(c,value(d,c)))return;
-    [...new Set(r.ev||[])].filter(n=>D[d].msgs[n-1]).forEach(n=>(out[n]=out[n]||[]).push(c.name));
+    [...new Set(r.ev||[])].filter(n=>D[d].msgs[n-1]).forEach(n=>(out[n]=out[n]||[]).push(`${c.name}: ${label(c,value(d,c))}`));
   });
   return out;
 }
@@ -1505,7 +1579,7 @@ function bubble(d,i,opt={}){
   const id=opt.noId?'':`id="m${n}"`,mk=opt.mark?' mark':'';
   const vs=!opt.noId&&VIOL&&VIOL[n]?VIOL[n]:null;
   const vk=vs?' viol':'';
-  const vh=vs?`<div class="vls">${vs.map(x=>`<span class="vl2" title="Действие пропущено: ${esc(x)}">${esc(x)}</span>`).join('')}</div>`:'';
+  const vh='';   /* красные плашки с названиями критериев под репликой убраны: в транскрипте остаётся только полоска слева */
   if(who==='system')return `<div class="m system${mk}${vk}" ${id}>${esc(text)}<span class="mf">${tm} · #${n}</span>${vh}</div>`;
   return `<div class="m ${who}${mk}${vk}" ${id}><div class="b">${esc(text)}${vh}<div class="mf">${tm} · #${n}</div></div></div>`;
 }
@@ -1619,8 +1693,7 @@ function renderChat(){
   initPlayer();
   $('#cardTitle').textContent=d.id;
   $('#asrTag').hidden=d.channel!=='voice call';
-  $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`
-    +(d.checklistName?`<span title="Чек-лист оценки">${esc(d.checklistName)}</span>`:'');
+  $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`;
 }
 /* краткое содержание над транскриптом: в демо оно записано в данных, с бэкендом строится по запросу и кэшируется */
 const MOOD_L={positive:'Клиент доволен',neutral:'Спокойный тон',negative:'Клиент недоволен'};
@@ -1662,8 +1735,16 @@ const grossText=s=>{
   return m?'проверены реплики '+m[1].replace(/#(\d+)\s*[–—-]\s*#(\d+)/,'с #$1 по #$2'):x;
 };
 /* ссылки на реплики показываем, только если их нет в самом тексте пояснения */
+/* номера реплик (с 1), которые уже видны в тексте: «[11]» от модели (нумерация с нуля, linkify покажет #12) и готовые «#12» */
+function shownRefs(txt){
+  const out=new Set();
+  String(txt||'').replace(/\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g,(_,g)=>{g.split(/[\s,–-]+/).filter(Boolean).forEach(x=>out.add(+x+1));return ''});
+  String(txt||'').replace(/#(\d+)/g,(_,n)=>{out.add(+n);return ''});
+  return out;
+}
+/* ссылки на реплики дописываем только те, которых в тексте ещё нет, чтобы «#12» не повторялось */
 function grossRefs(g){
-  const txt=String(g.checked||''),rest=(g.ev||[]).filter(n=>!new RegExp('#'+n+'(?!\\d)').test(txt));
+  const seen=shownRefs(g.checked),rest=[...new Set(g.ev||[])].filter(n=>!seen.has(n));
   return rest.length?' '+rest.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join(', '):'';
 }
 /* цвет итога: от 85 — зелёный, от 60 — жёлтый, ниже — красный (как в аналитике) */
@@ -1769,8 +1850,11 @@ function decideForm(d,c,ap){
   const ai=ap.ai?`<div class="st ai">ИИ-проверка: ${ap.ai.appeal_justified?'апелляция обоснована':'апелляция не обоснована'}, предлагает «${esc(label(c,ansToFront(c,ap.ai.suggested_answer)))}». ${linkify(ap.ai.explanation||'')}</div>`
     :(CQA_API.enabled&&ap._id?`<div class="f"><button class="tx" data-ai="${c.id}" data-d="${esc(d)}">Попросить ИИ перепроверить</button></div>`:'');
   return `<div class="decide"><div class="cmt">${esc(ap.text)}</div>${ai}
-    <div class="f"><label class="fi">Новая оценка<select class="field" data-v="${c.id}">${opts}</select></label><label class="fi">Причина решения<input class="field" data-r="${c.id}"></label></div>
-    <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="confirm">Подтвердить оценку</button><button class="btn" data-save="${c.id}" data-d="${esc(d)}" data-act="change">Изменить на выбранную</button></div></div>`;
+    <div class="f"><label class="fi">Новая оценка<select class="field" data-v="${c.id}">${opts}</select></label><label class="fi">Причина решения<input class="field" data-r="${c.id}" data-aitext="change" data-d="${esc(d)}" data-c="${c.id}" placeholder="Почему меняете оценку"></label></div>
+    <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="change">Принять и изменить оценку</button><button class="btn" data-rej-open>Отклонить апелляцию</button></div></div>
+    <div class="decide rej" hidden><div class="cmt"><b>Отклонить апелляцию.</b> Оценка остаётся прежней. Объясните оператору, почему апелляция не принята: он увидит этот текст.</div>
+      <textarea class="field" data-r="${c.id}" data-aitext="reject" data-d="${esc(d)}" data-c="${c.id}" placeholder="Например: в реплике #12 оператор не назвал комиссию, поэтому критерий не выполнен"></textarea>
+      <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="confirm">Отклонить и отправить причину</button><button class="btn" data-rej-cancel>Отмена</button></div></div>`;
 }
 function renderCrit(t=total(cur)){
   const secs=sectionScores(cur);let lastSec=null;
@@ -1821,7 +1905,7 @@ function critRow(c,i,t){
     const rv=rvOf(cur),rkey=rvKey(c),rtext=(rv.comments||{})[rkey]||'';
     const canAppeal=(!ap||ap.decision)&&rv.published&&!reviewer;
     const rcomment=reviewer
-      ?`<div class="rcf"><label>Комментарий проверяющего</label><textarea class="field" data-rc="${c.id}" rows="2" placeholder="Необязательно: с чем согласны или что неточно в оценке ИИ">${esc(rtext)}</textarea></div>`
+      ?`<div class="rcf"><label>Комментарий проверяющего</label><textarea class="field" data-rc="${c.id}" data-aitext="comment" data-c="${c.id}" rows="2" placeholder="Необязательно: с чем согласны или что неточно в оценке ИИ">${esc(rtext)}</textarea></div>`
       :(rv.published&&rtext?`<div class="rcv"><b>Комментарий проверяющего</b><p>${esc(rtext)}</p></div>`:'');
     return `<div class="cr k-${kind(c,v)}" data-id="${c.id}">
       <div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v ${kind(c,v)}">${label(c,v)}</span><span class="cr-p">${p===null?'—':fmt(Math.round(p*100)/100)} / ${c.w}</span></div>
@@ -1842,10 +1926,6 @@ if(!CQA_API.enabled)$('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option
 function syncPick(){const p=$('#pick');p.hidden=!p.options.length}
 syncPick();
 $('#pick').onchange=e=>go('#/card/'+encodeURIComponent(e.target.value));
-$('#rev').onclick=function(){
-  reviewer=!reviewer;this.setAttribute('aria-pressed',reviewer);
-  if(!$('#v-card').hidden){renderScoreHtml(total(cur));renderCrit()}
-};
 /* комментарий проверяющего сохраняется, когда поле теряет фокус */
 $('#crit').addEventListener('change',async e=>{
   const ta=e.target.closest('[data-rc]');if(!ta)return;
@@ -1924,14 +2004,14 @@ function outcomeLine(d,c){
   const dec=appeals[d][c.id].decision,r=resOf(d,c);
   const imp=decisionImpact(d,c);
   const tot=imp.before===imp.after?`Итог: ${fmt(imp.after)}`:`Итог: ${fmt(imp.before)} → ${fmt(imp.after)}`;
-  const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, подтверждена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
-  return `<b>${head}</b> · ${tot}<span class="why2">Причина: ${esc(dec.reason)}</span>`;
+  const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, апелляция отклонена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
+  return `<b>${head}</b> · ${tot}<span class="why2">${dec.act==='confirm'?'Почему отклонена':'Причина'}: ${esc(dec.reason)}</span>`;
 }
 
 /* ---------- «Следующий»: следующий диалог по порядку списка, по кругу ---------- */
 function syncNext(){
   const b=$('#nextDlg');if(!b)return;
-  const ks=Object.keys(D),i=ks.indexOf(cur);
+  const ks=visKeys(),i=ks.indexOf(cur);
   b.hidden=ks.length<2;
   b.dataset.to=ks.length>1?ks[(i+1)%ks.length]:'';
   b.textContent='Следующий →';
@@ -1955,7 +2035,7 @@ function renderEditor(){
       <button class="tx" data-mv="-1" aria-label="Выше">↑</button><button class="tx" data-mv="1" aria-label="Ниже">↓</button><button class="tx danger" data-del>Удалить</button></div>
     <div class="fields">
       <div class="fld full"><label>Секция</label><input class="field" list="secList" data-f="section" value="${esc(c.section||'')}"></div>
-      <div class="fld full"><label>Формулировка</label><textarea class="field" data-f="q">${esc(c.q)}</textarea></div>
+      <div class="fld full"><label>Формулировка</label><textarea class="field" data-f="q" data-aitext="criterion">${esc(c.q)}</textarea></div>
       <div class="fld"><label>Тип ответа</label><select class="field" data-f="type"><option value="yn" ${c.type==='yn'?'selected':''}>Да / Нет</option><option value="scale" ${c.type==='scale'?'selected':''}>Шкала</option></select></div>
       <div class="fld"><label>Вес</label><input class="field" type="number" min="0" max="100" data-f="w" value="${c.w}"></div>
       ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>
@@ -1963,7 +2043,7 @@ function renderEditor(){
         ${[...c.steps].sort((a,b)=>b-a).map(v=>`<div class="stp"><b>${v}</b><input class="field" data-f="sdesc" data-v="${v}" value="${esc((c.scaleDesc||{})[v]||'')}" placeholder="Когда ставить ${v}"></div>`).join('')}</div>`:''}
       <div class="fld"><label class="chk"><input type="checkbox" data-f="na" ${c.na?'checked':''}>Разрешить N/A</label></div>
       ${c.na?`<div class="fld"><label>Условие N/A</label><input class="field" type="text" data-f="nac" value="${esc(c.nac)}"></div>`:'<div></div>'}
-      ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
+      ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" data-aitext="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
     </div></div>`).join('')+flagsEditor();
   if(CQA_API.enabled){
     const sel=$('#applyTo');
@@ -1988,17 +2068,24 @@ function flagsEditor(){
       <div class="fld full"><label>Пояснения для модели</label><textarea class="field" data-ff="guidance" placeholder="Необязательно">${esc(f.guidance||'')}</textarea></div>
     </div></div>`).join('')+`<button class="btn" data-fadd>Добавить флаг грубой ошибки</button>`;
 }
+/* название версии: «v1», «v2» или своё; старое длинное имя по умолчанию не показываем */
+const verLabel=n=>String(n||'').replace(/^Чек-лист качества чатов \(Freedom Broker\)/,'').replace(/^[\s·]+/,'').trim()||'v1';
 function refreshSide(){
   const sum=CRIT.reduce((a,c)=>a+(+c.w||0),0);
   $('#wlist').innerHTML=CRIT.map(c=>`<div class="wl"><span class="t">${esc(c.name)}</span><span>${c.w}</span></div>`).join('')+`<div class="wl total"><span>Сумма</span><span>${sum}</span></div>`;
   const changed=CRIT.filter(c=>sigOf(c)!==savedSigs[c.id]).length;
   dirty=dirty||changed>0;
-  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?BE.checklist.name:'v'+ver;
-  const tail=CQA_API.enabled?' Сохранение создаёт новую версию чек-листа; старые оценки остаются со своей версией.'
-    :' Остальные результаты берутся из кэша.';
-  $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}.${tail}`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>'
-    +(CQA_API.enabled?`<br><small>Флагов грубых ошибок: ${BE.flags.length}. Они не дают баллов и отмечаются отдельно.</small>`:'')
-    +(sum!==100?`<br><small>Сумма весов ${sum} — итог всё равно нормируется к 100.</small>`:'');
+  /* название «Чек-лист качества чатов (Freedom Broker)» очевидно из контекста: показываем только версию */
+  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?verLabel(BE.checklist.name):'v'+ver;
+  const vn=$('#verName');
+  $('#verNameBox').hidden=!CQA_API.enabled;
+  if(CQA_API.enabled&&BE.checklist&&document.activeElement!==vn&&vn.dataset.cid!==String(BE.checklist.id)){
+    vn.value=verLabel(BE.checklist.name);vn.dataset.cid=BE.checklist.id;
+  }
+  $('#verNote').innerHTML=`<p class="vn ${dirty?'dirty':'clean'}">${dirty?'● Есть несохранённые изменения'+(changed?` (критериев: ${changed})`:''):'✓ Всё сохранено'}</p>`
+    +(dirty&&CQA_API.enabled?'<p class="vn-s">При сохранении появится новая версия. Старые оценки остаются со своей версией.</p>':'')
+    +(CQA_API.enabled?`<p class="vn-s">Грубые ошибки (${BE.flags.length}) не дают баллов, они только отмечаются в диалоге.</p>`:'')
+    +(sum!==100?`<p class="vn-s">Сумма весов ${sum}, итог всё равно приводится к 100.</p>`:'');
 }
 $('#ed').addEventListener('input',e=>{
   const ff=e.target.dataset.ff;
@@ -2100,6 +2187,8 @@ $('#resetState').onclick=async()=>{
   }catch(e){toast('Ошибка: '+e.message)}
 };
 
+$('#verName').addEventListener('input',()=>{dirty=true;refreshSide()});
+
 </script>
 <script>
 /* Сравнение версий чек-листа: одни и те же диалоги, оценённые двумя версиями (оценки ИИ до апелляций). */
@@ -2176,6 +2265,7 @@ if(CQA_API.enabled)$('#cmpBtn').hidden=false;
 /* Экран «Апелляции»: очередь и решение проверяющего. */
 /* ================= АПЕЛЛЯЦИИ ================= */
 function renderAppeals(){
+  if(!reviewer)return renderMyAppeals();
   const items=[];
   Object.keys(D).forEach(d=>Object.keys(appeals[d]||{}).forEach(id=>{const c=CRIT.find(x=>x.id==id);if(c&&!pending(d,c))items.push({d,c})}));
   /* открытые — сверху */
@@ -2192,14 +2282,13 @@ function renderAppeals(){
   anchors.forEach(n=>[n-1,n,n+1].forEach(k=>{if(k>=1&&k<=D[d].msgs.length)idx.add(k)}));
   const frag=msgList(d,[...idx].sort((x,y)=>x-y).map(n=>n-1),{noId:true,marks:r.ev});
   $('#apDetail').innerHTML=`<div class="panel ap-d">
-    <div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div>
+    <div class="ap-top"><div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div><button class="tx" data-open="${esc(d)}">Открыть диалог →</button></div>
     <h2>${esc(c.name)}</h2>
     ${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:`<div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>Итог сейчас</small><b>${fmt(total(d).score)}</b></div></div>`}
     <div class="st">${esc(a.text)}</div>
     <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
     <div class="frag">${frag}</div>
     ${a.decision?'':decideForm(d,c,a)}
-    <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>
   </div>`;
 }
 $('#apList').onclick=e=>{const b=e.target.closest('.ap-item');if(!b)return;apSel={d:b.dataset.d,id:+b.dataset.id};renderAppeals()};
@@ -2251,6 +2340,7 @@ function calibrationHtml(c){
     ${c.by_model_agreement.length?`<p class="mut cal-m">Как часто проверяющий менял ответ в зависимости от согласия моделей: ${c.by_model_agreement.map(x=>`${kinds[x.agreement]||x.agreement} — ${pct(x.changed_pct)} (${x.changed}/${x.decided})`).join('; ')}.</p>`:''}</div>`;
 }
 async function renderStats(){
+  if(!reviewer)return renderMyStats();
   const box=$('#statsBody');
   if(!CQA_API.enabled){box.innerHTML='<div class="empty">Аналитика доступна при подключённом бэкенде</div>';return}
   const xb=$('#xlsBtn');xb.href=CQA_API.url('/api/export/stats.xlsx');xb.hidden=false;
@@ -2334,6 +2424,173 @@ $('#v-stats').addEventListener('click',e=>{
 
 </script>
 <script>
+/* Роли. Оператор (по умолчанию): только свои диалоги, в карточке можно лишь подать апелляцию, чек-лист только для чтения,
+   апелляции списком (открытую можно удалить), своя аналитика. Проверяющий: всё как раньше. Переключатель — в шапке. */
+/* ================= РОЛИ ================= */
+let me='';
+try{me=localStorage.getItem('cqa-me')||''}catch(_){}
+try{reviewer=localStorage.getItem('cqa-mode')==='mgr'}catch(_){}
+const mine=k=>!!D[k]&&D[k].operator===me;
+const visKeys=()=>Object.keys(D).filter(k=>reviewer||mine(k));
+function populateMe(){
+  const ops=[...new Set(Object.values(D).map(d=>d.operator).filter(o=>o&&o!=='—'))].sort();
+  if(!ops.includes(me))me=ops[0]||'';
+  const sel=$('#me');
+  sel.innerHTML=ops.map(o=>`<option value="${esc(o)}"${o===me?' selected':''}>${esc(o)}</option>`).join('');
+  sel.hidden=reviewer||!ops.length;
+}
+function setNavText(btn,text){const n=[...btn.childNodes].find(x=>x.nodeType===3);if(n)n.nodeValue=text}
+function syncRoleUI(){
+  document.body.classList.toggle('role-op',!reviewer);
+  populateMe();
+  setNavText($('#nav [data-r=list]'),reviewer?'Диалоги':'Мои диалоги');
+  setNavText($('#nav [data-r=appeals]'),reviewer?'Апелляции':'Мои апелляции');
+  setNavText($('#nav [data-r=stats]'),reviewer?'Аналитика':'Моя аналитика');
+  $('#v-list .page-h h1').textContent=reviewer?'Диалоги':'Мои диалоги';
+  $('#v-stats .page-h h1').textContent=reviewer?'Аналитика':'Моя аналитика';
+  $('#v-appeals .page-h h1').textContent=reviewer?'Апелляции':'Мои апелляции';
+  $('#rev').textContent=reviewer?'Режим: проверяющий':'Режим: оператор';
+  $('#rev').setAttribute('aria-pressed',reviewer);
+  if(!reviewer&&fKind==='low')fKind='all';
+  /* список для выбора диалога в карточке: оператору только свои */
+  $('#pick').innerHTML=visKeys().map(k=>`<option value="${esc(k)}">${D[k].lang} · ${esc(D[k].id)}</option>`).join('');
+  if(cur&&visKeys().includes(cur))$('#pick').value=cur;
+  syncPick();
+}
+$('#rev').onclick=()=>{
+  reviewer=!reviewer;
+  try{localStorage.setItem('cqa-mode',reviewer?'mgr':'op')}catch(_){}
+  syncRoleUI();syncCount();
+  toast(reviewer?'Режим проверяющего: комментарии, публикация, решения по апелляциям':'Режим оператора: свои диалоги, апелляции, чек-лист для чтения');
+  route();
+};
+$('#me').onchange=e=>{
+  me=e.target.value;
+  try{localStorage.setItem('cqa-me',me)}catch(_){}
+  syncRoleUI();syncCount();route();
+};
+
+/* чек-лист оператору — только просмотр */
+function lockChecklist(){
+  if(reviewer)return;
+  $$('#ed input,#ed select,#ed textarea,#ed button').forEach(x=>x.disabled=true);
+  $('#verTitle').textContent+=' · только просмотр';
+}
+
+/* «Мои апелляции»: список со статусом, открытую можно удалить */
+function renderMyAppeals(){
+  const items=[];
+  visKeys().forEach(d=>Object.keys(appeals[d]||{}).forEach(id=>{
+    const c=CRIT.find(x=>x.id==id);
+    if(c&&!pending(d,c))items.push({d,c,a:appeals[d][c.id]});
+  }));
+  items.sort((x,y)=>(!!x.a.decision)-(!!y.a.decision));
+  $('#apDetail').innerHTML='';
+  $('#apList').innerHTML=items.length?items.map(({d,c,a})=>`<div class="ap-row">
+    <div><button class="lk" data-open="${esc(d)}">${esc(D[d].id)}</button> <b>${esc(c.name)}</b>
+      <span class="mood ${a.decision?'yes':'warn'}">${a.decision?'решено':'на проверке'}</span>
+      <p class="mut">${esc(a.text)}</p>${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:''}</div>
+    ${a.decision?'':`<button class="tx danger" data-del-ap="${esc(d)}" data-id="${c.id}">Удалить</button>`}</div>`).join('')
+    :'<div class="empty">Вы ещё не подавали апелляций. Откройте диалог и нажмите «Оспорить» у критерия</div>';
+}
+$('#apList').addEventListener('click',async e=>{
+  if(reviewer)return;
+  const o=e.target.closest('[data-open]');
+  if(o){go('#/card/'+encodeURIComponent(o.dataset.open));return}
+  const x=e.target.closest('[data-del-ap]');if(!x)return;
+  const d=x.dataset.delAp,id=+x.dataset.id;
+  if(!confirm('Удалить апелляцию? Её можно будет подать заново.'))return;
+  x.disabled=true;
+  try{
+    if(CQA_API.enabled){await CQA_API.del('/api/appeals/'+appeals[d][id]._id);await beLoadDialog(d,true)}
+    else{delete appeals[d][id];persist()}
+    syncCount();renderMyAppeals();toast('Апелляция удалена');
+  }catch(err){toast('Ошибка: '+err.message);x.disabled=false}
+});
+
+/* «Моя аналитика»: мои баллы по критериям и персональный план коучинга */
+async function renderMyStats(){
+  const box=$('#statsBody');
+  if(!CQA_API.enabled){box.innerHTML='<div class="empty">Аналитика доступна при подключённом бэкенде</div>';return}
+  if(!me){box.innerHTML='<div class="empty">Нет оценённых диалогов</div>';return}
+  box.innerHTML='<div class="empty">Загрузка…</div>';
+  let p;
+  try{p=await CQA_API.operator(me)}catch(e){box.innerHTML='<div class="empty">Пока нет оценённых диалогов</div>';return}
+  opSel=me;
+  const crit=p.criteria.filter(c=>c.avg_score_pct!=null);
+  box.innerHTML=`<div class="kpis">${kpi('Оценено диалогов',p.evaluations.length)}${kpi('Средний балл',fmt(p.avg_total))}
+    ${kpi('Грубые ошибки',p.evaluations.filter(e=>e.gross_error).length)}</div>
+    <div class="panel box"><h3>Мои критерии <small class="mut">— средний % балла, слабые сверху</small></h3>
+      <table><tbody>${crit.map(c=>`<tr><td>${esc(c.name)}</td><td class="r ${c.avg_score_pct<60?'low-score':''}">${pct(c.avg_score_pct)}</td><td style="width:40%">${bar(c.avg_score_pct,100)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="panel box"><div id="coachBox"></div></div>`;
+  loadCoaching(me,false);
+}
+
+</script>
+<script>
+/* Звёздочки ✨ в текстовых полях: ИИ улучшает написанное, а если поле пустое — составляет черновик по контексту.
+   Поле помечается атрибутом data-aitext="тип"; кнопка появляется сама, в том числе в полях, которые рисуются позже. */
+/* ================= ИИ В ТЕКСТОВЫХ ПОЛЯХ ================= */
+(function(){
+  const SPARK='<svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.5 4.5 11 9l4.5 1.5L11 12l-1.5 4.5L8 12 3.5 10.5 8 9z"/><path fill="currentColor" d="M18 3l.8 2.2L21 6l-2.2.8L18 9l-.8-2.2L15 6l2.2-.8z"/><path fill="currentColor" d="M17 14l.9 2.6L20.5 17.5l-2.6.9L17 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg>';
+
+  /* что модель должна знать о поле: критерий, его правило, оценка, объяснение, апелляция */
+  function contextOf(el){
+    const ctx={},ec=el.closest('.ec');
+    if(ec){
+      const c=CRIT[+ec.dataset.i],nm=ec.querySelector('.name');
+      ctx.criterion=nm?nm.value:(c&&c.name);
+      if(c&&el.dataset.f==='guidance')ctx.rule=c.q;
+      return ctx;
+    }
+    const d=el.dataset.d||cur,cid=+(el.dataset.c||apId||0),c=CRIT.find(x=>x.id===cid);
+    if(!c||!D[d])return ctx;
+    const r=resOf(d,c);
+    ctx.criterion=c.name;ctx.rule=c.q;ctx.current_answer=label(c,r.v);
+    ctx.model_explanation=r.why;
+    ctx.evidence=(r.ev||[]).slice(0,3).map(n=>`#${n} ${quoteOf(d,n,160)}`).join('; ');
+    ctx.dialog_language=D[d].lang;
+    const ap=appeals[d]&&appeals[d][c.id];
+    if(ap&&el.dataset.aitext!=='appeal')ctx.appeal_comment=ap.text;
+    return ctx;
+  }
+
+  async function run(el,btn){
+    if(!CQA_API.enabled){toast('ИИ доступен при подключённом бэкенде');return}
+    btn.disabled=true;btn.classList.add('busy');
+    try{
+      const r=await CQA_API.post('/api/ai/improve-text',{kind:el.dataset.aitext,text:el.value,context:contextOf(el)});
+      el.value=r.text;
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      toast(r.drafted?'Черновик от ИИ: проверьте и поправьте':'Текст улучшен ИИ: проверьте перед отправкой');
+    }catch(e){toast('ИИ недоступен: '+e.message)}
+    finally{btn.disabled=false;btn.classList.remove('busy')}
+  }
+
+  function enhance(el){
+    if(el.dataset.aiw)return;
+    el.dataset.aiw='1';
+    const wrap=document.createElement('span');wrap.className='aiw'+(el.tagName==='TEXTAREA'?' ta':'');
+    el.parentNode.insertBefore(wrap,el);wrap.appendChild(el);
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='aib';btn.innerHTML=SPARK;
+    btn.title=el.tagName==='TEXTAREA'||el.value?'ИИ: улучшить текст или составить черновик':'ИИ: составить черновик';
+    btn.setAttribute('aria-label','Улучшить текст с помощью ИИ');
+    btn.onclick=()=>run(el,btn);
+    wrap.appendChild(btn);
+  }
+  const scan=root=>{
+    if(root.matches&&root.matches('[data-aitext]'))enhance(root);
+    (root.querySelectorAll?root.querySelectorAll('[data-aitext]'):[]).forEach(enhance);
+  };
+  scan(document);
+  new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)scan(n)})))
+    .observe(document.documentElement,{childList:true,subtree:true});
+})();
+
+</script>
+<script>
 /* Общие события, окно прогресса, тема, запуск. */
 /* ================= ОБЩИЕ СОБЫТИЯ ================= */
 document.addEventListener('click',async e=>{
@@ -2378,10 +2635,14 @@ document.addEventListener('click',async e=>{
       if(!$('#v-card').hidden)renderCrit();else renderAppeals()}
     catch(err){toast('Ошибка: '+err.message);ai.disabled=false}
   }
+  const ro=e.target.closest('[data-rej-open]');
+  if(ro){const p=ro.closest('.decide').nextElementSibling;p.hidden=false;ro.hidden=true;const t=p.querySelector('[data-r]');if(t)t.focus();return}
+  const rc=e.target.closest('[data-rej-cancel]');
+  if(rc){const p=rc.closest('.rej');p.hidden=true;const b=p.previousElementSibling.querySelector('[data-rej-open]');if(b)b.hidden=false;return}
   const sv=e.target.closest('[data-save]');
   if(sv){
     const id=+sv.dataset.save,d=sv.dataset.d||cur,act=sv.dataset.act||'change',box=sv.closest('.decide');
-    const sel=box.querySelector('[data-v]').value,reason=box.querySelector('[data-r]').value.trim();
+    const selEl=box.querySelector('[data-v]'),sel=selEl?selEl.value:null,reason=box.querySelector('[data-r]').value.trim();
     const c=CRIT.find(x=>x.id===id);
     if(!reason){toast('Укажите причину');box.querySelector('[data-r]').focus();return}
     if(act==='change'&&String(sel)===String(resOf(d,c).v)){toast('Выберите оценку, отличную от текущей');return}
@@ -2389,7 +2650,7 @@ document.addEventListener('click',async e=>{
     try{await saveDecision(d,id,sel,reason,act)}catch(err){toast('Ошибка: '+err.message);sv.disabled=false;return}
     syncCount();
     if(!$('#v-card').hidden){const t=total(cur);renderScore(t);renderCrit(t)}else renderAppeals();
-    toast(act==='confirm'?'Оценка подтверждена':'Оценка изменена, итог пересчитан');
+    toast(act==='confirm'?'Апелляция отклонена, оператор увидит причину':'Оценка изменена, итог пересчитан');
   }
 });
 

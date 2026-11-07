@@ -76,7 +76,7 @@ class ChecklistIn(BaseModel):
 
 
 DEFAULT_CHECKLIST = {
-    "name": "Чек-лист качества чатов (Freedom Broker)",
+    "name": "v1",
     "description": "Стартовая конфигурация из CQA_Chat_Quality_Checklist.pdf",
     "criteria": [
         {

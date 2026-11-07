@@ -116,7 +116,7 @@ function applyEvaluation(d,ev){
 /* ISO-время звонков с 7 знаками дробной части Date.parse понимает не везде — обрезаем до миллисекунд */
 function normTs(ts){return String(ts).replace(/(\.\d{3})\d+/,'$1')}
 function fillPick(){
-  $('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${esc(k)}">${d.lang} · ${esc(d.id)}</option>`).join('');
+  $('#pick').innerHTML=visKeys().map(k=>`<option value="${esc(k)}">${D[k].lang} · ${esc(D[k].id)}</option>`).join('');
   if(cur)$('#pick').value=cur;
   syncPick();
 }
@@ -134,7 +134,10 @@ async function beDecide(d,critId,sel,reason,act){
   await beLoadDialog(d,true);
 }
 async function beSaveChecklist(){
-  const body={name:(BE.checklist&&BE.checklist.name||'Чек-лист').replace(/\s*·\s*v\d+$/,'')+' · v'+(ver+1),
+  const curName=verLabel(BE.checklist&&BE.checklist.name);
+  let nm=($('#verName').value||'').trim();
+  if(!nm||nm===curName){const m=curName.match(/^(.*?)(\d+)$/);nm=m?m[1]+(+m[2]+1):curName+' (2)'}  /* имя не меняли: v1 -> v2 */
+  const body={name:nm,
     description:BE.checklist&&BE.checklist.description,criteria:CRIT.map(critToBack).concat(BE.flags)};
   const cl=await CQA_API.createChecklist(body);
   await beLoadChecklist();
@@ -155,7 +158,10 @@ function beRunBatch(title,body){
   function render(){
     const all=[...rows.values()],n=s=>all.filter(r=>r.status===s).length;
     const work=n('pending')+n('running'),bad=failed();
-    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work}`:'')
+    const prog=$('#runProg');
+    prog.classList.toggle('busy',work>0);prog.classList.toggle('full',!work&&!bad.length);
+    prog.firstElementChild.style.width=(work?Math.max(8,(n('done')+bad.length)/rows.size*100):100)+'%';
+    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work} <span class="load sm" aria-hidden="true"><i></i><i></i><i></i></span>`:'')
       +(bad.length&&!work?` · ${bad.length===1?'не обработан':'не обработаны'}: ${bad.map(esc).join(', ')}`:'');
     $('#runList').innerHTML=[...rows].map(([id,r])=>{
       const cls=r.status==='done'?'ok':r.status==='running'?'go':r.status==='error'?'err':'';

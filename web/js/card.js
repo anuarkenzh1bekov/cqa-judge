@@ -11,7 +11,7 @@ function violsOf(d){
     if(pending(d,c))return;
     const r=resOf(d,c);
     if(!missed(c,value(d,c)))return;
-    [...new Set(r.ev||[])].filter(n=>D[d].msgs[n-1]).forEach(n=>(out[n]=out[n]||[]).push(c.name));
+    [...new Set(r.ev||[])].filter(n=>D[d].msgs[n-1]).forEach(n=>(out[n]=out[n]||[]).push(`${c.name}: ${label(c,value(d,c))}`));
   });
   return out;
 }
@@ -22,7 +22,7 @@ function bubble(d,i,opt={}){
   const id=opt.noId?'':`id="m${n}"`,mk=opt.mark?' mark':'';
   const vs=!opt.noId&&VIOL&&VIOL[n]?VIOL[n]:null;
   const vk=vs?' viol':'';
-  const vh=vs?`<div class="vls">${vs.map(x=>`<span class="vl2" title="Действие пропущено: ${esc(x)}">${esc(x)}</span>`).join('')}</div>`:'';
+  const vh='';   /* красные плашки с названиями критериев под репликой убраны: в транскрипте остаётся только полоска слева */
   if(who==='system')return `<div class="m system${mk}${vk}" ${id}>${esc(text)}<span class="mf">${tm} · #${n}</span>${vh}</div>`;
   return `<div class="m ${who}${mk}${vk}" ${id}><div class="b">${esc(text)}${vh}<div class="mf">${tm} · #${n}</div></div></div>`;
 }
@@ -136,8 +136,7 @@ function renderChat(){
   initPlayer();
   $('#cardTitle').textContent=d.id;
   $('#asrTag').hidden=d.channel!=='voice call';
-  $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`
-    +(d.checklistName?`<span title="Чек-лист оценки">${esc(d.checklistName)}</span>`:'');
+  $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`;
 }
 /* краткое содержание над транскриптом: в демо оно записано в данных, с бэкендом строится по запросу и кэшируется */
 const MOOD_L={positive:'Клиент доволен',neutral:'Спокойный тон',negative:'Клиент недоволен'};
@@ -179,8 +178,16 @@ const grossText=s=>{
   return m?'проверены реплики '+m[1].replace(/#(\d+)\s*[–—-]\s*#(\d+)/,'с #$1 по #$2'):x;
 };
 /* ссылки на реплики показываем, только если их нет в самом тексте пояснения */
+/* номера реплик (с 1), которые уже видны в тексте: «[11]» от модели (нумерация с нуля, linkify покажет #12) и готовые «#12» */
+function shownRefs(txt){
+  const out=new Set();
+  String(txt||'').replace(/\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g,(_,g)=>{g.split(/[\s,–-]+/).filter(Boolean).forEach(x=>out.add(+x+1));return ''});
+  String(txt||'').replace(/#(\d+)/g,(_,n)=>{out.add(+n);return ''});
+  return out;
+}
+/* ссылки на реплики дописываем только те, которых в тексте ещё нет, чтобы «#12» не повторялось */
 function grossRefs(g){
-  const txt=String(g.checked||''),rest=(g.ev||[]).filter(n=>!new RegExp('#'+n+'(?!\\d)').test(txt));
+  const seen=shownRefs(g.checked),rest=[...new Set(g.ev||[])].filter(n=>!seen.has(n));
   return rest.length?' '+rest.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join(', '):'';
 }
 /* цвет итога: от 85 — зелёный, от 60 — жёлтый, ниже — красный (как в аналитике) */
@@ -286,8 +293,11 @@ function decideForm(d,c,ap){
   const ai=ap.ai?`<div class="st ai">ИИ-проверка: ${ap.ai.appeal_justified?'апелляция обоснована':'апелляция не обоснована'}, предлагает «${esc(label(c,ansToFront(c,ap.ai.suggested_answer)))}». ${linkify(ap.ai.explanation||'')}</div>`
     :(CQA_API.enabled&&ap._id?`<div class="f"><button class="tx" data-ai="${c.id}" data-d="${esc(d)}">Попросить ИИ перепроверить</button></div>`:'');
   return `<div class="decide"><div class="cmt">${esc(ap.text)}</div>${ai}
-    <div class="f"><label class="fi">Новая оценка<select class="field" data-v="${c.id}">${opts}</select></label><label class="fi">Причина решения<input class="field" data-r="${c.id}"></label></div>
-    <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="confirm">Подтвердить оценку</button><button class="btn" data-save="${c.id}" data-d="${esc(d)}" data-act="change">Изменить на выбранную</button></div></div>`;
+    <div class="f"><label class="fi">Новая оценка<select class="field" data-v="${c.id}">${opts}</select></label><label class="fi">Причина решения<input class="field" data-r="${c.id}" data-aitext="change" data-d="${esc(d)}" data-c="${c.id}" placeholder="Почему меняете оценку"></label></div>
+    <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="change">Принять и изменить оценку</button><button class="btn" data-rej-open>Отклонить апелляцию</button></div></div>
+    <div class="decide rej" hidden><div class="cmt"><b>Отклонить апелляцию.</b> Оценка остаётся прежней. Объясните оператору, почему апелляция не принята: он увидит этот текст.</div>
+      <textarea class="field" data-r="${c.id}" data-aitext="reject" data-d="${esc(d)}" data-c="${c.id}" placeholder="Например: в реплике #12 оператор не назвал комиссию, поэтому критерий не выполнен"></textarea>
+      <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="confirm">Отклонить и отправить причину</button><button class="btn" data-rej-cancel>Отмена</button></div></div>`;
 }
 function renderCrit(t=total(cur)){
   const secs=sectionScores(cur);let lastSec=null;
@@ -338,7 +348,7 @@ function critRow(c,i,t){
     const rv=rvOf(cur),rkey=rvKey(c),rtext=(rv.comments||{})[rkey]||'';
     const canAppeal=(!ap||ap.decision)&&rv.published&&!reviewer;
     const rcomment=reviewer
-      ?`<div class="rcf"><label>Комментарий проверяющего</label><textarea class="field" data-rc="${c.id}" rows="2" placeholder="Необязательно: с чем согласны или что неточно в оценке ИИ">${esc(rtext)}</textarea></div>`
+      ?`<div class="rcf"><label>Комментарий проверяющего</label><textarea class="field" data-rc="${c.id}" data-aitext="comment" data-c="${c.id}" rows="2" placeholder="Необязательно: с чем согласны или что неточно в оценке ИИ">${esc(rtext)}</textarea></div>`
       :(rv.published&&rtext?`<div class="rcv"><b>Комментарий проверяющего</b><p>${esc(rtext)}</p></div>`:'');
     return `<div class="cr k-${kind(c,v)}" data-id="${c.id}">
       <div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v ${kind(c,v)}">${label(c,v)}</span><span class="cr-p">${p===null?'—':fmt(Math.round(p*100)/100)} / ${c.w}</span></div>
@@ -359,10 +369,6 @@ if(!CQA_API.enabled)$('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option
 function syncPick(){const p=$('#pick');p.hidden=!p.options.length}
 syncPick();
 $('#pick').onchange=e=>go('#/card/'+encodeURIComponent(e.target.value));
-$('#rev').onclick=function(){
-  reviewer=!reviewer;this.setAttribute('aria-pressed',reviewer);
-  if(!$('#v-card').hidden){renderScoreHtml(total(cur));renderCrit()}
-};
 /* комментарий проверяющего сохраняется, когда поле теряет фокус */
 $('#crit').addEventListener('change',async e=>{
   const ta=e.target.closest('[data-rc]');if(!ta)return;
@@ -441,14 +447,14 @@ function outcomeLine(d,c){
   const dec=appeals[d][c.id].decision,r=resOf(d,c);
   const imp=decisionImpact(d,c);
   const tot=imp.before===imp.after?`Итог: ${fmt(imp.after)}`:`Итог: ${fmt(imp.before)} → ${fmt(imp.after)}`;
-  const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, подтверждена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
-  return `<b>${head}</b> · ${tot}<span class="why2">Причина: ${esc(dec.reason)}</span>`;
+  const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, апелляция отклонена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
+  return `<b>${head}</b> · ${tot}<span class="why2">${dec.act==='confirm'?'Почему отклонена':'Причина'}: ${esc(dec.reason)}</span>`;
 }
 
 /* ---------- «Следующий»: следующий диалог по порядку списка, по кругу ---------- */
 function syncNext(){
   const b=$('#nextDlg');if(!b)return;
-  const ks=Object.keys(D),i=ks.indexOf(cur);
+  const ks=visKeys(),i=ks.indexOf(cur);
   b.hidden=ks.length<2;
   b.dataset.to=ks.length>1?ks[(i+1)%ks.length]:'';
   b.textContent='Следующий →';

@@ -75,6 +75,19 @@ def get_appeal(aid: int, db: Session = Depends(get_db)):
     return services.appeal_dict(ap, with_context=True)
 
 
+@router.delete("/appeals/{aid}")
+def withdraw_appeal(aid: int, db: Session = Depends(get_db)):
+    """The operator withdraws an appeal nobody has decided yet. A decided appeal is part of the audit trail."""
+    ap = db.get(Appeal, aid)
+    if not ap:
+        raise HTTPException(404, "appeal not found")
+    if ap.status != "open":
+        raise HTTPException(409, "a decided appeal cannot be deleted")
+    db.delete(ap)
+    db.commit()
+    return {"deleted": aid}
+
+
 @router.post("/appeals/{aid}/ai-review")
 async def ai_review(aid: int, db: Session = Depends(get_db)):
     """Optional AI second look for the reviewer. Advisory only - the human decides."""

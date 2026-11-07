@@ -42,10 +42,14 @@ document.addEventListener('click',async e=>{
       if(!$('#v-card').hidden)renderCrit();else renderAppeals()}
     catch(err){toast('Ошибка: '+err.message);ai.disabled=false}
   }
+  const ro=e.target.closest('[data-rej-open]');
+  if(ro){const p=ro.closest('.decide').nextElementSibling;p.hidden=false;ro.hidden=true;const t=p.querySelector('[data-r]');if(t)t.focus();return}
+  const rc=e.target.closest('[data-rej-cancel]');
+  if(rc){const p=rc.closest('.rej');p.hidden=true;const b=p.previousElementSibling.querySelector('[data-rej-open]');if(b)b.hidden=false;return}
   const sv=e.target.closest('[data-save]');
   if(sv){
     const id=+sv.dataset.save,d=sv.dataset.d||cur,act=sv.dataset.act||'change',box=sv.closest('.decide');
-    const sel=box.querySelector('[data-v]').value,reason=box.querySelector('[data-r]').value.trim();
+    const selEl=box.querySelector('[data-v]'),sel=selEl?selEl.value:null,reason=box.querySelector('[data-r]').value.trim();
     const c=CRIT.find(x=>x.id===id);
     if(!reason){toast('Укажите причину');box.querySelector('[data-r]').focus();return}
     if(act==='change'&&String(sel)===String(resOf(d,c).v)){toast('Выберите оценку, отличную от текущей');return}
@@ -53,7 +57,7 @@ document.addEventListener('click',async e=>{
     try{await saveDecision(d,id,sel,reason,act)}catch(err){toast('Ошибка: '+err.message);sv.disabled=false;return}
     syncCount();
     if(!$('#v-card').hidden){const t=total(cur);renderScore(t);renderCrit(t)}else renderAppeals();
-    toast(act==='confirm'?'Оценка подтверждена':'Оценка изменена, итог пересчитан');
+    toast(act==='confirm'?'Апелляция отклонена, оператор увидит причину':'Оценка изменена, итог пересчитан');
   }
 });
 

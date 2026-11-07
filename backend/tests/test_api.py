@@ -141,3 +141,22 @@ def test_audio_path_cannot_escape_audio_dir(client):
     import pytest
     with pytest.raises(audio.AudioError):
         audio.local_path("local:../../test.db")
+
+
+def test_operator_can_withdraw_only_an_open_appeal(client, fake):
+    upload(client, "api-del")
+    ev = client.post("/api/evaluations", json={"conversation_id": "api-del"}).json()
+    client.put(f"/api/evaluations/{ev['id']}/review", json={"published": True})
+    ap = client.post(f"/api/evaluations/{ev['id']}/appeals",
+                     json={"criterion_key": "c05_empathy", "comment": "неверно"}).json()
+    assert client.delete(f"/api/appeals/{ap['id']}").json() == {"deleted": ap["id"]}
+    assert client.delete(f"/api/appeals/{ap['id']}").status_code == 404
+    ap2 = client.post(f"/api/evaluations/{ev['id']}/appeals",
+                      json={"criterion_key": "c05_empathy", "comment": "ещё раз"}).json()  # can appeal again
+    client.post(f"/api/appeals/{ap2['id']}/decision", json={"decision": "confirm", "reason": "ок"})
+    assert client.delete(f"/api/appeals/{ap2['id']}").status_code == 409  # decided: kept for the audit trail
+
+
+def test_index_links_carry_a_version_so_browsers_never_run_stale_scripts(client):
+    html = client.get("/").text
+    assert 'src="js/app.js?v=' in html and 'href="css/styles.css?v=' in html

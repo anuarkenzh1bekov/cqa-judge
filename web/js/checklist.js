@@ -7,7 +7,7 @@ function renderEditor(){
       <button class="tx" data-mv="-1" aria-label="Выше">↑</button><button class="tx" data-mv="1" aria-label="Ниже">↓</button><button class="tx danger" data-del>Удалить</button></div>
     <div class="fields">
       <div class="fld full"><label>Секция</label><input class="field" list="secList" data-f="section" value="${esc(c.section||'')}"></div>
-      <div class="fld full"><label>Формулировка</label><textarea class="field" data-f="q">${esc(c.q)}</textarea></div>
+      <div class="fld full"><label>Формулировка</label><textarea class="field" data-f="q" data-aitext="criterion">${esc(c.q)}</textarea></div>
       <div class="fld"><label>Тип ответа</label><select class="field" data-f="type"><option value="yn" ${c.type==='yn'?'selected':''}>Да / Нет</option><option value="scale" ${c.type==='scale'?'selected':''}>Шкала</option></select></div>
       <div class="fld"><label>Вес</label><input class="field" type="number" min="0" max="100" data-f="w" value="${c.w}"></div>
       ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>
@@ -15,7 +15,7 @@ function renderEditor(){
         ${[...c.steps].sort((a,b)=>b-a).map(v=>`<div class="stp"><b>${v}</b><input class="field" data-f="sdesc" data-v="${v}" value="${esc((c.scaleDesc||{})[v]||'')}" placeholder="Когда ставить ${v}"></div>`).join('')}</div>`:''}
       <div class="fld"><label class="chk"><input type="checkbox" data-f="na" ${c.na?'checked':''}>Разрешить N/A</label></div>
       ${c.na?`<div class="fld"><label>Условие N/A</label><input class="field" type="text" data-f="nac" value="${esc(c.nac)}"></div>`:'<div></div>'}
-      ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
+      ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" data-aitext="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
     </div></div>`).join('')+flagsEditor();
   if(CQA_API.enabled){
     const sel=$('#applyTo');
@@ -40,17 +40,24 @@ function flagsEditor(){
       <div class="fld full"><label>Пояснения для модели</label><textarea class="field" data-ff="guidance" placeholder="Необязательно">${esc(f.guidance||'')}</textarea></div>
     </div></div>`).join('')+`<button class="btn" data-fadd>Добавить флаг грубой ошибки</button>`;
 }
+/* название версии: «v1», «v2» или своё; старое длинное имя по умолчанию не показываем */
+const verLabel=n=>String(n||'').replace(/^Чек-лист качества чатов \(Freedom Broker\)/,'').replace(/^[\s·]+/,'').trim()||'v1';
 function refreshSide(){
   const sum=CRIT.reduce((a,c)=>a+(+c.w||0),0);
   $('#wlist').innerHTML=CRIT.map(c=>`<div class="wl"><span class="t">${esc(c.name)}</span><span>${c.w}</span></div>`).join('')+`<div class="wl total"><span>Сумма</span><span>${sum}</span></div>`;
   const changed=CRIT.filter(c=>sigOf(c)!==savedSigs[c.id]).length;
   dirty=dirty||changed>0;
-  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?BE.checklist.name:'v'+ver;
-  const tail=CQA_API.enabled?' Сохранение создаёт новую версию чек-листа; старые оценки остаются со своей версией.'
-    :' Остальные результаты берутся из кэша.';
-  $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}.${tail}`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>'
-    +(CQA_API.enabled?`<br><small>Флагов грубых ошибок: ${BE.flags.length}. Они не дают баллов и отмечаются отдельно.</small>`:'')
-    +(sum!==100?`<br><small>Сумма весов ${sum} — итог всё равно нормируется к 100.</small>`:'');
+  /* название «Чек-лист качества чатов (Freedom Broker)» очевидно из контекста: показываем только версию */
+  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?verLabel(BE.checklist.name):'v'+ver;
+  const vn=$('#verName');
+  $('#verNameBox').hidden=!CQA_API.enabled;
+  if(CQA_API.enabled&&BE.checklist&&document.activeElement!==vn&&vn.dataset.cid!==String(BE.checklist.id)){
+    vn.value=verLabel(BE.checklist.name);vn.dataset.cid=BE.checklist.id;
+  }
+  $('#verNote').innerHTML=`<p class="vn ${dirty?'dirty':'clean'}">${dirty?'● Есть несохранённые изменения'+(changed?` (критериев: ${changed})`:''):'✓ Всё сохранено'}</p>`
+    +(dirty&&CQA_API.enabled?'<p class="vn-s">При сохранении появится новая версия. Старые оценки остаются со своей версией.</p>':'')
+    +(CQA_API.enabled?`<p class="vn-s">Грубые ошибки (${BE.flags.length}) не дают баллов, они только отмечаются в диалоге.</p>`:'')
+    +(sum!==100?`<p class="vn-s">Сумма весов ${sum}, итог всё равно приводится к 100.</p>`:'');
 }
 $('#ed').addEventListener('input',e=>{
   const ff=e.target.dataset.ff;
@@ -151,3 +158,5 @@ $('#resetState').onclick=async()=>{
     await CQA_API.createChecklist(t);await beLoadChecklist();dirty=false;renderEditor();toast('Восстановлен исходный чек-лист');
   }catch(e){toast('Ошибка: '+e.message)}
 };
+
+$('#verName').addEventListener('input',()=>{dirty=true;refreshSide()});

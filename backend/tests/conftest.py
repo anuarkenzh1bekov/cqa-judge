@@ -87,6 +87,10 @@ class FakeModels:
             data = {"summary": "Хорошо отвечаете, поработайте над завершением.",
                     "focus": [{"criterion_key": k, "tip": f"tip {k}", "practice_phrase": "Хорошего дня!"} for k in keys],
                     "weekly_plan": ["a", "b", "c"]}
+        elif set(props) == {"text"}:  # AI help for a free-text field
+            self.calls["ai_text"] = self.calls.get("ai_text", 0) + 1
+            self.last_prompt = prompt
+            data = {"text": "Улучшенный текст [4]"}
         elif "appeal_justified" in props:  # appeal AI review
             data = {"analysis": "a", "answer": "no", "explanation": "review", "evidence": [5],
                     "checked_range": None, "confidence": "medium", "appeal_justified": True}

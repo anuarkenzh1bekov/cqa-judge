@@ -15,6 +15,7 @@ const CQA_API={
   get(p){return this.req('GET',p)},
   post(p,b){return this.req('POST',p,b||{})},
   put(p,b){return this.req('PUT',p,b)},
+  del(p){return this.req('DELETE',p)},
 
   health(){return this.get('/api/health')},
   conversations(){return this.get('/api/conversations')},

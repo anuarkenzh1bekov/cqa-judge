@@ -25,7 +25,8 @@
     </nav>
     <span class="grow"></span>
     <div class="tools">
-      <button class="toggle" id="rev" aria-pressed="false">Проверяющий</button>
+      <select class="field me" id="me" aria-label="Я — оператор" hidden></select>
+      <button class="toggle" id="rev" aria-pressed="false">Режим: оператор</button>
       <div class="theme-sw" role="group" aria-label="Тема">
         <button data-theme-set="light" aria-label="Светлая тема" title="Светлая тема" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
         <button data-theme-set="dark" aria-label="Ночная тема" title="Ночная тема" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
@@ -70,7 +71,7 @@
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
-        <div class="panel box"><h3>Состояние</h3><div id="verNote"></div><button class="tx" id="resetState" style="margin-top:12px">Сбросить к исходным</button></div>
+        <div class="panel box"><h3>Состояние</h3><div id="verNameBox" class="fld"><label for="verName">Название версии</label><input class="field" id="verName" placeholder="v1" maxlength="60"></div><div id="verNote"></div><button class="tx" id="resetState" style="margin-top:12px">Сбросить к исходным</button></div>
         <div class="panel box"><h3>Веса</h3><div id="wlist"></div></div>
       </aside>
     </div>
@@ -95,7 +96,7 @@
 <dialog id="dlg">
   <h3>Оспорить оценку</h3>
   <p id="dlgSub"></p>
-  <textarea class="field" id="dlgText" placeholder="Что в оценке неверно? Можно сослаться на реплику, например #12"></textarea>
+  <textarea class="field" id="dlgText" data-aitext="appeal" placeholder="Что в оценке неверно? Можно сослаться на реплику, например #12"></textarea>
   <div class="f"><button class="btn" id="dlgNo">Отмена</button><button class="btn primary" id="dlgYes">Отправить</button></div>
 </dialog>
 <dialog id="evDlg">
@@ -127,6 +128,7 @@
 <dialog id="runDlg">
   <h3 id="runTitle"></h3>
   <p id="runSub"></p>
+  <div class="run-prog" id="runProg" aria-hidden="true"><i></i></div>
   <div class="run" id="runList"></div>
   <div class="f"><button class="btn primary" id="runClose" disabled>Готово</button></div>
 </dialog>
@@ -146,6 +148,8 @@
 <script src="js/compare.js"></script>
 <script src="js/appeals.js"></script>
 <script src="js/stats.js"></script>
+<script src="js/role.js"></script>
+<script src="js/aitext.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
