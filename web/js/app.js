@@ -92,7 +92,7 @@ function evCheck(){
   }catch(e){evRecords=[];info.textContent='Не удалось прочитать: '+e.message;$('#evGo').disabled=true}
 }
 $('#runNew').onclick=async()=>{
-  $('#evText').value='';$('#evFile').value='';if($('#evGroup'))$('#evGroup').value='';
+  $('#evText').value='';$('#evFile').value='';$('#evAudio').value='';audioHint();if($('#evGroup'))$('#evGroup').value='';
   if(CQA_API.enabled){
     $('#evChk').innerHTML='<option>Загрузка…</option>';
     CQA_API.checklists().then(list=>{
@@ -101,6 +101,13 @@ $('#runNew').onclick=async()=>{
   }else $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
   evCheck();$('#evDlg').showModal();
 };
+/* Аудио: пока заглушка. Файл можно выбрать, но он никуда не отправляется и не распознаётся. */
+const AUDIO_HINT='Пока заглушка: файл выбирается, но не загружается и не распознаётся. Оценка идёт по транскрипту.';
+function audioHint(){
+  const f=$('#evAudio').files[0];
+  $('#evAudioInfo').textContent=f?`${f.name} · ${(f.size/1048576).toFixed(1)} МБ. Это заглушка: файл никуда не отправляется.`:AUDIO_HINT;
+}
+$('#evAudio').onchange=audioHint;
 $('#evFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#evText').value=await f.text();evCheck()}};
 $('#evText').oninput=evCheck;
 if($('#evGroup'))$('#evGroup').oninput=evCheck;

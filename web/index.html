@@ -102,6 +102,8 @@
   <div class="fld"><label for="evGroup">group_id набора (API организаторов)</label><input class="field" id="evGroup" placeholder="например, DEV или значение для контрольного набора"></div>
   <div class="fld"><label for="evFile">Файл JSON</label><input class="field" type="file" id="evFile" accept=".json,application/json"></div>
   <div class="fld"><label for="evText">Или вставьте JSON записи</label><textarea class="field" id="evText" placeholder='{"conversation_id": "p1-ru-001", "language": "RU", "transcript": [...]}'></textarea></div>
+  <div class="fld"><label for="evAudio">Аудио звонка (необязательно)</label><input class="field" type="file" id="evAudio" accept="audio/*,.mp3,.wav,.m4a,.ogg">
+    <p class="hint" id="evAudioInfo">Пока заглушка: файл выбирается, но не загружается и не распознаётся. Оценка идёт по транскрипту.</p></div>
   <div class="fld"><label for="evChk">Чек-лист</label><select class="field" id="evChk"></select></div>
   <p class="evinfo" id="evInfo"></p>
   <div class="f"><button class="btn" id="evNo">Отмена</button><button class="btn primary" id="evGo" disabled>Запустить оценку</button></div>
