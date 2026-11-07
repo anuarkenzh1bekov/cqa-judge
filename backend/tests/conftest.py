@@ -42,6 +42,8 @@ class FakeModels:
         self.calls = {"gemini": 0, "adjudication": 0, "jev": 0, "mood": 0}
         self.jev_fail = False
         self.mood_fail = False
+        self.coaching_fail = False
+        self.operator = "Алина"
 
     def _crit_block(self, keys, answers):
         return {k: {"analysis": "a", "answer": answers[k], "explanation": f"{k} — {answers[k]} [3]",
@@ -54,7 +56,7 @@ class FakeModels:
         if "facts" in props:  # main evaluation call
             self.calls["gemini"] += 1
             keys = list(props["criteria"]["properties"])
-            data = {"facts": {"operator_name": "Алина", "client_language": "RU", "client_request": "тариф",
+            data = {"facts": {"operator_name": self.operator, "client_language": "RU", "client_request": "тариф",
                               "request_formulated": True, "request_type": "general_info",
                               "identity_required": False, "identity_verified_turn": None,
                               "operator_first_turn": 3, "client_dissatisfied": False, "explicit_wait": False,
@@ -76,6 +78,15 @@ class FakeModels:
             data = {"start": "anxious", "end": "positive", "trajectory": "improved", "confidence": "high",
                     "summary": "Волновался, в конце поблагодарил [4].",
                     "moments": [{"turn": 0, "mood": "anxious", "note": "n"}, {"turn": 99, "mood": "calm", "note": "x"}]}
+        elif "weekly_plan" in props:  # operator coaching
+            self.calls["coaching"] = self.calls.get("coaching", 0) + 1
+            if self.coaching_fail:
+                raise RuntimeError("coaching down")
+            import re
+            keys = re.findall(r"^### (\S+) —", prompt, re.M)
+            data = {"summary": "Хорошо отвечаете, поработайте над завершением.",
+                    "focus": [{"criterion_key": k, "tip": f"tip {k}", "practice_phrase": "Хорошего дня!"} for k in keys],
+                    "weekly_plan": ["a", "b", "c"]}
         elif "appeal_justified" in props:  # appeal AI review
             data = {"analysis": "a", "answer": "no", "explanation": "review", "evidence": [5],
                     "checked_range": None, "confidence": "medium", "appeal_justified": True}

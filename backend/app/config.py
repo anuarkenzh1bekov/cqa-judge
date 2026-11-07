@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     calibration_enabled: bool = True
     calibration_examples: int = 3
 
+    # Personal coaching plan per operator (one Gemini call, cached; works without the model too).
+    coaching_enabled: bool = True
+
     max_concurrency: int = 4
     cors_origins: str = "*"
 

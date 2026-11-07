@@ -121,3 +121,27 @@ def test_export_xlsx_and_csv(client, fake):
     c = client.get("/api/export?format=csv&group=EXP")
     assert c.content.startswith(b"\xef\xbb\xbf") and "exp-1" in c.content.decode("utf-8")
     assert client.get("/api/export?format=pdf").status_code == 422
+
+
+def test_submission_results(client, fake):
+    from app import results_export
+    upload(client, "sub-1", "SUB")
+    upload(client, "sub-2", "SUB")
+    fake.gemini_answers["c02_needs"] = fake.jev_answers["c02_needs"] = "yes"
+    client.post("/api/evaluations", json={"conversation_id": "sub-1"})
+    doc = client.get("/api/results?group=SUB&expect=2").json()
+    assert doc["problems"] == [] and doc["schema_version"] == "1.0"
+    ok, err = doc["results"]
+    assert ok["conversation_id"] == "sub-1" and ok["status"] == "ok" and len(ok["criteria"]) == 8
+    by = {c["criterion_id"]: c for c in ok["criteria"]}
+    assert by["contact"]["value"] is True and by["identification"]["value"] is None
+    assert by["consultation"]["value"] == 20 and by["dialogue"]["value"] == 10 and by["critical"]["value"] is False
+    assert by["contact"]["rationale"].endswith("[4]")  # explanation said [3] (0-based): shifted to 1-based
+    assert results_export._rationale("см. [0, 4] и [2–5]") == "см. [1, 5] и [3–6]"
+    assert by["contact"]["evidence_turns"] == [4]  # evidence is 1-based (turn index 3)
+    assert ok["score"]["critical_flag"] is False and 0 <= ok["score"]["final_score"] <= 100
+    assert err == {"conversation_id": "sub-2", "status": "error", "criteria": [], "score": None,
+                   "error": "Диалог не оценён"}
+    assert client.get("/api/results?group=SUB&expect=10").json()["problems"]
+    broken = {"results": [{"conversation_id": "x", "status": "ok", "criteria": [], "score": {"critical_flag": False}}]}
+    assert results_export.validate(broken)

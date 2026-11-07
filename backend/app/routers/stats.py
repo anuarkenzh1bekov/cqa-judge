@@ -9,7 +9,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import export_xlsx, services
+from .. import coaching, export_xlsx, services
 from ..db import get_db
 from ..models import Appeal, Checklist, Conversation, Evaluation
 from ..scoring import round2
@@ -64,6 +64,27 @@ def _criteria_stats(evs):
     return sorted(out, key=lambda x: (x["avg_score_pct"] is None, x["avg_score_pct"] or 0))
 
 
+def _heatmap(evs):
+    """Operator x criterion matrix of average score %, for the manager dashboard. Weakest operators first."""
+    names: dict[str, str] = {}
+    cells: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    counts: Counter = Counter()
+    for e in evs:
+        op = e.operator_name or "не указан"
+        counts[op] += 1
+        for r in e.results:
+            if r["type"] != "flag":
+                names.setdefault(r["key"], r["name"])
+        for key, v in e.final_score["criteria"].items():
+            if v.get("max_points") and v["answer"] != "na":
+                cells[op][key].append(v["points"] / v["max_points"] * 100)
+    keys = list(names)
+    rows = [{"operator": op, "count": counts[op], "avg": _avg(p for ps in cells[op].values() for p in ps),
+             "cells": {k: _avg(cells[op].get(k, [])) for k in keys}} for op in counts]
+    rows.sort(key=lambda x: (x["avg"] is None, x["avg"] or 0))
+    return {"criteria": [{"key": k, "name": names[k]} for k in keys], "operators": rows}
+
+
 @router.get("/stats")
 def stats(checklist_id: int | None = None, group: str | None = None, db: Session = Depends(get_db)):
     evs = [e for e in _latest(db, checklist_id, group) if e.final_score]
@@ -95,6 +116,7 @@ def stats(checklist_id: int | None = None, group: str | None = None, db: Session
         "by_channel": _group(evs, lambda e: e.conversation.channel),
         "by_operator": _group(evs, lambda e: e.operator_name or "не указан"),
         "by_criterion": _criteria_stats(evs),
+        "heatmap": _heatmap(evs),
         "model_agreement": {"per_criterion_counts": dict(agreement), "adjudication_changed_answer": adj_changed},
         "appeals": {"total": len(appeals), **Counter(a.status for a in appeals),
                     "change_rate_pct": round2(sum(a.status == "changed" for a in appeals)
@@ -135,6 +157,17 @@ def operator_profile(name: str, checklist_id: int | None = None, db: Session = D
         "improvements": improvements,
         "most_frequent_improvement_areas": by_crit.most_common(),
     }
+
+
+@router.get("/operators/{name}/coaching")
+async def operator_coaching(name: str, checklist_id: int | None = None, refresh: bool = False,
+                            db: Session = Depends(get_db)):
+    """Personal coaching plan: weakest criteria with real quotes, a colleague's example, advice and a weekly plan."""
+    all_evs = [e for e in _latest(db, checklist_id, None) if e.final_score]
+    evs = [e for e in all_evs if (e.operator_name or "не указан") == name]
+    if not evs:
+        raise HTTPException(404, "operator not found")
+    return await coaching.build(name, evs, all_evs, refresh=refresh)
 
 
 @router.get("/export/stats.xlsx")

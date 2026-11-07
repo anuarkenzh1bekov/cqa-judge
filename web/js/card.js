@@ -2,14 +2,29 @@
 /* ================= КАРТОЧКА ================= */
 function renderCard(){
   const t=total(cur);   /* итог считаем один раз на обновление карточки */
-  $('#pick').value=cur;renderChat();renderScore(t);renderMood();renderFeedback();renderCrit(t);
+  $('#pick').value=cur;renderChat();renderScore(t);renderSecurity();renderMood();renderFeedback();renderCrit(t);
 }
+/* нарушения в транскрипте: реплики-основания критериев, где действие пропущено. {номер реплики: [названия критериев]} */
+function violsOf(d){
+  const out={};
+  CRIT.forEach(c=>{
+    if(pending(d,c))return;
+    const r=resOf(d,c);
+    if(!missed(c,value(d,c)))return;
+    [...new Set(r.ev||[])].filter(n=>D[d].msgs[n-1]).forEach(n=>(out[n]=out[n]||[]).push(c.name));
+  });
+  return out;
+}
+let VIOL=null,VIOL_NOW=null;   /* на время renderChat: метки нарушений рисуются только в основном транскрипте */
 function bubble(d,i,opt={}){
   const [who,t,text]=D[d].msgs[i],n=i+1;
   const tm=`<span class="tm" data-seek="${n}">${mm(secOf(d,n))}</span>`;
   const id=opt.noId?'':`id="m${n}"`,mk=opt.mark?' mark':'';
-  if(who==='system')return `<div class="m system${mk}" ${id}>${esc(text)}<span class="mf">${tm} · #${n}</span></div>`;
-  return `<div class="m ${who}${mk}" ${id}><div class="b">${esc(text)}<div class="mf">${tm} · #${n}</div></div></div>`;
+  const vs=!opt.noId&&VIOL&&VIOL[n]?VIOL[n]:null;
+  const vk=vs?' viol':'';
+  const vh=vs?`<div class="vls">${vs.map(x=>`<span class="vl2" title="Действие пропущено: ${esc(x)}">${esc(x)}</span>`).join('')}</div>`:'';
+  if(who==='system')return `<div class="m system${mk}${vk}" ${id}>${esc(text)}<span class="mf">${tm} · #${n}</span>${vh}</div>`;
+  return `<div class="m ${who}${mk}${vk}" ${id}><div class="b">${esc(text)}${vh}<div class="mf">${tm} · #${n}</div></div></div>`;
 }
 /* реплики подряд от одного говорящего: подпись показываем один раз */
 function msgList(d,idx,opt={}){
@@ -44,6 +59,12 @@ function initPlayer(){
   const a=$('#aud');if(!a)return;
   const play=$('#apPlay'),seek=$('#apSeek'),cur_=$('#apCur'),dur=$('#apDur'),vol=$('#apVol'),mute=$('#apMute'),spd=$('#apSpd');
   const fill=(el,v)=>el.style.setProperty('--p',v+'%');
+  /* красные метки на дорожке: где в записи пропущено нужное действие */
+  const ticks=()=>{
+    const box=$('#apTicks'),L=a.duration;if(!box||!isFinite(L)||!L)return;
+    box.innerHTML=Object.entries(VIOL_NOW||{}).map(([n,names])=>`<i style="left:${Math.min(100,secOf(cur,+n)/L*100).toFixed(2)}%" title="${esc(mm(secOf(cur,+n))+' · '+names.join(', '))}"></i>`).join('');
+  };
+  ['loadedmetadata','durationchange'].forEach(e=>a.addEventListener(e,ticks));ticks();
   const sync=()=>{
     const D_=a.duration;
     cur_.textContent=mm(a.currentTime||0);
@@ -99,14 +120,15 @@ function renderChat(){
     ?`<div class="player" title="Нажмите на время реплики — запись перемотается к этому месту"><audio id="aud" preload="metadata" src="${CQA_API.audioUrl(d.id)}"></audio>
       <button class="pp" id="apPlay" aria-label="Воспроизвести">${AP_ICON.play}</button>
       <span class="pt" id="apCur">00:00</span>
-      <input class="rng" id="apSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Перемотка">
+      <span class="apw"><input class="rng" id="apSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Перемотка"><span class="ticks" id="apTicks"></span></span>
       <span class="pt" id="apDur">--:--</span>
       <button class="spd" id="apSpd" aria-label="Скорость">1×</button>
       <button class="vol" id="apMute" aria-label="Звук">${AP_ICON.vol}</button>
       <input class="rng vl" id="apVol" type="range" min="0" max="100" value="100" aria-label="Громкость">
     </div>`:'';
   const chat=$('#chat');
-  chat.innerHTML=player+'<p class="sum" id="dlgSum" hidden></p>'+msgList(cur,d.msgs.map((_,i)=>i));
+  VIOL=violsOf(cur);
+  try{chat.innerHTML=player+'<p class="sum" id="dlgSum" hidden></p>'+msgList(cur,d.msgs.map((_,i)=>i))}finally{VIOL_NOW=VIOL;VIOL=null}
   loadSummary(d);
   /* реплики появляются по очереди: шаг 50 мс, весь каскад не дольше секунды */
   [...chat.children].filter(el=>!el.classList.contains('player')&&el.id!=='dlgSum').forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
@@ -215,6 +237,17 @@ const MOOD={calm:'спокоен',positive:'доволен',confused:'расте
 const MOOD_CLS={calm:'',positive:'yes',confused:'warn',anxious:'warn',irritated:'no',angry:'no'};
 const OP_TONE={friendly:'доброжелательный',neutral:'нейтральный',tense:'напряжённый',irritated:'раздражённый'};
 const TRAJ={improved:'стало лучше',unchanged:'без изменений',worsened:'стало хуже'};
+const INJ_KIND={override:'сбросить правила',score_demand:'потребовать баллы',address_evaluator:'обращение к оценщику',role_hijack:'смена роли',fake_marker:'поддельная системная метка',format_hijack:'навязать формат ответа',kz_override:'сбросить правила'};
+function renderSecurity(){
+  const box=$('#sec');if(!box)return;
+  const s=CQA_API.enabled&&D[cur].facts&&D[cur].facts.security;
+  if(!s||!s.injection_detected){box.hidden=true;box.innerHTML='';return}
+  const who={client:'клиент',operator:'оператор',bot:'бот',system:'система'};
+  box.hidden=false;
+  box.innerHTML=`<div class="tr-h">Попытка повлиять на оценку <small>· проигнорирована</small></div>
+    <p class="why">${s.operator_attempt?'<b>Оператор пытался повлиять на оценку.</b> ':''}В диалоге есть реплики, обращённые к оценщику. Они не засчитаны, балл посчитан по правилам; критерии, которые опираются на эти реплики${s.operator_attempt?' (и все критерии из-за попытки оператора)':''}, помечены для проверки.</p>
+    <ul class="fbl">${s.attempts.map(a=>`<li class="ev"><button class="lk" data-go-msg="${a.turn+1}">#${a.turn+1}</button> <small>${esc(who[a.speaker]||a.speaker||'')} · ${esc(a.kinds.map(k=>INJ_KIND[k]||k).join(', '))}</small><span class="q">«${esc(a.text)}»</span></li>`).join('')}</ul>`;
+}
 function renderMood(){
   const box=$('#mood');if(!box)return;
   const m=CQA_API.enabled&&D[cur].facts&&D[cur].facts.client_mood;

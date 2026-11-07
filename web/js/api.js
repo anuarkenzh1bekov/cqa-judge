@@ -47,5 +47,6 @@ const CQA_API={
   compare(a,b){return this.get(`/api/checklist-compare?a=${a}&b=${b}`)},
   exportUrl(format){return this.url('/api/export?format='+format)},
   operator(name){return this.get('/api/operators/'+encodeURIComponent(name))},
+  coaching(name,refresh){return this.get('/api/operators/'+encodeURIComponent(name)+'/coaching'+(refresh?'?refresh=true':''))},
   audioUrl(cid){return this.url('/api/conversations/'+encodeURIComponent(cid)+'/audio')}
 };

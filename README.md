@@ -91,6 +91,16 @@ conversation ─┬─► Gemini  (facts about the conversation, an answer per c
 - Edge cases we wrote ourselves (not in DEV): `eval/synthetic.json`, run with `python backend/scripts/run_synthetic.py`
   against a running server (87/88 criteria match our labels, the one miss is a borderline case flagged for review).
 
+- **Prompt-injection defence** (`backend/app/guard.py`): a dialog is data, not instructions. Every turn is scanned (RU / KZ / EN:
+  "ignore the rules", "give 100 points", "you are now…", fake `system:` markers, zero-width obfuscation); the transcript is fenced
+  in the prompts and cannot forge the fence or turn markers; the models are told to ignore commands inside it. The score itself
+  is computed by code and quotes are checked against the transcript, so a fooled model still cannot move it. Findings are saved in
+  `facts.security` and shown on the conversation card; criteria that rest on an injected turn (all of them if the *operator*
+  tried) are flagged "needs review", and such dialogs are never used as coaching examples. Tests: `tests/test_guard.py`.
+- **Operator coaching** (`GET /api/operators/{name}/coaching`, shown in the operator card on "Аналитика"): the weakest criteria
+  are picked by code, with real quotes from the operator's dialogs and a full-marks dialog of a colleague as an example; Gemini
+  only writes the tip, a phrase to practise and a 3-step weekly plan. Works without the model (rules fallback). Tests: `tests/test_coaching.py`.
+
 ## Tests
 
 ```bash
@@ -179,3 +189,19 @@ screen and in the Excel export.
 | `web/dist/cqa-webresource.html` | the whole interface in one file for Dynamics 365 (`python web/build.py`) |
 
 Interface parameters (`?api=`, `?embed=1`, `?theme=`, `?demo=1`) and Dynamics 365: [web/README.md](web/README.md).
+
+## Submission file (`results/dev|prod/results.json`)
+
+The organizers' format 1.0 ("Как сдать результаты") is built from the latest evaluation of each conversation, with
+final answers after appeals. Turn numbers are 1-based, also inside the explanations (`[3]` in the model text becomes `[4]`).
+A conversation that was not evaluated or failed is written as `status: "error"`, never as a zero score.
+
+```bash
+cd backend
+python scripts/export_results.py --group DEV --set dev --expect 65     # results/dev/results.json
+python scripts/export_results.py --group <prod group_id> --set prod --expect 10
+git add ../results && git commit -m "Results" && git push
+```
+
+The script validates the file (all 8 criteria once, allowed values, unique IDs, record count) and refuses to write it
+if something is wrong. The same data with a `problems` list: `GET /api/results?group=DEV&expect=65`.

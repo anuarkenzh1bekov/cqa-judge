@@ -55,6 +55,9 @@ def test_full_flow(client, fake):
 
     stats = client.get("/api/stats").json()
     assert stats["overview"]["evaluated_conversations"] >= 1 and stats["appeals"]["changed"] >= 1
+    hm = stats["heatmap"]
+    assert hm["criteria"] and hm["operators"]
+    assert set(hm["operators"][0]["cells"]) == {c["key"] for c in hm["criteria"]}
     assert client.get(f"/api/evaluations/{ev['id']}/export").json()["cqa_totalscore"] == 100.0
 
 

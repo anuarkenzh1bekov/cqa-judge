@@ -485,3 +485,40 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .m.live .b{background:var(--mark);box-shadow:0 0 0 1.5px var(--accent)}
 .m.system.live{color:var(--ink);box-shadow:0 0 0 1.5px var(--accent);border-radius:6px}
 .m .b{transition:background-color .2s,box-shadow .2s}
+
+/* подсветка нарушений в транскрипте и на дорожке записи */
+.m.viol .b{box-shadow:inset 3px 0 0 var(--no)}
+.m.system.viol{box-shadow:inset 3px 0 0 var(--no);padding-left:8px}
+.vls{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.vl2{font-size:11px;line-height:1.4;padding:1px 8px;border-radius:999px;color:var(--no);box-shadow:inset 0 0 0 1px var(--no);background:transparent}
+.apw{position:relative;flex:1;min-width:40px;display:flex;align-items:center}
+.apw .rng{width:100%}
+.apw .ticks{position:absolute;inset:0;pointer-events:none}
+.apw .ticks i{position:absolute;top:50%;width:3px;height:12px;margin:-6px 0 0 -1px;border-radius:2px;background:var(--no)}
+
+/* тепловая карта: оператор × критерий */
+.hm{overflow:auto}
+.hm table{border-collapse:separate;border-spacing:3px;width:100%}
+.hm th{font-weight:400;font-size:11px;line-height:1.25;color:var(--muted);text-align:center;vertical-align:bottom;padding:0 2px 6px;min-width:72px;width:72px;white-space:normal;overflow-wrap:anywhere}
+.hm td.op{text-align:left;white-space:nowrap;cursor:pointer;padding-right:12px}
+.hm td.op:hover{text-decoration:underline}
+.hm td.c{text-align:center;font-size:12px;padding:7px 4px;border-radius:6px;font-variant-numeric:tabular-nums;color:var(--ink);
+  background:color-mix(in srgb,var(--no) calc((1 - var(--v,.5)) * 70%),var(--yes) calc(var(--v,.5) * 55%))}
+.hm td.c.nil{background:var(--raised);color:var(--muted)}
+.hm .leg{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
+.hm .leg i{width:120px;height:8px;border-radius:4px;background:linear-gradient(to right,color-mix(in srgb,var(--no) 70%,transparent),color-mix(in srgb,var(--yes) 55%,transparent))}
+
+/* «Рекомендации оператору»: боковые отступы как у остальных панелей справа */
+.fb>.tr-h{padding-left:24px;padding-right:24px}
+.fb>.why,.fb>.fbh,.fb>.fbl{padding-left:24px;padding-right:24px;overflow-wrap:anywhere}
+.fb>.fbl li.ev{padding-top:12px;padding-bottom:12px}
+
+/* Защита от инъекций и коучинг оператора */
+.panel.sec{border-left:3px solid var(--no)}
+.coach{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.coach .tr-h{display:flex;align-items:center;gap:8px}
+.coach .tr-h .lk{margin-left:auto}
+.coach-f{margin-top:12px;padding:10px 12px;background:var(--raised);border-radius:8px}
+.coach-f h4{margin:0 0 6px;font-size:14px}
+.coach-f h4 small{font-weight:400;color:var(--muted);margin-left:6px}
+.coach-w{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.55}

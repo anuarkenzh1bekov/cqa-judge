@@ -11,7 +11,7 @@ import asyncio
 import contextlib
 import time
 
-from . import mood, prompts, scoring
+from . import guard, mood, prompts, scoring
 from .checklist import Criterion
 from .config import settings
 from .llm import gemini, jev
@@ -73,6 +73,8 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
                    examples: dict[str, list[str]] | None = None) -> dict:
     transcript = conv["transcript"]
     n = len(transcript)
+    security = guard.summarize(guard.detect(transcript))
+    injected = {f["turn"] for f in security["attempts"]}
 
     async with (sem() if use_sem else contextlib.nullcontext()):
         t_start = time.perf_counter()  # model time only, not time spent queued for a slot
@@ -153,6 +155,14 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
             reasons.append("low_confidence")
         if bad:
             reasons.append("invalid_evidence_dropped")
+        if injected:
+            rng = row["checked_range"] or [None, None]
+            touched = any(e["index"] in injected for e in ev) or any(
+                rng[0] is not None and rng[0] <= t <= rng[1] for t in injected)
+            if security["operator_attempt"] and row["type"] != "flag":
+                reasons.append("operator_injection")
+            elif touched:
+                reasons.append("prompt_injection")
         if not ev and not row["checked_range"] and row["type"] != "flag":
             reasons.append("no_evidence")
         row["needs_review"] = bool(reasons)
@@ -172,6 +182,7 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
              "mood_error": m_err}
     facts = dict(g["facts"])
     facts["client_mood"] = m_data
+    facts["security"] = security
     cost = gemini.cost_usd(usage["gemini"]) + (jev.cost_usd(j_usage) if j_usage else 0.0)
     return {
         "facts": facts,

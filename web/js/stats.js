@@ -4,6 +4,15 @@ let opSel=null;
 const pct=v=>v==null?'—':fmt(v)+'%';
 function kpi(t,v,sub){return `<div class="panel kpi"><small>${t}</small><b>${v}</b>${sub?`<span>${sub}</span>`:''}</div>`}
 function bar(v,max){const w=max?Math.max(2,Math.round(v/max*100)):0;return `<span class="bar"><i style="width:${w}%"></i></span>`}
+/* Тепловая карта: слабые места видны сразу — красное = критерий проседает у оператора */
+function heatmapHtml(h){
+  if(!h||!h.operators.length||!h.criteria.length)return '';
+  const cell=v=>v==null?'<td class="c nil">—</td>':`<td class="c" style="--v:${Math.max(0,Math.min(1,v/100)).toFixed(2)}" title="${fmt(v)}%">${Math.round(v)}</td>`;
+  return `<div class="panel box hm"><h3>Карта слабых мест: оператор × критерий <small class="mut">— средний % балла, нажмите на оператора</small></h3>
+    <table><thead><tr><th></th>${h.criteria.map(c=>`<th title="${esc(c.name)}">${esc(c.name.length>22?c.name.slice(0,21)+'…':c.name)}</th>`).join('')}<th>Итого</th></tr></thead><tbody>
+    ${h.operators.map(o=>`<tr><td class="op" data-op="${esc(o.operator)}">${esc(o.operator)} <small class="mut">· ${o.count}</small></td>${h.criteria.map(c=>cell(o.cells[c.key])).join('')}${cell(o.avg)}</tr>`).join('')}</tbody></table>
+    <div class="leg"><span>слабо</span><i></i><span>хорошо</span></div></div>`;
+}
 function groupTable(title,obj){
   const rows=Object.entries(obj).sort((a,b)=>(b[1].avg_total??0)-(a[1].avg_total??0));
   return `<div class="panel tbl st-t"><div class="tr-h">${title}</div><table><thead><tr><th></th><th class="r">Диалогов</th><th class="r">Средний балл</th><th class="r">Грубые ошибки</th></tr></thead><tbody>
@@ -51,6 +60,7 @@ async function renderStats(){
     ${kpi('Критериев на проверку',o.criteria_needing_review,'нужен взгляд проверяющего')}
     ${kpi('Апелляции',s.appeals.total||0,s.appeals.total?`изменено ${s.appeals.changed||0} · ${pct(s.appeals.change_rate_pct)} решений`:'')}
   </div>
+  ${heatmapHtml(s.heatmap)}
   ${calibrationHtml(cal)}
   <div class="st-grid">
     <div class="panel box"><h3>Распределение баллов</h3>
@@ -80,7 +90,33 @@ async function renderOperator(name){
   const areas=p.most_frequent_improvement_areas.map(([k,n])=>{const c=p.criteria.find(x=>x.key===k);return `${esc(c?c.name:k)} (${n})`}).join(', ');
   box.innerHTML=`<div class="panel box op-card"><h3>Оператор</h3><h2>${esc(p.operator)} · ${fmt(p.avg_total)}</h2>
     ${areas?`<p class="mut">Чаще всего зоны роста: ${areas}</p>`:''}
-    <ul class="fbl">${p.improvements.slice(0,12).map(i=>`<li class="ev"><button class="lk" data-conv="${esc(i.conversation_id)}">${esc(i.conversation_id)}</button> ${esc(i.text)}${i.example_phrase?`<span class="q">Можно сказать: «${esc(i.example_phrase)}»</span>`:''}</li>`).join('')||'<li class="mut">Рекомендаций нет</li>'}</ul></div>`;
+    <ul class="fbl">${p.improvements.slice(0,12).map(i=>`<li class="ev"><button class="lk" data-conv="${esc(i.conversation_id)}">${esc(i.conversation_id)}</button> ${esc(i.text)}${i.example_phrase?`<span class="q">Можно сказать: «${esc(i.example_phrase)}»</span>`:''}</li>`).join('')||'<li class="mut">Рекомендаций нет</li>'}</ul><div id="coachBox"></div></div>`;
+  loadCoaching(name,false);
+}
+const LVL=p=>p>=85?'yes':p>=60?'warn':'no';
+function coachHtml(c){
+  const pct=v=>v==null?'—':Math.round(v)+'%';
+  const quote=q=>q?`<span class="q">«${esc(q.text)}»</span>`:'';
+  const go=id=>`<button class="lk" data-conv="${esc(id)}">${esc(id)}</button>`;
+  return `<div class="coach">
+    <div class="tr-h">План коучинга <small>· ${c.source==='ai'?'составлен ИИ по реальным диалогам':'по правилам критериев (ИИ недоступен)'}${c.cached?' · из кэша':''}</small>
+      <button class="lk" id="coachRefresh">Обновить</button></div>
+    <p class="why">${esc(c.summary)}</p>
+    <p class="mut">Оценено диалогов: ${c.evaluated} · средний балл ${pct(c.avg_total)} (команда ${pct(c.team_avg)})${c.trend!=null?` · динамика ${c.trend>0?'+':''}${c.trend}`:''}${c.injection_dialogs?` · попыток повлиять на оценку: ${c.injection_dialogs}`:''}</p>
+    ${c.strengths.length?`<p class="why">Сильные стороны: ${c.strengths.map(s=>`<span class="mood yes">${esc(s.name)} ${pct(s.avg_pct)}</span>`).join(' ')}</p>`:''}
+    ${c.focus.map((f,i)=>`<div class="coach-f"><h4>${i+1}. ${esc(f.name)} <span class="mood ${LVL(f.avg_pct)}">${pct(f.avg_pct)}</span> <small>команда ${pct(f.team_pct)}</small></h4>
+      ${f.tip?`<p class="why"><b>Что делать:</b> ${esc(f.tip)}</p>`:''}
+      ${f.practice_phrase?`<span class="say"><small>Фраза для тренировки</small>«${esc(f.practice_phrase)}»</span>`:''}
+      ${f.mistakes.length?`<ul class="fbl">${f.mistakes.map(m=>`<li class="ev">${go(m.conversation_id)} <small>${m.score_pct}%</small> ${esc(m.explanation||'')}${quote(m.quote)}</li>`).join('')}</ul>`:''}
+      ${f.exemplar?`<p class="why"><b>Как сделал ${esc(f.exemplar.operator)}:</b> ${go(f.exemplar.conversation_id)}${quote(f.exemplar.quote)}</p>`:''}</div>`).join('')}
+    ${c.weekly_plan.length?`<h4>План на неделю</h4><ol class="coach-w">${c.weekly_plan.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}</div>`;
+}
+async function loadCoaching(name,refresh){
+  const box=$('#coachBox');if(!box)return;
+  box.innerHTML='<p class="mut">Составляю план коучинга…</p>';
+  try{const c=await CQA_API.coaching(name,refresh);if(opSel!==name)return;box.innerHTML=coachHtml(c);
+    $('#coachRefresh').onclick=()=>loadCoaching(name,true)}
+  catch(e){box.innerHTML=`<p class="mut">План коучинга недоступен: ${esc(e.message)}</p>`}
 }
 $('#v-stats').addEventListener('click',e=>{
   const op=e.target.closest('[data-op]');if(op){renderOperator(op.dataset.op);return}

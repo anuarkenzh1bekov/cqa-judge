@@ -10,7 +10,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import services
+from .. import results_export, services
 from ..config import settings
 from ..db import get_db
 from ..models import Appeal, Checklist, Evaluation
@@ -252,3 +252,11 @@ def export_report(format: str = Query("xlsx", pattern="^(xlsx|csv)$"), checklist
     return Response(out.getvalue(),
                     media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="cqa-report-{stamp}.xlsx"'})
+
+
+@router.get("/results")
+def submission_results(group: str, team_name: str = "CQA Judge", expect: int | None = None,
+                       db: Session = Depends(get_db)):
+    """results.json for the organizers (schema 1.0): `results` plus `problems` found by the validator."""
+    doc = results_export.build(db, group, team_name)
+    return {**doc, "problems": results_export.validate(doc, expect)}
