@@ -102,7 +102,7 @@ tbody tr:last-child td{border-bottom:0}
 .gl.operator{align-self:flex-end}
 .m{display:flex;margin-top:2px;scroll-margin:80px}
 .m.operator{justify-content:flex-end}
-.b{max-width:78%;padding:8px 12px 6px;border-radius:14px;background:var(--raised);transition:background-color .15s,box-shadow .15s}
+.b{max-width:78%;padding:8px 12px 6px;border-radius:14px;background:var(--raised);transition:background-color .15s}
 .m.client .b,.m.bot .b{border-bottom-left-radius:4px}
 .m.operator .b{background:var(--bub-op);border-bottom-right-radius:4px}
 .m.bot .b{color:var(--muted)}
@@ -237,3 +237,16 @@ dialog input[type=file]{padding:6px}
 .embed .brand{display:none}
 .embed .top{height:auto;padding:8px 0;margin-bottom:16px}
 .embed .wrap{padding-bottom:24px}
+
+/* движение: короткое и по делу */
+@keyframes view-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.view-in{animation:view-in .18s cubic-bezier(.2,0,0,1)}
+@keyframes dlg-in{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+@keyframes bd-in{from{opacity:0}to{opacity:1}}
+dialog[open]{animation:dlg-in .16s cubic-bezier(.2,0,0,1)}
+dialog[open]::backdrop{animation:bd-in .16s ease-out}
+@keyframes pop{from{transform:scale(1.025)}to{transform:none}}
+.m.mark .b{animation:pop .3s cubic-bezier(.2,0,0,1)}
+@keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msgs.in .m,.msgs.in .gl{animation:msg-in .28s cubic-bezier(.2,0,0,1) both;animation-delay:var(--d,0ms)}
+@media(prefers-reduced-motion:reduce){.msgs.in .m,.msgs.in .gl{animation:none}}

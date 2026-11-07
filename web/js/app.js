@@ -4,6 +4,7 @@ document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go-msg]');
   if(g){
     $$('.m.mark').forEach(m=>m.classList.remove('mark'));
+    void document.body.offsetWidth;
     [...g.closest('.ev').querySelectorAll('[data-go-msg]')].forEach(b=>$('#m'+b.dataset.goMsg).classList.add('mark'));
     $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
   }

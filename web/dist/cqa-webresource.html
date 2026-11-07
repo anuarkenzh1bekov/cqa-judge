@@ -109,7 +109,7 @@ tbody tr:last-child td{border-bottom:0}
 .gl.operator{align-self:flex-end}
 .m{display:flex;margin-top:2px;scroll-margin:80px}
 .m.operator{justify-content:flex-end}
-.b{max-width:78%;padding:8px 12px 6px;border-radius:14px;background:var(--raised);transition:background-color .15s,box-shadow .15s}
+.b{max-width:78%;padding:8px 12px 6px;border-radius:14px;background:var(--raised);transition:background-color .15s}
 .m.client .b,.m.bot .b{border-bottom-left-radius:4px}
 .m.operator .b{background:var(--bub-op);border-bottom-right-radius:4px}
 .m.bot .b{color:var(--muted)}
@@ -244,6 +244,19 @@ dialog input[type=file]{padding:6px}
 .embed .brand{display:none}
 .embed .top{height:auto;padding:8px 0;margin-bottom:16px}
 .embed .wrap{padding-bottom:24px}
+
+/* движение: короткое и по делу */
+@keyframes view-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.view-in{animation:view-in .18s cubic-bezier(.2,0,0,1)}
+@keyframes dlg-in{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+@keyframes bd-in{from{opacity:0}to{opacity:1}}
+dialog[open]{animation:dlg-in .16s cubic-bezier(.2,0,0,1)}
+dialog[open]::backdrop{animation:bd-in .16s ease-out}
+@keyframes pop{from{transform:scale(1.025)}to{transform:none}}
+.m.mark .b{animation:pop .3s cubic-bezier(.2,0,0,1)}
+@keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msgs.in .m,.msgs.in .gl{animation:msg-in .28s cubic-bezier(.2,0,0,1) both;animation-delay:var(--d,0ms)}
+@media(prefers-reduced-motion:reduce){.msgs.in .m,.msgs.in .gl{animation:none}}
 
 </style>
 </head>
@@ -553,6 +566,24 @@ const nAppeals=d=>Object.values(appeals[d]).filter(a=>!a.decision).length;
 const pendingAppeals=()=>Object.keys(D).reduce((s,d)=>s+nAppeals(d),0);
 function syncCount(){const n=pendingAppeals();$('#apCount').hidden=!n;$('#apCount').textContent=n}
 
+/* Число «набегает» до значения. Без анимации, если в системе включено уменьшение движения. */
+const reduceMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const countState={key:null,v:0,raf:0};
+function countUp(el,to,key,ms=480){
+  cancelAnimationFrame(countState.raf);
+  const from=countState.key===key?countState.v:0;
+  countState.key=key;countState.v=to===null?0:to;
+  if(to===null||reduceMotion()||from===to){el.textContent=fmt(to);return}
+  const t0=performance.now();
+  const tick=now=>{
+    const k=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-k,3);
+    el.textContent=k<1?fmt(Math.round((from+(to-from)*e)*100)/100):fmt(to);
+    if(k<1)countState.raf=requestAnimationFrame(tick);
+  };
+  countState.raf=requestAnimationFrame(tick);
+  setTimeout(()=>{el.textContent=fmt(to)},ms+80);
+}
+
 </script>
 <script>
 /* Маршрутизация между экранами. */
@@ -570,6 +601,7 @@ function route(){
   if(view==='checklist')renderEditor();
   if(view==='appeals')renderAppeals();
   scrollTo(0,0);
+  const el=$('#v-'+view);el.classList.remove('view-in');void el.offsetWidth;el.classList.add('view-in');
 }
 addEventListener('hashchange',()=>{if(location.hash.startsWith('#/')&&location.hash!==H){H=location.hash;route()}});
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.r==='card'?'#/card/'+cur:'#/'+b.dataset.r)};
@@ -644,7 +676,12 @@ function msgList(d,idx,opt={}){
 }
 function renderChat(){
   const d=D[cur];
-  $('#chat').innerHTML=msgList(cur,d.msgs.map((_,i)=>i));
+  const chat=$('#chat');
+  chat.innerHTML=msgList(cur,d.msgs.map((_,i)=>i));
+  /* реплики появляются по очереди: шаг 50 мс, весь каскад не дольше секунды */
+  chat.classList.remove('in');void chat.offsetWidth;
+  [...chat.children].forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
+  chat.classList.add('in');
   $('#cardTitle').textContent=d.id;
   $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`;
 }
@@ -657,6 +694,10 @@ const secOf=(d,n)=>{
 };
 
 function renderScore(){
+  renderScoreHtml();
+  countUp($('#score .n'),total(cur).score,cur);
+}
+function renderScoreHtml(){
   const t=total(cur),o=total(cur,true),d=D[cur];
   const act=CRIT.filter(c=>!pending(cur,c)),nas=act.filter(c=>value(cur,c)==='na');
   const diff=t.score!==null&&o.score!==null?Math.round((t.score-o.score)*100)/100:0;
@@ -838,6 +879,7 @@ document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go-msg]');
   if(g){
     $$('.m.mark').forEach(m=>m.classList.remove('mark'));
+    void document.body.offsetWidth;
     [...g.closest('.ev').querySelectorAll('[data-go-msg]')].forEach(b=>$('#m'+b.dataset.goMsg).classList.add('mark'));
     $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
   }

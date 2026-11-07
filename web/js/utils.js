@@ -11,3 +11,21 @@ function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');cl
 const nAppeals=d=>Object.values(appeals[d]).filter(a=>!a.decision).length;
 const pendingAppeals=()=>Object.keys(D).reduce((s,d)=>s+nAppeals(d),0);
 function syncCount(){const n=pendingAppeals();$('#apCount').hidden=!n;$('#apCount').textContent=n}
+
+/* Число «набегает» до значения. Без анимации, если в системе включено уменьшение движения. */
+const reduceMotion=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const countState={key:null,v:0,raf:0};
+function countUp(el,to,key,ms=480){
+  cancelAnimationFrame(countState.raf);
+  const from=countState.key===key?countState.v:0;
+  countState.key=key;countState.v=to===null?0:to;
+  if(to===null||reduceMotion()||from===to){el.textContent=fmt(to);return}
+  const t0=performance.now();
+  const tick=now=>{
+    const k=Math.min(1,(now-t0)/ms),e=1-Math.pow(1-k,3);
+    el.textContent=k<1?fmt(Math.round((from+(to-from)*e)*100)/100):fmt(to);
+    if(k<1)countState.raf=requestAnimationFrame(tick);
+  };
+  countState.raf=requestAnimationFrame(tick);
+  setTimeout(()=>{el.textContent=fmt(to)},ms+80);
+}

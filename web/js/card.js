@@ -24,7 +24,12 @@ function msgList(d,idx,opt={}){
 }
 function renderChat(){
   const d=D[cur];
-  $('#chat').innerHTML=msgList(cur,d.msgs.map((_,i)=>i));
+  const chat=$('#chat');
+  chat.innerHTML=msgList(cur,d.msgs.map((_,i)=>i));
+  /* реплики появляются по очереди: шаг 50 мс, весь каскад не дольше секунды */
+  chat.classList.remove('in');void chat.offsetWidth;
+  [...chat.children].forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
+  chat.classList.add('in');
   $('#cardTitle').textContent=d.id;
   $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`;
 }
@@ -37,6 +42,10 @@ const secOf=(d,n)=>{
 };
 
 function renderScore(){
+  renderScoreHtml();
+  countUp($('#score .n'),total(cur).score,cur);
+}
+function renderScoreHtml(){
   const t=total(cur),o=total(cur,true),d=D[cur];
   const act=CRIT.filter(c=>!pending(cur,c)),nas=act.filter(c=>value(cur,c)==='na');
   const diff=t.score!==null&&o.score!==null?Math.round((t.score-o.score)*100)/100:0;
