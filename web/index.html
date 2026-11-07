@@ -21,6 +21,7 @@
       <button data-r="card">Карточка</button>
       <button data-r="checklist">Чек-лист</button>
       <button data-r="appeals">Апелляции<span class="cnt" id="apCount" hidden></span></button>
+      <button data-r="stats" id="navStats">Аналитика</button>
     </nav>
     <span class="grow"></span>
     <div class="tools">
@@ -35,7 +36,7 @@
   <!-- СПИСОК -->
   <section id="v-list" hidden>
     <div class="page-h"><h1>Диалоги</h1><span class="meta" id="avg"></span><span class="grow"></span><button class="btn primary" id="runNew">Оценить новые</button></div>
-    <div class="filters" id="filters"><span id="fKinds"></span><span class="sep"></span><span id="fLangs"></span><span class="sep"></span><input class="field search" id="q" placeholder="Поиск" aria-label="Поиск"></div>
+    <div class="filters" id="filters"><span id="fKinds"></span><span class="sep"></span><span id="fLangs"></span><span id="fGroups"></span><span class="sep"></span><input class="field search" id="q" placeholder="Поиск" aria-label="Поиск"></div>
     <div class="panel tbl">
       <table>
         <thead><tr><th>Диалог</th><th>Язык</th><th>Канал</th><th>Оператор</th><th class="r s" id="sortScore">Балл</th><th>Метки</th></tr></thead>
@@ -55,6 +56,7 @@
       </section>
       <div>
         <section class="panel score" id="score"></section>
+        <section class="panel fb" id="fb" hidden></section>
         <section class="panel crits" id="crit"></section>
       </div>
     </main>
@@ -62,7 +64,7 @@
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="addCrit">Добавить критерий</button><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -70,6 +72,12 @@
         <div class="panel box"><h3>Веса</h3><div id="wlist"></div></div>
       </aside>
     </div>
+  </section>
+
+  <!-- АНАЛИТИКА -->
+  <section id="v-stats" hidden>
+    <div class="page-h"><h1>Аналитика</h1><span class="meta">последняя оценка каждого диалога, баллы после апелляций</span></div>
+    <div id="statsBody"></div>
   </section>
 
   <!-- АПЕЛЛЯЦИИ -->
@@ -90,7 +98,8 @@
 </dialog>
 <dialog id="evDlg">
   <h3>Оценить диалог</h3>
-  <p>Загрузите транскрипт и выберите чек-лист.</p>
+  <p>Загрузите набор из API организаторов по group_id или свой транскрипт и выберите чек-лист.</p>
+  <div class="fld"><label for="evGroup">group_id набора (API организаторов)</label><input class="field" id="evGroup" placeholder="например, DEV или значение для контрольного набора"></div>
   <div class="fld"><label for="evFile">Файл JSON</label><input class="field" type="file" id="evFile" accept=".json,application/json"></div>
   <div class="fld"><label for="evText">Или вставьте JSON записи</label><textarea class="field" id="evText" placeholder='{"conversation_id": "p1-ru-001", "language": "RU", "transcript": [...]}'></textarea></div>
   <div class="fld"><label for="evChk">Чек-лист</label><select class="field" id="evChk"></select></div>
@@ -108,6 +117,7 @@
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/data.js"></script>
+<script src="js/backend.js"></script>
 <script src="js/scoring.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/router.js"></script>
@@ -115,6 +125,7 @@
 <script src="js/card.js"></script>
 <script src="js/checklist.js"></script>
 <script src="js/appeals.js"></script>
+<script src="js/stats.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

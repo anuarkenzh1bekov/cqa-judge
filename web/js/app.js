@@ -1,16 +1,27 @@
 /* Общие события, окно прогресса, тема, запуск. */
 /* ================= ОБЩИЕ СОБЫТИЯ ================= */
-document.addEventListener('click',e=>{
+document.addEventListener('click',async e=>{
   const g=e.target.closest('[data-go-msg]');
-  if(g){
+  if(g&&$('#m'+g.dataset.goMsg)){
     $$('.m.mark').forEach(m=>m.classList.remove('mark'));
-    [...g.closest('.ev').querySelectorAll('[data-go-msg]')].forEach(b=>{
-      const m=$('#m'+b.dataset.goMsg);m.classList.add('mark');
-      motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300);
+    const grp=g.closest('.ev');
+    (grp?[...grp.querySelectorAll('[data-go-msg]')]:[g]).forEach(b=>{
+      const m=$('#m'+b.dataset.goMsg);
+      if(m){m.classList.add('mark');motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300)}
     });
     $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
+    seekTo(+g.dataset.goMsg);
   }
+  const sk=e.target.closest('[data-seek]');if(sk&&$('#aud'))seekTo(+sk.dataset.seek);
   const ap=e.target.closest('[data-ap]');if(ap)openAppeal(+ap.dataset.ap);
+  const ai=e.target.closest('[data-ai]');
+  if(ai){
+    const d=ai.dataset.d,a=appeals[d][+ai.dataset.ai];
+    ai.disabled=true;ai.textContent='ИИ перепроверяет…';
+    try{await CQA_API.aiReview(a._id);await beLoadDialog(d,true);
+      if(!$('#v-card').hidden)renderCrit();else renderAppeals()}
+    catch(err){toast('Ошибка: '+err.message);ai.disabled=false}
+  }
   const sv=e.target.closest('[data-save]');
   if(sv){
     const id=+sv.dataset.save,d=sv.dataset.d||cur,act=sv.dataset.act||'change',box=sv.closest('.decide');
@@ -18,7 +29,9 @@ document.addEventListener('click',e=>{
     const c=CRIT.find(x=>x.id===id);
     if(!reason){toast('Укажите причину');box.querySelector('[data-r]').focus();return}
     if(act==='change'&&String(sel)===String(resOf(d,c).v)){toast('Выберите оценку, отличную от текущей');return}
-    saveDecision(d,id,sel,reason,act);syncCount();
+    sv.disabled=true;
+    try{await saveDecision(d,id,sel,reason,act)}catch(err){toast('Ошибка: '+err.message);sv.disabled=false;return}
+    syncCount();
     if(!$('#v-card').hidden){const t=total(cur);renderScore(t);renderCrit(t)}else renderAppeals();
     toast(act==='confirm'?'Оценка подтверждена':'Оценка изменена, итог пересчитан');
   }
@@ -42,51 +55,7 @@ function runProgress(title,sub,rows,done,step=120){
   })();
   $('#runClose').onclick=()=>{$('#runDlg').close();done&&done()};
 }
-
-/* Реальная обработка: по диалогу на строку, у каждой свой итог; из готовой строки можно открыть результат. */
-function runJobs(title,sub,names,worker){
-  $('#runTitle').textContent=title;$('#runSub').textContent=sub;
-  $('#runList').innerHTML=names.map(n=>`<div><i></i><span>${esc(n)}</span></div>`).join('');
-  const close=$('#runClose');close.disabled=true;close.onclick=()=>$('#runDlg').close();
-  $('#runDlg').showModal();
-  const els=$$('#runList div');let ok=0;
-  (async()=>{
-    for(let i=0;i<els.length;i++){
-      const el=els[i];el.classList.add('go');
-      try{
-        const key=await worker(i);ok++;
-        el.classList.remove('go');el.classList.add('ok');el.firstChild.innerHTML=CHECK_SVG;
-        if(key){
-          const b=document.createElement('button');b.className='tx';b.textContent='Открыть';
-          b.onclick=()=>{$('#runDlg').close();go('#/card/'+key)};el.append(b);
-        }
-      }catch(e){
-        el.classList.remove('go');el.classList.add('err');el.firstChild.textContent='!';
-        const s=document.createElement('span');s.className='ermsg';s.textContent=e.message;el.append(s);
-      }
-    }
-    $('#runSub').textContent=`Обработано ${ok} из ${els.length}`;
-    close.disabled=false;
-  })();
-}
-
-/* Ответ бэкенда: {results:{<id критерия>:{v,ev,why,q,conf}}, gross:{bad,checked}}; ev — номера реплик с 1. */
-function addEvaluated(record,resp){
-  const base=String(record.conversation_id||'eval').replace(/[^\w-]/g,'')||'eval';
-  let key=base,n=1;while(D[key])key=base+'-'+(++n);
-  const res={};
-  Object.entries(resp.results||{}).forEach(([id,r])=>{
-    const c=CRIT.find(x=>String(x.id)===String(id));
-    if(c)res[c.id]={v:r.v,ev:r.ev||[],why:r.why||'',q:r.q||'',conf:r.conf??1,sig:sigOf(c)};
-  });
-  D[key]={id:record.conversation_id||key,lang:String(record.language||'').toUpperCase(),
-    channel:record.channel||'agent chat',operator:record.operator||'—',
-    msgs:record.transcript.map(m=>[m.speaker,m.timestamp,m.text]),
-    res,gross:resp.gross||{bad:false,checked:'—'}};
-  appeals[key]={};refreshPick();
-  return key;
-}
-/* окно «Оценить диалог»: загрузка транскрипта и выбор чек-листа */
+/* окно «Оценить диалог»: загрузка транскрипта или набора по group_id и выбор чек-листа */
 let evRecords=[];
 function parseRecords(text){
   const j=JSON.parse(text);
@@ -95,31 +64,47 @@ function parseRecords(text){
   return arr;
 }
 function evCheck(){
-  const t=$('#evText').value.trim(),info=$('#evInfo');
-  if(!t){evRecords=[];info.textContent='';$('#evGo').disabled=true;return}
+  const t=$('#evText').value.trim(),info=$('#evInfo'),grp=($('#evGroup')?.value||'').trim();
+  if(!t){evRecords=[];info.textContent=grp?`Набор «${grp}» будет загружен из API организаторов и оценён`:'';$('#evGo').disabled=!grp;return}
   try{
     evRecords=parseRecords(t);
     info.textContent=evRecords.slice(0,3).map(r=>`${r.conversation_id||'без ID'} · ${r.language||'?'} · ${r.transcript.length} реплик`).join('; ')+(evRecords.length>3?` и ещё ${evRecords.length-3}`:'');
     $('#evGo').disabled=false;
   }catch(e){evRecords=[];info.textContent='Не удалось прочитать: '+e.message;$('#evGo').disabled=true}
 }
-$('#runNew').onclick=()=>{
-  $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
-  $('#evText').value='';$('#evFile').value='';evCheck();$('#evDlg').showModal();
+$('#runNew').onclick=async()=>{
+  $('#evText').value='';$('#evFile').value='';if($('#evGroup'))$('#evGroup').value='';
+  if(CQA_API.enabled){
+    $('#evChk').innerHTML='<option>Загрузка…</option>';
+    CQA_API.checklists().then(list=>{
+      $('#evChk').innerHTML=list.slice().reverse().map(c=>`<option value="${c.id}" ${c.is_active?'selected':''}>${esc(c.name)}${c.is_active?' (активный)':''}</option>`).join('');
+    }).catch(err=>toast('Ошибка: '+err.message));
+  }else $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
+  evCheck();$('#evDlg').showModal();
 };
 $('#evFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#evText').value=await f.text();evCheck()}};
 $('#evText').oninput=evCheck;
+if($('#evGroup'))$('#evGroup').oninput=evCheck;
 $('#evNo').onclick=()=>$('#evDlg').close();
-$('#evGo').onclick=()=>{
-  const recs=evRecords.slice();$('#evDlg').close();
-  if(!CQA_API.enabled){
-    runProgress(`Оценка: ${recs.length} диал.`,'Демонстрационный режим: результат не сохраняется',
-      CRIT.map(c=>({t:c.name})).concat([{t:'Грубые ошибки'}]),()=>toast('Демо: результат не сохраняется'));
+$('#evGo').onclick=async()=>{
+  const recs=evRecords.slice(),grp=($('#evGroup')?.value||'').trim();
+  if(CQA_API.enabled){
+    $('#evGo').disabled=true;
+    try{
+      let ids=[];
+      if(recs.length)ids=ids.concat((await CQA_API.upload(recs)).conversation_ids);
+      if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
+      $('#evDlg').close();
+      const s=await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});
+      await beRefreshAfterBatch();
+      toast(`Готово: ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:''));
+    }catch(err){toast('Ошибка: '+err.message)}
+    finally{$('#evGo').disabled=false}
     return;
   }
-  runJobs(`Оценка: ${recs.length} диал.`,`Чек-лист v${ver}`,
-    recs.map(r=>r.conversation_id||'без ID'),
-    async i=>addEvaluated(recs[i],await CQA_API.evaluate(recs[i],{version:ver,criteria:CRIT})));
+  $('#evDlg').close();
+  runProgress(`Оценка: ${recs.length} диал.`,'Демонстрационный режим: бэкенд не подключён',
+    CRIT.map(c=>({t:c.name})).concat([{t:'Грубые ошибки'}]),()=>toast('Демо: результат не сохраняется'));
 };
 
 function syncTheme(){
@@ -135,4 +120,14 @@ try{const s=localStorage.getItem('cqa-theme');if(s)document.documentElement.data
 if(CQA_CONFIG.theme)document.documentElement.dataset.theme=CQA_CONFIG.theme;
 if(CQA_CONFIG.embed)document.body.classList.add('embed');
 syncTheme();
-route();
+(async()=>{
+  let err=null;
+  if(CQA_API.enabled){try{await beLoadAll()}catch(e){err=e}}
+  else{const n=$('#navStats');if(n)n.hidden=true}
+  await route();
+  if(err){
+    toast('Бэкенд недоступен: '+err.message);
+    $('#none').hidden=false;
+    $('#none').innerHTML=`Не удалось подключиться к бэкенду <b>${esc(CQA_CONFIG.apiBase)}</b>. Запустите его или откройте демо: <a href="?demo=1">?demo=1</a>`;
+  }
+})();

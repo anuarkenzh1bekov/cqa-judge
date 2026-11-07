@@ -246,8 +246,39 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 @keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .msgs.in .m,.msgs.in .gl{animation:msg-in .28s cubic-bezier(.2,0,0,1) both;animation-delay:var(--d,0ms)}
 @media(prefers-reduced-motion:reduce){.msgs.in .m,.msgs.in .gl{animation:none}}
-#fKinds,#fLangs{display:contents}
-.run div .tx,.run div .ermsg{margin-left:auto}
-.run div .ermsg{font-size:12px}
-.run div.err{color:var(--no)}
-.run div.err i{border-color:var(--no);color:var(--no)}
+#fKinds,#fLangs,#fGroups{display:contents}
+
+/* ===== подключение к бэкенду: плеер, рекомендации, мнения моделей, аналитика ===== */
+.player{position:sticky;top:0;z-index:2;padding:10px 0 12px;background:var(--panel);border-bottom:1px solid var(--line);margin-bottom:8px}
+.player audio{width:100%}
+.player small{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+.tm[data-seek]{cursor:pointer}
+.tm[data-seek]:hover{text-decoration:underline;text-underline-offset:2px}
+.mdl{margin-top:8px;font-size:12px;color:var(--muted)}
+.sc-act{display:flex;gap:16px;align-items:center;padding:12px 24px;border-top:1px solid var(--line)}
+.fb{margin-top:16px;padding-bottom:16px}
+.fb>.why,.fb>h4,.fb>.fbl{margin-left:20px;margin-right:20px}
+.fb>.why{margin-top:12px}
+.fb h4{margin-top:14px;font-size:12px;font-weight:500;color:var(--muted)}
+.fbl{list-style:none;padding:0;margin:0}
+.fbl li.ev{margin-top:8px}
+.fbl li .lk{margin-left:0;margin-right:6px}
+.run div.err{color:var(--no)}.run div.err i{border-color:var(--no)}
+.st.ai{border-left-color:var(--accent);margin-bottom:8px}
+.page-h select.field{width:auto;max-width:260px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{padding:14px 16px;display:grid;gap:4px}
+.kpi small{color:var(--muted);font-size:12px}
+.kpi b{font-size:26px;font-weight:600}
+.kpi span{color:var(--muted);font-size:12px}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px}
+.st-t{margin-bottom:16px}
+.st-grid .st-t{margin-bottom:0}
+.mut{color:var(--muted);font-size:13px}
+.bar{flex:1;height:6px;margin:0 10px;border-radius:3px;background:var(--raised);overflow:hidden;align-self:center}
+.bar i{display:block;height:100%;background:var(--accent)}
+#opRows tr,[data-conv]{cursor:pointer}
+#opRows tr.on td{background:var(--raised)}
+.op-card h2{font-size:18px;margin:2px 0 8px}
+.box .wl .t{min-width:120px}
+.lk.inl{color:var(--warn);font-weight:600;text-decoration:none;margin:0}

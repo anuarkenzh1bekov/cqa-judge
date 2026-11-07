@@ -13,7 +13,15 @@ function renderEditor(){
       ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>`:''}
       <div class="fld"><label class="chk"><input type="checkbox" data-f="na" ${c.na?'checked':''}>Разрешить N/A</label></div>
       ${c.na?`<div class="fld"><label>Условие N/A</label><input class="field" type="text" data-f="nac" value="${esc(c.nac)}"></div>`:'<div></div>'}
+      ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
     </div></div>`).join('');
+  if(CQA_API.enabled){
+    const sel=$('#applyTo');
+    if(sel&&!sel.dataset.filled){
+      sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к набору ${esc(g)}</option>`).join('');
+      sel.value=BE.groups[BE.groups.length-1]||'';sel.dataset.filled='1';
+    }
+  }
   refreshSide();
 }
 function refreshSide(){
@@ -21,8 +29,12 @@ function refreshSide(){
   $('#wlist').innerHTML=CRIT.map(c=>`<div class="wl"><span class="t">${esc(c.name)}</span><span>${c.w}</span></div>`).join('')+`<div class="wl total"><span>Сумма</span><span>${sum}</span></div>`;
   const changed=CRIT.filter(c=>sigOf(c)!==savedSigs[c.id]).length;
   dirty=dirty||changed>0;
-  $('#verTitle').textContent='v'+ver;
-  $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}. Остальные результаты берутся из кэша.`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>';
+  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?BE.checklist.name:'v'+ver;
+  const tail=CQA_API.enabled?' Сохранение создаёт новую версию чек-листа; старые оценки остаются со своей версией.'
+    :' Остальные результаты берутся из кэша.';
+  $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}.${tail}`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>'
+    +(CQA_API.enabled&&BE.flags.length?`<br><small>Грубые ошибки (${BE.flags.map(f=>esc(f.name)).join(', ')}) проверяются всегда и отмечаются отдельно.</small>`:'')
+    +(sum!==100?`<br><small>Сумма весов ${sum} — итог всё равно нормируется к 100.</small>`:'');
 }
 $('#ed').addEventListener('input',e=>{
   const f=e.target.dataset.f;if(!f)return;
@@ -48,13 +60,30 @@ $('#addCrit').onclick=()=>{
   CRIT.push({id:nextId++,name:'Новый критерий',q:'',w:5,type:'yn',na:false,nac:''});
   dirty=true;renderEditor();$$('.ec').at(-1).scrollIntoView({block:'center'});
 };
-$('#applyBtn').onclick=()=>{
+$('#applyBtn').onclick=async()=>{
+  if(CQA_API.enabled){
+    const bad=CRIT.find(c=>!String(c.name).trim()||(!String(c.q||'').trim()&&!String(c.name).trim()));
+    if(bad){toast('У критерия нет названия');return}
+    const grp=$('#applyTo')?$('#applyTo').value:'';
+    $('#applyBtn').disabled=true;
+    try{
+      const cl=await beSaveChecklist();
+      dirty=false;renderEditor();toast('Сохранено: '+cl.name);
+      if(grp){
+        const s=await beRunBatch(`Применяем «${cl.name}» к набору ${grp}`,{group:grp,checklist_id:cl.id});
+        await beRefreshAfterBatch();
+        toast(`Чек-лист применён: ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:''));
+      }
+    }catch(e){toast('Ошибка: '+e.message)}
+    finally{$('#applyBtn').disabled=false}
+    return;
+  }
   const need=CRIT.filter(c=>Object.keys(D).some(d=>pending(d,c)));
   const cached=CRIT.length-need.length;
   CRIT.forEach(c=>savedSigs[c.id]=sigOf(c));
   ver++;
   if(!need.length){dirty=false;persist();renderEditor();toast('Сохранено как v'+ver+'. Пересчёт не нужен');return}
-  runProgress('Применяем v'+ver,`Диалогов: ${Object.keys(D).length}. Модель: gemma3:12b, локально`,
+  runProgress('Применяем v'+ver,`Диалогов: ${Object.keys(D).length}. Демонстрационный режим`,
     need.map(c=>({t:`Пересчёт: ${c.name}`})).concat([{t:`Из кэша: ${cached} критериев`,cache:true}]),
     ()=>{
       Object.keys(D).forEach(d=>need.forEach(c=>{
@@ -64,4 +93,11 @@ $('#applyBtn').onclick=()=>{
       dirty=false;persist();renderEditor();toast('Чек-лист применён');
     });
 };
-$('#resetState').onclick=resetSaved;
+$('#resetState').onclick=async()=>{
+  if(!CQA_API.enabled){resetSaved();return}
+  if(!confirm('Создать новую версию чек-листа из исходного PDF и сделать её активной?'))return;
+  try{
+    const t=await CQA_API.defaultChecklist();
+    await CQA_API.createChecklist(t);await beLoadChecklist();dirty=false;renderEditor();toast('Восстановлен исходный чек-лист');
+  }catch(e){toast('Ошибка: '+e.message)}
+};

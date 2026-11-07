@@ -1,31 +1,79 @@
-# cqa-judge
+# CQA Judge — Conversation Quality Analytics
 
-Interface for scoring operator performance in customer conversations (Conversation Quality Analytics, Freedom Broker CQA Hackathon).
+Прототип для хакатона Freedom Broker: оценка работы оператора по настраиваемому чек-листу (RU / KZ / EN, чаты и звонки),
+обоснования с переходом к реплике и к месту в записи, апелляции с пересмотром, рекомендации оператору и аналитика.
 
-An eight-criterion checklist, a per-criterion verdict with a quoted piece of evidence, a total score that redistributes weight when a criterion is N/A, appeals with a reviewer decision, and a checklist editor. Chats in Russian, Kazakh and English are supported, as well as voice calls. The interface itself is in Russian.
+## Запуск
 
-## Run
-
-Requires Python 3 (any static file server works):
+Требуется Python 3.10+.
 
 ```bash
-python -m http.server 5173 --directory web
+cd backend
+pip install -r requirements.txt
+cp ../.env.example ../.env   # заполнить ключи и DATASET_API_URL
+python -m uvicorn app.main:app --port 8000
 ```
 
-Open http://localhost:5173
+Откройте http://localhost:8000 — бэкенд сам раздаёт интерфейс из `web/`.
 
-Double-clicking `index.html` will not work: browsers block loading scripts from disk.
+1. «Диалоги» → «Оценить новые» → `group_id` (например `DEV`) → набор загрузится из API организаторов и оценится.
+2. Карточка диалога: балл, грубые ошибки, рекомендации оператору, по каждому критерию — ответ, баллы, объяснение,
+   ссылки на реплики, мнения Gemini и Jev. У звонков — плеер, клик по реплике перематывает запись.
+3. «Оспорить» → апелляция. Переключатель «Проверяющий» или экран «Апелляции» → решение (можно попросить ИИ
+   перепроверить) → итог пересчитывается, исходная оценка сохраняется.
+4. «Чек-лист» → изменить / заменить критерий → «Сохранить и применить» к набору. Сохраняется новая версия.
+5. «Аналитика» → средние баллы по языкам, каналам, операторам и критериям, согласие моделей, стоимость.
 
-## What is inside
+Swagger: http://localhost:8000/docs · Описание API: [API.md](API.md) · Демо без бэкенда: http://localhost:8000/?demo=1
 
-| Path | What it is |
+## Как работает оценка
+
+```
+диалог ─┬─► Gemini  (факты о диалоге, ответ по каждому критерию, объяснение, реплики-доказательства, рекомендации)
+        └─► Jev     (независимый ответ по каждому критерию + откалиброванная вероятность)
+                 │
+                 ▼  объединение по критерию
+   совпали ─► ответ Gemini        соседние ступени шкалы ─► ответ Gemini
+   разошлись, Jev уверен (≥0.8) ─► Gemini перепроверяет критерий, пометка «спорный»
+   разошлись, Jev не уверен     ─► ответ Gemini, пометка «проверить»
+                 │
+                 ▼  код (не модель)
+   проверка цитат по транскрипту → правила N/A → баллы по весу → перераспределение N/A → итог (2 знака) → грубые ошибки
+```
+
+- Промпты и схемы ответа строятся из конфигурации чек-листа: новый или заменённый критерий работает без правки кода.
+- Каждая оценка реально вызывает модели (без кэша по `conversation_id`) и хранит снимок чек-листа, по которому сделана.
+- Jev — необязательный модуль: без ключа или при ошибке оценка идёт только на Gemini.
+
+## Конфигурация (`.env`)
+
+| Переменная | Назначение |
 |---|---|
-| `web/` | the interface in plain HTML, CSS and JavaScript, no build step |
-| `web/dist/cqa-webresource.html` | the whole interface in a single file, ready to upload to Dynamics 365 as an HTML web resource |
-| `web/build.py` | builds that file: `python web/build.py` |
+| `GOOGLE_API_KEY`, `GEMINI_MODEL` | Gemini (по умолчанию `gemini-3.8-flash`) |
+| `TYPESAFE_API_KEY`, `JEV_MODEL`, `JEV_ENABLED` | Jev от TypeSafe AI (`jev-latest`) |
+| `JEV_ADJUDICATE_THRESHOLD` | вероятность Jev, при которой расхождение отправляется на перепроверку (0.8) |
+| `DATASET_API_URL` | ссылка GET организаторов **без** `group_id` (содержит подпись — не коммитить) |
+| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | цена за 1M токенов для расчёта стоимости — сверить с прайсом Google |
+| `MAX_CONCURRENCY` | параллельных оценок в пакете (4) |
+| `DATABASE_URL` | по умолчанию SQLite `backend/cqa.db` |
 
-More on structure, URL parameters (`?embed=1`, `?api=…`, `?theme=…`) and Dynamics 365: [web/README.md](web/README.md).
+## Стоимость одной оценки
 
-## Data
+Один вызов Gemini (~3–4 тыс. входных токенов, ~1.5 тыс. выходных + рассуждения), при расхождении моделей — ещё один;
+плюс вызов Jev (~6 тыс. входных токенов, $0.042 / 1M). На наборе DEV в среднем ≈ $0.01 за диалог (по ценам из `.env`).
+Фактическая стоимость каждой оценки видна в карточке и на экране «Аналитика».
 
-Conversations and results shown in the interface are demo data: four conversations (RU, EN, KZ and a voice call) with pre-filled results.
+## Структура
+
+| Путь | Что это |
+|---|---|
+| `backend/app/checklist.py` | схема чек-листа + стартовый чек-лист из PDF |
+| `backend/app/scoring.py` | детерминированный расчёт баллов (тесты: `cd backend && python -m pytest -q`) |
+| `backend/app/prompts.py` | промпты и JSON-схемы, генерируются из чек-листа |
+| `backend/app/llm/` | клиенты Gemini и Jev |
+| `backend/app/pipeline.py` | оценка: Gemini ∥ Jev → объединение → проверка цитат → баллы |
+| `backend/app/routers/` | API: conversations, checklists, evaluations, appeals, stats |
+| `web/` | интерфейс на HTML, CSS и JavaScript без сборки; `web/js/backend.js` — связь с API |
+| `web/dist/cqa-webresource.html` | весь интерфейс одним файлом для Dynamics 365 (`python web/build.py`) |
+
+Параметры интерфейса (`?api=`, `?embed=1`, `?theme=`, `?demo=1`) и Dynamics 365: [web/README.md](web/README.md).

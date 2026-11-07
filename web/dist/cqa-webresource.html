@@ -253,11 +253,42 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 @keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .msgs.in .m,.msgs.in .gl{animation:msg-in .28s cubic-bezier(.2,0,0,1) both;animation-delay:var(--d,0ms)}
 @media(prefers-reduced-motion:reduce){.msgs.in .m,.msgs.in .gl{animation:none}}
-#fKinds,#fLangs{display:contents}
-.run div .tx,.run div .ermsg{margin-left:auto}
-.run div .ermsg{font-size:12px}
-.run div.err{color:var(--no)}
-.run div.err i{border-color:var(--no);color:var(--no)}
+#fKinds,#fLangs,#fGroups{display:contents}
+
+/* ===== подключение к бэкенду: плеер, рекомендации, мнения моделей, аналитика ===== */
+.player{position:sticky;top:0;z-index:2;padding:10px 0 12px;background:var(--panel);border-bottom:1px solid var(--line);margin-bottom:8px}
+.player audio{width:100%}
+.player small{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+.tm[data-seek]{cursor:pointer}
+.tm[data-seek]:hover{text-decoration:underline;text-underline-offset:2px}
+.mdl{margin-top:8px;font-size:12px;color:var(--muted)}
+.sc-act{display:flex;gap:16px;align-items:center;padding:12px 24px;border-top:1px solid var(--line)}
+.fb{margin-top:16px;padding-bottom:16px}
+.fb>.why,.fb>h4,.fb>.fbl{margin-left:20px;margin-right:20px}
+.fb>.why{margin-top:12px}
+.fb h4{margin-top:14px;font-size:12px;font-weight:500;color:var(--muted)}
+.fbl{list-style:none;padding:0;margin:0}
+.fbl li.ev{margin-top:8px}
+.fbl li .lk{margin-left:0;margin-right:6px}
+.run div.err{color:var(--no)}.run div.err i{border-color:var(--no)}
+.st.ai{border-left-color:var(--accent);margin-bottom:8px}
+.page-h select.field{width:auto;max-width:260px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{padding:14px 16px;display:grid;gap:4px}
+.kpi small{color:var(--muted);font-size:12px}
+.kpi b{font-size:26px;font-weight:600}
+.kpi span{color:var(--muted);font-size:12px}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px}
+.st-t{margin-bottom:16px}
+.st-grid .st-t{margin-bottom:0}
+.mut{color:var(--muted);font-size:13px}
+.bar{flex:1;height:6px;margin:0 10px;border-radius:3px;background:var(--raised);overflow:hidden;align-self:center}
+.bar i{display:block;height:100%;background:var(--accent)}
+#opRows tr,[data-conv]{cursor:pointer}
+#opRows tr.on td{background:var(--raised)}
+.op-card h2{font-size:18px;margin:2px 0 8px}
+.box .wl .t{min-width:120px}
+.lk.inl{color:var(--warn);font-weight:600;text-decoration:none;margin:0}
 
 </style>
 </head>
@@ -275,6 +306,7 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
       <button data-r="card">Карточка</button>
       <button data-r="checklist">Чек-лист</button>
       <button data-r="appeals">Апелляции<span class="cnt" id="apCount" hidden></span></button>
+      <button data-r="stats" id="navStats">Аналитика</button>
     </nav>
     <span class="grow"></span>
     <div class="tools">
@@ -289,7 +321,7 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
   <!-- СПИСОК -->
   <section id="v-list" hidden>
     <div class="page-h"><h1>Диалоги</h1><span class="meta" id="avg"></span><span class="grow"></span><button class="btn primary" id="runNew">Оценить новые</button></div>
-    <div class="filters" id="filters"><span id="fKinds"></span><span class="sep"></span><span id="fLangs"></span><span class="sep"></span><input class="field search" id="q" placeholder="Поиск" aria-label="Поиск"></div>
+    <div class="filters" id="filters"><span id="fKinds"></span><span class="sep"></span><span id="fLangs"></span><span id="fGroups"></span><span class="sep"></span><input class="field search" id="q" placeholder="Поиск" aria-label="Поиск"></div>
     <div class="panel tbl">
       <table>
         <thead><tr><th>Диалог</th><th>Язык</th><th>Канал</th><th>Оператор</th><th class="r s" id="sortScore">Балл</th><th>Метки</th></tr></thead>
@@ -309,6 +341,7 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
       </section>
       <div>
         <section class="panel score" id="score"></section>
+        <section class="panel fb" id="fb" hidden></section>
         <section class="panel crits" id="crit"></section>
       </div>
     </main>
@@ -316,7 +349,7 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="addCrit">Добавить критерий</button><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -324,6 +357,12 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
         <div class="panel box"><h3>Веса</h3><div id="wlist"></div></div>
       </aside>
     </div>
+  </section>
+
+  <!-- АНАЛИТИКА -->
+  <section id="v-stats" hidden>
+    <div class="page-h"><h1>Аналитика</h1><span class="meta">последняя оценка каждого диалога, баллы после апелляций</span></div>
+    <div id="statsBody"></div>
   </section>
 
   <!-- АПЕЛЛЯЦИИ -->
@@ -344,7 +383,8 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 </dialog>
 <dialog id="evDlg">
   <h3>Оценить диалог</h3>
-  <p>Загрузите транскрипт и выберите чек-лист.</p>
+  <p>Загрузите набор из API организаторов по group_id или свой транскрипт и выберите чек-лист.</p>
+  <div class="fld"><label for="evGroup">group_id набора (API организаторов)</label><input class="field" id="evGroup" placeholder="например, DEV или значение для контрольного набора"></div>
   <div class="fld"><label for="evFile">Файл JSON</label><input class="field" type="file" id="evFile" accept=".json,application/json"></div>
   <div class="fld"><label for="evText">Или вставьте JSON записи</label><textarea class="field" id="evText" placeholder='{"conversation_id": "p1-ru-001", "language": "RU", "transcript": [...]}'></textarea></div>
   <div class="fld"><label for="evChk">Чек-лист</label><select class="field" id="evChk"></select></div>
@@ -362,26 +402,56 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 <script>
 /* Настройки компонента. Меняются через адрес без правки кода:
    ?embed=1 — режим встраивания (без логотипа, для Dynamics 365)
-   ?api=https://host — адрес бэкенда; без него работает демонстрационный режим
+   ?api=https://host — адрес бэкенда. По умолчанию — тот же адрес, с которого открыт интерфейс
+     (бэкенд сам раздаёт web/), а для статического сервера на :5173 — http://localhost:8000
+   ?demo=1 — демонстрационный режим без бэкенда (встроенные примеры)
    ?theme=dark|light — тема */
 const CQA_CONFIG=(()=>{
   const q=new URLSearchParams(location.search);
-  return {apiBase:q.get('api')||'',embed:q.get('embed')==='1',theme:q.get('theme')||''};
+  const demo=q.get('demo')==='1';
+  let api=q.get('api')||'';
+  if(!api&&!demo&&/^https?:$/.test(location.protocol))api=location.port==='5173'?'http://localhost:8000':location.origin;
+  return {apiBase:demo?'':api.replace(/\/$/,''),demo,embed:q.get('embed')==='1',theme:q.get('theme')||''};
 })();
 
 </script>
 <script>
-/* Обращение к бэкенду. Пока адрес не задан, сеть не используется. */
+/* Обращение к бэкенду (FastAPI). Описание эндпоинтов — API.md в корне репозитория. */
 const CQA_API={
   get enabled(){return !!CQA_CONFIG.apiBase},
-  async evaluate(record,checklist){
-    if(!this.enabled)throw new Error('бэкенд не подключён');
-    const r=await fetch(CQA_CONFIG.apiBase.replace(/\/$/,'')+'/evaluate',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({record,checklist})});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    return r.json();
-  }
+  url(p){return CQA_CONFIG.apiBase+p},
+  async req(method,p,body){
+    const r=await fetch(this.url(p),{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+    let j=null;try{j=await r.json()}catch(_){}
+    if(!r.ok){
+      const d=j&&j.detail;
+      const msg=Array.isArray(d)?d.map(x=>(x.loc||[]).slice(1).join('.')+': '+x.msg).join('; '):(d||('HTTP '+r.status));
+      throw new Error(msg);
+    }
+    return j;
+  },
+  get(p){return this.req('GET',p)},
+  post(p,b){return this.req('POST',p,b||{})},
+  put(p,b){return this.req('PUT',p,b)},
+
+  health(){return this.get('/api/health')},
+  conversations(){return this.get('/api/conversations')},
+  evaluation(id){return this.get('/api/evaluations/'+id)},
+  activeChecklist(){return this.get('/api/checklists/active')},
+  checklists(){return this.get('/api/checklists')},
+  defaultChecklist(){return this.get('/api/checklists/default-template')},
+  createChecklist(body){return this.post('/api/checklists?activate=true',body)},
+  importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
+  upload(records){return this.post('/api/conversations',{records,group:'UPLOAD'})},
+  batch(body){return this.post('/api/evaluations/batch',body)},
+  batchStatus(id){return this.get('/api/batches/'+id)},
+  appeal(evalId,criterion_key,comment){return this.post(`/api/evaluations/${evalId}/appeals`,{criterion_key,comment,author:'Оператор'})},
+  appeals(){return this.get('/api/appeals')},
+  aiReview(apId){return this.post(`/api/appeals/${apId}/ai-review`)},
+  decide(apId,body){return this.post(`/api/appeals/${apId}/decision`,body)},
+  stats(){return this.get('/api/stats')},
+  operator(name){return this.get('/api/operators/'+encodeURIComponent(name))},
+  audioUrl(cid){return this.url('/api/conversations/'+encodeURIComponent(cid)+'/audio')}
 };
 
 </script>
@@ -505,6 +575,7 @@ const appeals={ru:{},kz:{},call:{},en:{4:{text:'Комиссии биржи не
 /* ---- сохранение между перезагрузками (чек-лист, результаты, апелляции) ---- */
 const STATE_KEY='cqa-state-2';
 function persist(){
+  if(CQA_API.enabled)return; /* с бэкендом всё хранится на сервере */
   try{localStorage.setItem(STATE_KEY,JSON.stringify({ver,nextId,CRIT,
     res:Object.fromEntries(Object.entries(D).map(([k,d])=>[k,d.res])),appeals}))}catch(_){}
 }
@@ -518,7 +589,175 @@ function loadSaved(){
   }catch(_){}
 }
 function resetSaved(){try{localStorage.removeItem(STATE_KEY)}catch(_){}location.reload()}
-loadSaved();
+if(CQA_API.enabled){
+  /* рабочий режим: демо-данные не используются, всё загружает js/backend.js */
+  CRIT.length=0;Object.keys(D).forEach(k=>delete D[k]);Object.keys(appeals).forEach(k=>delete appeals[k]);
+  nextId=1;cur='';
+}else loadSaved();
+
+</script>
+<script>
+/* Связь интерфейса с бэкендом: загрузка диалогов, оценок, чек-листа и апелляций
+   в структуры экрана (CRIT, D, appeals) и отправка действий на сервер. */
+const BE={
+  checklist:null,      // активный чек-лист с сервера
+  flags:[],            // критерии-флаги (грубые ошибки) — в редакторе не показываются, при сохранении добавляются
+  keyId:{},            // key критерия на сервере -> числовой id в интерфейсе
+  groups:[],           // группы наборов данных (DEV, контрольный и т.д.)
+  health:null,
+  idFor(key){if(!(key in this.keyId))this.keyId[key]=nextId++;return this.keyId[key]},
+  keyOf(id){return Object.keys(this.keyId).find(k=>this.keyId[k]===id)}
+};
+
+/* ---------- преобразование критериев ---------- */
+function critToFront(c){
+  const f={id:BE.idFor(c.key),key:c.key,section:c.section||'',name:c.name,q:c.description,w:c.weight,
+    type:c.type==='scale'?'scale':'yn',na:!!c.na_allowed,nac:c.na_condition||'',guidance:c.guidance||''};
+  if(c.type==='scale'){
+    f.steps=c.scale.map(s=>s.value).sort((a,b)=>a-b);
+    f.scaleDesc=Object.fromEntries(c.scale.map(s=>[s.value,s.description]));
+  }
+  return f;
+}
+function critToBack(f){
+  const key=f.key||('custom_'+f.id+'_'+Date.now().toString(36));
+  f.key=key;BE.keyId[key]=f.id;
+  const c={key,section:f.section||null,name:f.name,description:(f.q||'').trim()||f.name,
+    type:f.type==='scale'?'scale':'binary',weight:+f.w||0,na_allowed:!!f.na,
+    na_condition:f.na?((f.nac||'').trim()||'Критерий неприменим'):null,guidance:f.guidance||null};
+  if(f.type==='scale')c.scale=f.steps.map(v=>({value:v,description:(f.scaleDesc&&f.scaleDesc[v])||`${v} баллов`}));
+  return c;
+}
+const ansToFront=(c,a)=>c.type==='scale'&&a!=='na'?Number(a):a;
+
+/* ---------- загрузка ---------- */
+async function beLoadChecklist(){
+  const cl=await CQA_API.activeChecklist();
+  BE.checklist=cl;
+  BE.flags=cl.criteria.filter(c=>c.type==='flag');
+  CRIT.splice(0,CRIT.length,...cl.criteria.filter(c=>c.type!=='flag').map(critToFront));
+  CRIT.forEach(c=>savedSigs[c.id]=sigOf(c));
+  ver=cl.id;
+}
+function stubDialog(c){
+  const s=c.latest_evaluation;
+  return {id:c.id,group:c.group,lang:c.language,channel:c.channel,operator:(s&&s.operator_name)||'—',
+    msgs:[],res:{},gross:{bad:!!(s&&s.gross_error),checked:''},loaded:false,summary:s,audio:c.has_audio,turns:c.turns};
+}
+async function beLoadAll(){
+  const [convs]=await Promise.all([CQA_API.conversations(),beLoadChecklist(),
+    CQA_API.health().then(h=>BE.health=h).catch(()=>null)]);
+  const keep=new Set(convs.map(c=>c.id));
+  Object.keys(D).forEach(k=>{if(!keep.has(k)){delete D[k];delete appeals[k]}});
+  convs.forEach(c=>{
+    const old=D[c.id],s=c.latest_evaluation;
+    // перезагружаем полную карточку только если на сервере появилась новая оценка
+    if(old&&old.loaded&&s&&old.evalId===s.id&&s.status==='done'){old.summary=s;return}
+    D[c.id]=stubDialog(c);appeals[c.id]=appeals[c.id]||{};
+  });
+  BE.groups=[...new Set(convs.map(c=>c.group).filter(Boolean))];
+  if(!cur||!D[cur])cur=Object.keys(D)[0]||'';
+  fillPick();
+}
+/* полная карточка диалога: транскрипт + последняя завершённая оценка */
+async function beLoadDialog(cid,force){
+  const d=D[cid];if(!d)return;
+  if(d.loaded&&!force)return;
+  const conv=await CQA_API.get('/api/conversations/'+encodeURIComponent(cid));
+  d.msgs=conv.transcript.map(t=>[t.speaker,normTs(t.timestamp),t.text]);
+  d.audio=conv.has_audio;d.lang=conv.language;d.channel=conv.channel;
+  const done=conv.evaluations.find(e=>e.status==='done');
+  d.running=conv.evaluations.some(e=>e.status==='pending'||e.status==='running');
+  d.res={};d.gross={bad:false,checked:'—'};d.evalId=null;d.feedback=null;appeals[cid]={};
+  if(done){
+    const ev=await CQA_API.evaluation(done.id);
+    applyEvaluation(d,ev);
+  }
+  d.loaded=true;
+}
+function applyEvaluation(d,ev){
+  d.evalId=ev.id;d.summary=ev;d.operator=ev.operator_name||'—';
+  d.feedback=ev.feedback;d.facts=ev.facts;d.models=ev.models;d.cost=ev.cost_usd;d.checklistName=ev.checklist_name;
+  const snap=Object.fromEntries(ev.checklist.criteria.map(c=>[c.key,c]));
+  ev.results.forEach(r=>{
+    const sc=snap[r.key];if(!sc)return;
+    if(r.type==='flag'){
+      const rng=r.checked_range?` (#${r.checked_range[0]+1}–#${r.checked_range[1]+1})`:'';
+      d.gross={bad:ev.final_score.gross_error,checked:r.explanation+rng,ev:r.evidence.map(e=>e.index+1)};
+      return;
+    }
+    const fc=critToFront(sc);
+    const first=r.evidence[0];
+    d.res[fc.id]={v:ansToFront(fc,r.answer),ev:r.evidence.map(e=>e.index+1),why:r.explanation,
+      q:first?'«'+String(first.text).slice(0,160)+(String(first.text).length>160?'…':'')+'»':'',
+      conf:r.needs_review?.5:(r.confidence==='high'?.95:r.confidence==='medium'?.8:.6),
+      sig:sigOf(fc),gemini:r.gemini,jev:r.jev,agreement:r.agreement,adjudication:r.adjudication,
+      reasons:r.review_reasons,range:r.checked_range};
+  });
+  appeals[d.id]={};
+  ev.appeals.forEach(a=>{
+    const id=BE.keyId[a.criterion_key];if(!id)return;
+    const c=CRIT.find(x=>x.id===id)||{type:'yn'};
+    const item={text:a.comment,_id:a.id,ai:a.ai_review};
+    if(a.status!=='open')item.decision={act:a.status==='changed'?'change':'confirm',reason:a.reason||'',
+      v:ansToFront(c,a.status==='changed'?a.new_answer:a.original_answer)};
+    appeals[d.id][id]=item;
+  });
+}
+/* ISO-время звонков с 7 знаками дробной части Date.parse понимает не везде — обрезаем до миллисекунд */
+function normTs(ts){return String(ts).replace(/(\.\d{3})\d+/,'$1')}
+function fillPick(){
+  $('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${esc(k)}">${d.lang} · ${esc(d.id)}</option>`).join('');
+  if(cur)$('#pick').value=cur;
+}
+
+/* ---------- действия ---------- */
+async function beSendAppeal(d,critId,text){
+  if(!D[d].evalId)throw new Error('диалог ещё не оценён');
+  await CQA_API.appeal(D[d].evalId,BE.keyOf(critId),text);
+  await beLoadDialog(d,true);
+}
+async function beDecide(d,critId,sel,reason,act){
+  const ap=appeals[d][critId];
+  await CQA_API.decide(ap._id,{decision:act==='confirm'?'confirm':'change',
+    new_answer:act==='change'?String(sel):null,reason,reviewer:'Проверяющий'});
+  await beLoadDialog(d,true);
+}
+async function beSaveChecklist(){
+  const body={name:(BE.checklist&&BE.checklist.name||'Чек-лист').replace(/\s*·\s*v\d+$/,'')+' · v'+(ver+1),
+    description:BE.checklist&&BE.checklist.description,criteria:CRIT.map(critToBack).concat(BE.flags)};
+  const cl=await CQA_API.createChecklist(body);
+  await beLoadChecklist();
+  return cl;
+}
+/* пакетная оценка с настоящим прогрессом */
+async function beRunBatch(title,body){
+  const b=await CQA_API.batch(body);
+  return new Promise(resolve=>{
+    $('#runTitle').textContent=title;
+    $('#runSub').textContent=`Диалогов: ${b.total}. Модели: ${BE.health?BE.health.gemini_model:'Gemini'}${BE.health&&BE.health.jev_enabled?' + '+BE.health.jev_model:''}`;
+    $('#runList').innerHTML='';$('#runClose').disabled=true;$('#runDlg').showModal();
+    const ok='<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 4.2 3.2 6.2 7 1.8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    const tick=async()=>{
+      let s;try{s=await CQA_API.batchStatus(b.batch_id)}catch(e){setTimeout(tick,3000);return}
+      $('#runSub').textContent=`Готово ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:'')+(s.running?` · оценивается ${s.running}`:'');
+      $('#runList').innerHTML=s.evaluations.map(e=>{
+        const cls=e.status==='done'?'ok':e.status==='running'?'go':e.status==='error'?'err':'';
+        const tail=e.status==='done'?` — ${fmt(e.final_total)}${e.gross_error?' · грубая ошибка':''}`:e.status==='error'?' — ошибка':'';
+        return `<div class="${cls}" title="${esc(e.error||'')}"><i>${e.status==='done'?ok:''}</i>${esc(e.conversation_id)}${tail}</div>`;
+      }).join('');
+      if(s.finished){$('#runClose').disabled=false;resolve(s);return}
+      setTimeout(tick,2500);
+    };
+    $('#runClose').onclick=()=>$('#runDlg').close();
+    tick();
+  });
+}
+async function beRefreshAfterBatch(){
+  await beLoadAll();
+  if(cur&&D[cur])await beLoadDialog(cur,true);
+  route();
+}
 
 </script>
 <script>
@@ -557,13 +796,22 @@ function sectionScores(d){
 /* ================= УТИЛИТЫ ================= */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+/* Текст модели ссылается на реплики как [9] или [9, 11] (нумерация бэкенда с нуля).
+   Экранируем и превращаем в кликабельные #10, #12 — как в транскрипте. */
+const linkify=s=>!CQA_API.enabled?esc(s):esc(s).replace(/\[(\d+(?:\s*[,–-]\s*\d+)*)\]/g,(_,g)=>
+  g.split(/\s*,\s*/).map(part=>{
+    const [a,b]=part.split(/\s*[–-]\s*/).map(Number);
+    const one=n=>`<button class="lk inl" data-go-msg="${n+1}">#${n+1}</button>`;
+    return b!==undefined?one(a)+'–'+one(b):one(a);
+  }).join(', '));
 const nf=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2});
 const fmt=n=>n===null||n===undefined?'—':nf.format(n);
 const maxOf=c=>Math.max(...c.steps);
 const label=(c,v)=>v==='na'?'N/A':c.type==='yn'?(v==='yes'?'Да':'Нет'):`${v} из ${maxOf(c)}`;
 const kind=(c,v)=>v==='na'?'na':c.type==='yn'?v:'scale';
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2400)}
-const nAppeals=d=>Object.values(appeals[d]).filter(a=>!a.decision).length;
+const nAppeals=d=>D[d]&&!D[d].loaded&&D[d].summary?(D[d].summary.open_appeals||0)
+  :Object.values(appeals[d]||{}).filter(a=>!a.decision).length;
 const pendingAppeals=()=>Object.keys(D).reduce((s,d)=>s+nAppeals(d),0);
 function syncCount(){const n=pendingAppeals();$('#apCount').hidden=!n;$('#apCount').textContent=n}
 
@@ -601,21 +849,40 @@ function motion(el,frames,ms=180){
 /* ================= РОУТИНГ ================= */
 let H=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
 function go(h){H=h;try{history.replaceState(null,'',h)}catch(_){}route()}
-function route(){
-  const [,view='list',arg]=H.split('/');
+let routeSeq=0;
+async function route(){
+  const seq=++routeSeq;
+  const [,view='list',raw]=H.split('/');
+  const arg=raw?decodeURIComponent(raw):raw;
   if(view==='card'&&D[arg])cur=arg;
-  ['list','card','checklist','appeals'].forEach(v=>$('#v-'+v).hidden=v!==view);
+  ['list','card','checklist','appeals','stats'].forEach(v=>{const el=$('#v-'+v);if(el)el.hidden=v!==view});
   $$('#nav button').forEach(t=>t.classList.toggle('on',t.dataset.r===view));
   syncCount();
+  try{
+    if(CQA_API.enabled&&view==='card'&&cur&&!D[cur].loaded){
+      $('#chat').innerHTML='<div class="empty">Загрузка…</div>';$('#crit').innerHTML='';$('#score').innerHTML='';
+      await beLoadDialog(cur);
+    }
+    if(CQA_API.enabled&&view==='appeals')await beLoadAppealDialogs();
+  }catch(e){toast('Ошибка загрузки: '+e.message)}
+  if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
   if(view==='list')renderList();
-  if(view==='card')renderCard();
+  if(view==='card'){if(cur)renderCard();else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
   if(view==='checklist')renderEditor();
   if(view==='appeals')renderAppeals();
+  if(view==='stats')renderStats();
+  syncCount();
   scrollTo(0,0);
   motion($('#v-'+view),[{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],180);
 }
+/* для очереди апелляций нужны карточки всех диалогов, где есть апелляции */
+async function beLoadAppealDialogs(){
+  const list=await CQA_API.appeals();
+  const ids=[...new Set(list.map(a=>a.conversation_id))].filter(id=>D[id]);
+  await Promise.all(ids.map(id=>beLoadDialog(id)));
+}
 addEventListener('hashchange',()=>{if(location.hash.startsWith('#/')&&location.hash!==H){H=location.hash;route()}});
-$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.r==='card'?'#/card/'+cur:'#/'+b.dataset.r)};
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.r==='card'?'#/card/'+encodeURIComponent(cur):'#/'+b.dataset.r)};
 $('#back').onclick=()=>go('#/list');
 
 </script>
@@ -624,43 +891,61 @@ $('#back').onclick=()=>go('#/list');
 /* ================= СПИСОК ================= */
 const KINDS={all:()=>true,low:r=>r.needsReview,appeal:r=>r.a>0,gross:r=>r.g};
 let rowsCache=[];
+let fGroup='';
 function listRows(){
   return Object.entries(D).map(([key,dialog])=>{
+    const s=dialog.summary;
+    if(!dialog.loaded&&CQA_API.enabled){
+      const done=s&&s.status==='done';
+      return {key,id:dialog.id,lang:dialog.lang,ch:dialog.channel,op:dialog.operator,group:dialog.group,
+        s:done?s.final_total:null,g:!!(done&&s.gross_error),a:(s&&s.open_appeals)||0,needsReview:!!(done&&s.needs_review),
+        status:s?s.status:'none'};
+    }
     const needsReview=CRIT.some(c=>!pending(key,c)&&dialog.res[c.id].conf<.65);
-    return {key,id:dialog.id,lang:dialog.lang,ch:dialog.channel,op:dialog.operator,
-      s:total(key).score,g:dialog.gross.bad,a:nAppeals(key),needsReview};
+    const anyRes=CRIT.some(c=>!pending(key,c));
+    return {key,id:dialog.id,lang:dialog.lang,ch:dialog.channel,op:dialog.operator,group:dialog.group,
+      s:total(key).score,g:dialog.gross.bad,a:nAppeals(key),needsReview,
+      status:dialog.running?'running':(anyRes||!CQA_API.enabled?'done':(s?s.status:'none'))};
   });
 }
+const statusTag=r=>r.status==='running'||r.status==='pending'?'<span class="fl">Оценивается</span>'
+  :r.status==='error'?'<span class="fl g">Ошибка оценки</span>':r.status==='none'?'<span class="fl">Не оценён</span>':'';
 /* полный пересчёт: при входе на экран и при смене данных */
 function renderList(){rowsCache=listRows();renderListChrome();renderRows()}
-/* сводка и фильтры; поле поиска не пересоздаётся */
+/* фильтры и счётчики; поле поиска не пересоздаётся */
 function renderListChrome(){
-  const all=rowsCache.filter(r=>r.s!==null),avg=all.reduce((s,r)=>s+r.s,0)/all.length;
-  $('#avg').textContent=`${rowsCache.length} диалогов · средний балл ${fmt(all.length?avg:null)}`;
   const seg=[['all','Все'],['low','Требуют проверки'],['appeal','Апелляции'],['gross','Грубые ошибки']];
   $('#fKinds').innerHTML=seg.map(([k,t])=>`<button class="seg ${fKind===k?'on':''}" data-kind="${k}">${t}<small>${rowsCache.filter(KINDS[k]).length}</small></button>`).join('');
   $('#fLangs').innerHTML=['RU','KZ','EN'].map(l=>`<button class="seg ${fLang.has(l)?'on':''}" data-lang="${l}">${l}</button>`).join('');
+  $('#fGroups').innerHTML=CQA_API.enabled&&BE.groups.length>1?'<span class="sep"></span>'+[['','Все наборы'],...BE.groups.map(g=>[g,g])]
+    .map(([g,t])=>`<button class="seg ${fGroup===g?'on':''}" data-group="${esc(g)}">${esc(t)}</button>`).join(''):'';
 }
 /* строки таблицы: единственное, что обновляется при вводе в поиск */
 function renderRows(){
+  const rows=rowsCache;
   const q=$('#q').value.trim().toLowerCase();
-  let v=rowsCache.filter(r=>KINDS[fKind](r)&&(!fLang.size||fLang.has(r.lang))&&(!q||r.id.toLowerCase().includes(q)||r.op.toLowerCase().includes(q)));
-  if(sortDir)v=v.slice().sort((a,b)=>(a.s-b.s)*sortDir);
+  let v=rows.filter(r=>KINDS[fKind](r)&&(!fLang.size||fLang.has(r.lang))&&(!fGroup||r.group===fGroup)
+    &&(!q||r.id.toLowerCase().includes(q)||String(r.op).toLowerCase().includes(q)));
+  if(sortDir)v=v.slice().sort((a,b)=>((a.s??-1)-(b.s??-1))*sortDir);
+  const all=v.filter(r=>r.s!==null&&r.s!==undefined),avg=all.reduce((s,r)=>s+r.s,0)/all.length;
+  $('#avg').textContent=`${v.length} диалогов · средний балл ${fmt(all.length ? Math.round(avg*100)/100 : null)}`;
   $('#sortScore').textContent='Балл'+(sortDir===1?' ↑':sortDir===-1?' ↓':'');
-  $('#rows').innerHTML=v.map(r=>`<tr data-key="${r.key}"><td class="did">${r.id}</td><td>${r.lang}</td><td>${r.ch}</td><td>${esc(r.op)}</td>
-    <td class="r ${r.s<60?'low-score':''}">${fmt(r.s)}</td>
-    <td>${r.g?'<span class="fl g">Грубая ошибка</span>':''}${r.a?'<span class="fl">Апелляция</span>':''}${r.needsReview?'<span class="fl">Требует проверки</span>':''}</td></tr>`).join('');
+  $('#rows').innerHTML=v.map(r=>`<tr data-key="${esc(r.key)}"><td class="did">${esc(r.id)}</td><td>${r.lang}</td><td>${r.ch}</td><td>${esc(r.op)}</td>
+    <td class="r ${r.s!==null&&r.s<60?'low-score':''}">${fmt(r.s)}</td>
+    <td>${r.g?'<span class="fl g">Грубая ошибка</span>':''}${r.a?'<span class="fl">Апелляция</span>':''}${r.needsReview?'<span class="fl">Требует проверки</span>':''}${statusTag(r)}</td></tr>`).join('');
   $('#none').hidden=v.length>0;
+  if(!rows.length&&CQA_API.enabled)$('#none').textContent='Диалогов нет. Нажмите «Оценить новые» и загрузите набор по group_id.';
 }
 $('#q').oninput=renderRows;
 $('#filters').onclick=e=>{
-  const k=e.target.closest('[data-kind]'),l=e.target.closest('[data-lang]');
+  const k=e.target.closest('[data-kind]'),l=e.target.closest('[data-lang]'),g=e.target.closest('[data-group]');
   if(k){fKind=k.dataset.kind;renderListChrome();renderRows()}
   if(l){const x=l.dataset.lang;fLang.has(x)?fLang.delete(x):fLang.add(x);renderListChrome();renderRows()}
+  if(g){fGroup=g.dataset.group;renderListChrome();renderRows()}
 };
 $('#rows').onclick=e=>{
   const tr=e.target.closest('tr');if(!tr)return;
-  go('#/card/'+tr.dataset.key);
+  go('#/card/'+encodeURIComponent(tr.dataset.key));
 };
 $('#sortScore').onclick=()=>{sortDir=sortDir===1?-1:1;renderRows()};
 
@@ -670,11 +955,11 @@ $('#sortScore').onclick=()=>{sortDir=sortDir===1?-1:1;renderRows()};
 /* ================= КАРТОЧКА ================= */
 function renderCard(){
   const t=total(cur);   /* итог считаем один раз на обновление карточки */
-  $('#pick').value=cur;renderChat();renderScore(t);renderCrit(t);
+  $('#pick').value=cur;renderChat();renderScore(t);renderFeedback();renderCrit(t);
 }
 function bubble(d,i,opt={}){
   const [who,t,text]=D[d].msgs[i],n=i+1;
-  const tm=`<span class="tm">${mm(secOf(d,n))}</span>`;
+  const tm=`<span class="tm" data-seek="${n}">${mm(secOf(d,n))}</span>`;
   const id=opt.noId?'':`id="m${n}"`,mk=opt.mark?' mark':'';
   if(who==='system')return `<div class="m system${mk}" ${id}>${esc(text)}<span class="mf">${tm} · #${n}</span></div>`;
   return `<div class="m ${who}${mk}" ${id}><div class="b">${esc(text)}<div class="mf">${tm} · #${n}</div></div></div>`;
@@ -685,7 +970,7 @@ function msgList(d,idx,opt={}){
   let last='',out='';
   idx.forEach(i=>{
     const who=D[d].msgs[i][0];
-    if(who!=='system'&&who!==last)out+=`<div class="gl ${who}">${names[who]}</div>`;
+    if(who!=='system'&&who!==last)out+=`<div class="gl ${who}">${names[who]||esc(who)}</div>`;
     last=who==='system'?'':who;
     out+=bubble(d,i,{noId:opt.noId,mark:(opt.marks||[]).includes(i+1)});
   });
@@ -693,13 +978,16 @@ function msgList(d,idx,opt={}){
 }
 function renderChat(){
   const d=D[cur];
+  const player=CQA_API.enabled&&d.audio
+    ?`<div class="player"><audio id="aud" controls preload="none" src="${CQA_API.audioUrl(d.id)}"></audio><small>Нажмите на время реплики или ссылку на реплику — запись перемотается к этому месту</small></div>`:'';
   const chat=$('#chat');
-  chat.innerHTML=msgList(cur,d.msgs.map((_,i)=>i));
+  chat.innerHTML=player+msgList(cur,d.msgs.map((_,i)=>i));
   /* реплики появляются по очереди: шаг 50 мс, весь каскад не дольше секунды */
-  [...chat.children].forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
+  [...chat.children].filter(el=>!el.classList.contains('player')).forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
   chat.classList.add('in');
   $('#cardTitle').textContent=d.id;
-  $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`;
+  $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`
+    +(d.checklistName?`<span title="Чек-лист оценки">${esc(d.checklistName)}</span>`:'');
 }
 const mm=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
 /* время реплики в секундах от начала: чаты дают MM:SS, звонки — ISO 8601 с часовым поясом */
@@ -708,6 +996,10 @@ const secOf=(d,n)=>{
   if(ts.includes('T'))return Math.max(0,Math.round((Date.parse(ts)-Date.parse(ms[0][1]))/1000));
   const [m,s]=ts.split(':').map(Number);return m*60+s;
 };
+function seekTo(n){
+  const a=$('#aud');if(!a||!D[cur].msgs[n-1])return;
+  a.currentTime=secOf(cur,n);a.play().catch(()=>{});
+}
 
 function renderScore(t=total(cur)){
   renderScoreHtml(t);
@@ -722,17 +1014,47 @@ function renderScoreHtml(t){
   const notes=[];
   if(diff)notes.push(`<span class="up">${diff>0?'+':''}${fmt(diff)} после решения</span>, было ${fmt(o.score)}`);
   if(nas.length)notes.push(`N/A: вес ${nas.reduce((a,c)=>a+c.w,0)} перераспределён`);
-  if(act.length<CRIT.length)notes.push(`ожидают оценки: ${CRIT.length-act.length}`);
+  if(act.length&&act.length<CRIT.length)notes.push(`ожидают оценки: ${CRIT.length-act.length}`);
+  if(CQA_API.enabled&&d.models)notes.push(`<span class="mdl">${esc(d.models.gemini||'')}${d.models.jev?' + '+esc(d.models.jev):''}${d.cost!=null?` · $${d.cost.toFixed(4)}`:''}</span>`);
   const g=d.gross;
-  $('#score').innerHTML=`<div class="sc-top"><span class="n">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
-   <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">проверено ${g.checked}</span></div>`;
+  const btn=CQA_API.enabled?`<div class="sc-act"><button class="btn ${d.evalId?'':'primary'}" id="evalNow">${d.running?'Оценивается…':d.evalId?'Переоценить':'Оценить диалог'}</button>`
+    +(d.evalId?`<a class="tx" href="${CQA_API.url('/api/evaluations/'+d.evalId+'/export')}" target="_blank" rel="noopener">Экспорт для CRM</a>`:'')+'</div>':'';
+  if(CQA_API.enabled&&!d.evalId){
+    $('#score').innerHTML=`<div class="sc-top"><span class="n">—</span><span class="of">из 100</span><div class="sc-side">${d.running?'Оценка выполняется, обновите через минуту':'Диалог ещё не оценён'}</div></div>${btn}`;
+  }else{
+    $('#score').innerHTML=`<div class="sc-top"><span class="n">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
+     <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${CQA_API.enabled?'':'проверено '}${linkify(g.checked)}</span>
+     ${g.ev&&g.ev.length?`<span class="ev">${g.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('')}</span>`:''}</div>${btn}`;
+  }
+  const b=$('#evalNow');
+  if(b)b.onclick=async()=>{
+    if(d.running){toast('Оценка уже выполняется');return}
+    try{
+      await beRunBatch('Оценка диалога '+d.id,{conversation_ids:[d.id]});
+      await beRefreshAfterBatch();toast('Оценка готова');
+    }catch(e){toast('Ошибка: '+e.message)}
+  };
+}
+function renderFeedback(){
+  const box=$('#fb');if(!box)return;
+  const f=CQA_API.enabled&&D[cur].feedback;
+  if(!f){box.hidden=true;box.innerHTML='';return}
+  const link=x=>x.turn!=null?`<button class="lk" data-go-msg="${x.turn+1}">#${x.turn+1}</button>`:'';
+  const nameOf=k=>{const id=BE.keyId[k];const c=CRIT.find(x=>x.id===id);return c?c.name:''};
+  box.hidden=false;
+  box.innerHTML=`<div class="tr-h">Рекомендации оператору</div>
+    <p class="why">${linkify(f.summary||'')}</p>
+    ${f.improvements&&f.improvements.length?`<h4>Что улучшить</h4><ul class="fbl">${f.improvements.map(x=>`<li class="ev">${link(x)} ${linkify(x.text)}${x.criterion_key&&nameOf(x.criterion_key)?` <small>· ${esc(nameOf(x.criterion_key))}</small>`:''}${x.example_phrase?`<span class="q">Можно сказать: «${esc(x.example_phrase)}»</span>`:''}</li>`).join('')}</ul>`:''}
+    ${f.strengths&&f.strengths.length?`<h4>Что получилось хорошо</h4><ul class="fbl">${f.strengths.map(x=>`<li class="ev">${link(x)} ${linkify(x.text)}</li>`).join('')}</ul>`:''}`;
 }
 function decideForm(d,c,ap){
   const r=resOf(d,c);
   const opts=(c.type==='yn'?['yes','no',...(c.na?['na']:[])]:[...c.steps,...(c.na?['na']:[])]).map(o=>`<option value="${o}" ${o==r.v?'selected':''}>${label(c,o)}</option>`).join('');
-  return `<div class="decide"><div class="cmt">${esc(ap.text)}</div>
+  const ai=ap.ai?`<div class="st ai">ИИ-проверка: ${ap.ai.appeal_justified?'апелляция обоснована':'апелляция не обоснована'}, предлагает «${esc(label(c,ansToFront(c,ap.ai.suggested_answer)))}». ${linkify(ap.ai.explanation||'')}</div>`
+    :(CQA_API.enabled&&ap._id?`<div class="f"><button class="tx" data-ai="${c.id}" data-d="${esc(d)}">Попросить ИИ перепроверить</button></div>`:'');
+  return `<div class="decide"><div class="cmt">${esc(ap.text)}</div>${ai}
     <div class="f"><label class="fi">Новая оценка<select class="field" data-v="${c.id}">${opts}</select></label><label class="fi">Причина решения<input class="field" data-r="${c.id}"></label></div>
-    <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${d}" data-act="confirm">Подтвердить оценку</button><button class="btn" data-save="${c.id}" data-d="${d}" data-act="change">Изменить на выбранную</button></div></div>`;
+    <div class="f"><button class="btn primary" data-save="${c.id}" data-d="${esc(d)}" data-act="confirm">Подтвердить оценку</button><button class="btn" data-save="${c.id}" data-d="${esc(d)}" data-act="change">Изменить на выбранную</button></div></div>`;
 }
 function renderCrit(t=total(cur)){
   const secs=sectionScores(cur);let lastSec=null;
@@ -745,35 +1067,47 @@ function renderCrit(t=total(cur)){
     return head+critRow(c,i,t);
   }).join('');
 }
+const AGREE={agree:'модели согласны',minor:'соседние ступени шкалы',disputed:'модели разошлись — Gemini перепроверил',
+  review:'модели разошлись, проверьте',gemini_only:'Jev недоступен'};
+function modelsLine(c,r){
+  if(!r.gemini)return '';
+  const j=r.jev?`Jev: ${esc(label(c,ansToFront(c,r.jev.answer)))} (${Math.round(r.jev.probability*100)}%)`:'';
+  const adj=r.adjudication&&r.adjudication.changed?' · ответ изменён после перепроверки':'';
+  return `<div class="mdl">Gemini: ${esc(label(c,ansToFront(c,r.gemini.answer)))}${j?' · '+j:''} · ${AGREE[r.agreement]||''}${adj}</div>`;
+}
 function critRow(c,i,t){
-    if(pending(cur,c))return `<div class="cr" data-id="${c.id}"><div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v na">Ожидает оценки</span><span></span></div><div class="cr-b why">Критерий изменён. Примените чек-лист, чтобы оценить его в этом диалоге.</div></div>`;
+    if(pending(cur,c)){
+      const msg=CQA_API.enabled&&!D[cur].evalId?'Диалог ещё не оценён.':'Критерий изменён. Примените чек-лист, чтобы оценить его в этом диалоге.';
+      return `<div class="cr" data-id="${c.id}"><div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v na">Ожидает оценки</span><span></span></div><div class="cr-b why">${msg}</div></div>`;
+    }
     const r=resOf(cur,c),v=value(cur,c),ap=appeals[cur][c.id];
     const p=points(c,v),eff=v==='na'||!t.den?null:c.w/t.den*100;
     const evs=r.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('');
+    const rng=!evs&&r.range?`<div class="ev">Проверенный участок: <button class="lk" data-go-msg="${r.range[0]+1}">#${r.range[0]+1}</button>–<button class="lk" data-go-msg="${r.range[1]+1}">#${r.range[1]+1}</button></div>`:'';
     let state='';
     if(ap&&!ap.decision)state=`<div class="st">Апелляция на проверке: ${esc(ap.text)}</div>`;
     if(ap&&ap.decision)state=ap.decision.act==='confirm'
       ?`<div class="st done">Оценка подтверждена. ${esc(ap.decision.reason)}</div>`
       :`<div class="st done"><s>${label(c,r.v)}</s> → <b>${label(c,ap.decision.v)}</b>. ${esc(ap.decision.reason)}</div>`;
     const dec=reviewer&&ap&&!ap.decision?decideForm(cur,c,ap):'';
+    const canAppeal=!ap||ap.decision;
     return `<div class="cr k-${kind(c,v)}" data-id="${c.id}">
       <div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v ${kind(c,v)}">${label(c,v)}</span><span class="cr-p">${p===null?'—':fmt(Math.round(p*100)/100)} / ${c.w}</span></div>
       ${eff!==null&&Math.abs(eff-c.w)>.05?`<div class="cr-w">вес ${c.w} → ${fmt(Math.round(eff*100)/100)} с учётом N/A</div>`:''}
-      <div class="cr-b"><p class="why">${esc(r.why)}</p>
-        ${evs?`<div class="ev">Реплики: ${evs}${r.q?`<span class="q">${esc(r.q)}</span>`:''}</div>`:''}
-        <div class="cr-f">${r.conf<.65?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${ap?'':`<button class="tx" data-ap="${c.id}">Оспорить</button>`}</div>
+      <div class="cr-b"><p class="why">${linkify(r.why)}</p>
+        ${evs?`<div class="ev">Реплики: ${evs}${r.q?`<span class="q">${esc(r.q)}</span>`:''}</div>`:rng}
+        ${modelsLine(c,r)}
+        <div class="cr-f">${r.conf<.65?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
         ${state}${dec}</div></div>`;
 }
-function saveDecision(d,id,sel,reason,act){
+async function saveDecision(d,id,sel,reason,act){
+  if(CQA_API.enabled){await beDecide(d,id,sel,reason,act);return}
   const c=CRIT.find(x=>x.id===id),r=resOf(d,c);
   const v=act==='confirm'?r.v:(c.type==='scale'&&sel!=='na'?Number(sel):sel);
   appeals[d][id].decision={v,reason,act};persist();
 }
-function refreshPick(){
-  $('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${k}">${d.lang} · ${d.id}</option>`).join('');
-}
-refreshPick();
-$('#pick').onchange=e=>go('#/card/'+e.target.value);
+if(!CQA_API.enabled)$('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${k}">${d.lang} · ${d.id}</option>`).join('');
+$('#pick').onchange=e=>go('#/card/'+encodeURIComponent(e.target.value));
 $('#rev').onclick=function(){
   reviewer=!reviewer;this.setAttribute('aria-pressed',reviewer);
   if(!$('#v-card').hidden)renderCrit();
@@ -785,9 +1119,16 @@ function openAppeal(id){
   $('#dlgText').value='';$('#dlg').showModal();$('#dlgText').focus();
 }
 $('#dlgNo').onclick=()=>$('#dlg').close();
-$('#dlgYes').onclick=()=>{
+$('#dlgYes').onclick=async()=>{
   const t=$('#dlgText').value.trim();
   if(!t){toast('Добавьте комментарий');return}
+  if(CQA_API.enabled){
+    $('#dlgYes').disabled=true;
+    try{await beSendAppeal(cur,apId,t);$('#dlg').close();renderCrit();syncCount();toast('Апелляция отправлена')}
+    catch(e){toast('Ошибка: '+e.message)}
+    finally{$('#dlgYes').disabled=false}
+    return;
+  }
   appeals[cur][apId]={text:t};persist();$('#dlg').close();renderCrit();syncCount();
   toast('Апелляция отправлена');
 };
@@ -809,7 +1150,15 @@ function renderEditor(){
       ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>`:''}
       <div class="fld"><label class="chk"><input type="checkbox" data-f="na" ${c.na?'checked':''}>Разрешить N/A</label></div>
       ${c.na?`<div class="fld"><label>Условие N/A</label><input class="field" type="text" data-f="nac" value="${esc(c.nac)}"></div>`:'<div></div>'}
+      ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
     </div></div>`).join('');
+  if(CQA_API.enabled){
+    const sel=$('#applyTo');
+    if(sel&&!sel.dataset.filled){
+      sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к набору ${esc(g)}</option>`).join('');
+      sel.value=BE.groups[BE.groups.length-1]||'';sel.dataset.filled='1';
+    }
+  }
   refreshSide();
 }
 function refreshSide(){
@@ -817,8 +1166,12 @@ function refreshSide(){
   $('#wlist').innerHTML=CRIT.map(c=>`<div class="wl"><span class="t">${esc(c.name)}</span><span>${c.w}</span></div>`).join('')+`<div class="wl total"><span>Сумма</span><span>${sum}</span></div>`;
   const changed=CRIT.filter(c=>sigOf(c)!==savedSigs[c.id]).length;
   dirty=dirty||changed>0;
-  $('#verTitle').textContent='v'+ver;
-  $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}. Остальные результаты берутся из кэша.`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>';
+  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?BE.checklist.name:'v'+ver;
+  const tail=CQA_API.enabled?' Сохранение создаёт новую версию чек-листа; старые оценки остаются со своей версией.'
+    :' Остальные результаты берутся из кэша.';
+  $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}.${tail}`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>'
+    +(CQA_API.enabled&&BE.flags.length?`<br><small>Грубые ошибки (${BE.flags.map(f=>esc(f.name)).join(', ')}) проверяются всегда и отмечаются отдельно.</small>`:'')
+    +(sum!==100?`<br><small>Сумма весов ${sum} — итог всё равно нормируется к 100.</small>`:'');
 }
 $('#ed').addEventListener('input',e=>{
   const f=e.target.dataset.f;if(!f)return;
@@ -844,13 +1197,30 @@ $('#addCrit').onclick=()=>{
   CRIT.push({id:nextId++,name:'Новый критерий',q:'',w:5,type:'yn',na:false,nac:''});
   dirty=true;renderEditor();$$('.ec').at(-1).scrollIntoView({block:'center'});
 };
-$('#applyBtn').onclick=()=>{
+$('#applyBtn').onclick=async()=>{
+  if(CQA_API.enabled){
+    const bad=CRIT.find(c=>!String(c.name).trim()||(!String(c.q||'').trim()&&!String(c.name).trim()));
+    if(bad){toast('У критерия нет названия');return}
+    const grp=$('#applyTo')?$('#applyTo').value:'';
+    $('#applyBtn').disabled=true;
+    try{
+      const cl=await beSaveChecklist();
+      dirty=false;renderEditor();toast('Сохранено: '+cl.name);
+      if(grp){
+        const s=await beRunBatch(`Применяем «${cl.name}» к набору ${grp}`,{group:grp,checklist_id:cl.id});
+        await beRefreshAfterBatch();
+        toast(`Чек-лист применён: ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:''));
+      }
+    }catch(e){toast('Ошибка: '+e.message)}
+    finally{$('#applyBtn').disabled=false}
+    return;
+  }
   const need=CRIT.filter(c=>Object.keys(D).some(d=>pending(d,c)));
   const cached=CRIT.length-need.length;
   CRIT.forEach(c=>savedSigs[c.id]=sigOf(c));
   ver++;
   if(!need.length){dirty=false;persist();renderEditor();toast('Сохранено как v'+ver+'. Пересчёт не нужен');return}
-  runProgress('Применяем v'+ver,`Диалогов: ${Object.keys(D).length}. Модель: gemma3:12b, локально`,
+  runProgress('Применяем v'+ver,`Диалогов: ${Object.keys(D).length}. Демонстрационный режим`,
     need.map(c=>({t:`Пересчёт: ${c.name}`})).concat([{t:`Из кэша: ${cached} критериев`,cache:true}]),
     ()=>{
       Object.keys(D).forEach(d=>need.forEach(c=>{
@@ -860,7 +1230,14 @@ $('#applyBtn').onclick=()=>{
       dirty=false;persist();renderEditor();toast('Чек-лист применён');
     });
 };
-$('#resetState').onclick=resetSaved;
+$('#resetState').onclick=async()=>{
+  if(!CQA_API.enabled){resetSaved();return}
+  if(!confirm('Создать новую версию чек-листа из исходного PDF и сделать её активной?'))return;
+  try{
+    const t=await CQA_API.defaultChecklist();
+    await CQA_API.createChecklist(t);await beLoadChecklist();dirty=false;renderEditor();toast('Восстановлен исходный чек-лист');
+  }catch(e){toast('Ошибка: '+e.message)}
+};
 
 </script>
 <script>
@@ -868,45 +1245,130 @@ $('#resetState').onclick=resetSaved;
 /* ================= АПЕЛЛЯЦИИ ================= */
 function renderAppeals(){
   const items=[];
-  Object.keys(D).forEach(d=>Object.keys(appeals[d]).forEach(id=>{const c=CRIT.find(x=>x.id==id);if(c&&!pending(d,c))items.push({d,c})}));
+  Object.keys(D).forEach(d=>Object.keys(appeals[d]||{}).forEach(id=>{const c=CRIT.find(x=>x.id==id);if(c&&!pending(d,c))items.push({d,c})}));
+  /* открытые — сверху */
+  items.sort((a,b)=>(!!appeals[a.d][a.c.id].decision)-(!!appeals[b.d][b.c.id].decision));
   if(!items.length){$('#apList').innerHTML='<div class="empty">Апелляций нет</div>';$('#apDetail').innerHTML='';return}
   if(!apSel||!items.some(i=>i.d===apSel.d&&i.c.id===apSel.id))apSel={d:items[0].d,id:items[0].c.id};
   $('#apList').innerHTML=items.map(({d,c})=>{
     const a=appeals[d][c.id],on=apSel.d===d&&apSel.id===c.id;
-    return `<button class="ap-item ${on?'on':''}" data-d="${d}" data-id="${c.id}"><b>${D[d].id}</b><span>${esc(c.name)} · ${a.decision?'решено':'на проверке'}</span></button>`;
+    return `<button class="ap-item ${on?'on':''}" data-d="${esc(d)}" data-id="${c.id}"><b>${esc(D[d].id)}</b><span>${esc(c.name)} · ${a.decision?'решено':'на проверке'}</span></button>`;
   }).join('');
   const d=apSel.d,c=CRIT.find(x=>x.id===apSel.id),a=appeals[d][c.id],r=resOf(d,c);
-  const idx=new Set();r.ev.forEach(n=>[n-1,n,n+1].forEach(k=>{if(k>=1&&k<=D[d].msgs.length)idx.add(k)}));
+  const idx=new Set();
+  const anchors=r.ev.length?r.ev:(r.range?[r.range[0]+1,r.range[1]+1]:[]);
+  anchors.forEach(n=>[n-1,n,n+1].forEach(k=>{if(k>=1&&k<=D[d].msgs.length)idx.add(k)}));
   const frag=msgList(d,[...idx].sort((x,y)=>x-y).map(n=>n-1),{noId:true,marks:r.ev});
   $('#apDetail').innerHTML=`<div class="panel ap-d">
-    <div class="meta"><span>${D[d].id}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div>
+    <div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div>
     <h2>${esc(c.name)}</h2>
     <div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>${a.decision?'Решение':'Итог сейчас'}</small><b>${label(c,a.decision?a.decision.v:r.v)}</b></div></div>
     <div class="st">${esc(a.text)}</div>
-    <p class="why" style="margin-top:12px">${esc(r.why)}</p>
+    <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
+    ${CQA_API.enabled?modelsLine(c,r):''}
     <div class="frag">${frag}</div>
     ${a.decision?`<div class="hist"><div class="st done">${a.decision.act==='confirm'?'Оценка подтверждена':'Оценка изменена'}. ${esc(a.decision.reason)}</div><div>Итог диалога: ${fmt(total(d,true).score)} → <b>${fmt(total(d).score)}</b></div></div>`:decideForm(d,c,a)}
-    <div style="margin-top:16px"><button class="tx" data-open="${d}">Открыть диалог</button></div>
+    <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>
   </div>`;
 }
 $('#apList').onclick=e=>{const b=e.target.closest('.ap-item');if(!b)return;apSel={d:b.dataset.d,id:+b.dataset.id};renderAppeals()};
-$('#apDetail').onclick=e=>{const o=e.target.closest('[data-open]');if(o)go('#/card/'+o.dataset.open)};
+$('#apDetail').onclick=e=>{const o=e.target.closest('[data-open]');if(o)go('#/card/'+encodeURIComponent(o.dataset.open))};
+
+</script>
+<script>
+/* Экран «Аналитика» (для администратора): по последней оценке каждого диалога, финальные баллы после апелляций. */
+/* ================= АНАЛИТИКА ================= */
+let opSel=null;
+const AGREE_RU={agree:'согласны',minor:'соседние ступени',disputed:'перепроверено',review:'проверить',gemini_only:'только Gemini'};
+const pct=v=>v==null?'—':fmt(v)+'%';
+function kpi(t,v,sub){return `<div class="panel kpi"><small>${t}</small><b>${v}</b>${sub?`<span>${sub}</span>`:''}</div>`}
+function bar(v,max){const w=max?Math.max(2,Math.round(v/max*100)):0;return `<span class="bar"><i style="width:${w}%"></i></span>`}
+function groupTable(title,obj){
+  const rows=Object.entries(obj).sort((a,b)=>(b[1].avg_total??0)-(a[1].avg_total??0));
+  return `<div class="panel tbl st-t"><div class="tr-h">${title}</div><table><thead><tr><th></th><th class="r">Диалогов</th><th class="r">Средний балл</th><th class="r">Грубые ошибки</th></tr></thead><tbody>
+    ${rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${v.count}</td><td class="r ${v.avg_total!==null&&v.avg_total<60?'low-score':''}">${fmt(v.avg_total)}</td><td class="r">${v.gross_errors||''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+async function renderStats(){
+  const box=$('#statsBody');
+  if(!CQA_API.enabled){box.innerHTML='<div class="empty">Аналитика доступна при подключённом бэкенде</div>';return}
+  box.innerHTML='<div class="empty">Загрузка…</div>';
+  let s;try{s=await CQA_API.stats()}catch(e){box.innerHTML=`<div class="empty">Ошибка: ${esc(e.message)}</div>`;return}
+  const o=s.overview,dist=s.score_distribution,maxD=Math.max(1,...Object.values(dist));
+  const ag=s.model_agreement.per_criterion_counts,agTotal=Object.values(ag).reduce((a,b)=>a+b,0)||1;
+  box.innerHTML=`
+  <div class="kpis">
+    ${kpi('Оценено диалогов',o.evaluated_conversations)}
+    ${kpi('Средний балл',fmt(o.avg_total),o.avg_initial_total!==o.avg_total?`до апелляций ${fmt(o.avg_initial_total)}`:'')}
+    ${kpi('С грубыми ошибками',o.gross_error_conversations)}
+    ${kpi('Критериев на проверку',o.criteria_needing_review,'модели не согласны или мало уверенности')}
+    ${kpi('Апелляции',s.appeals.total||0,s.appeals.total?`изменено ${s.appeals.changed||0} · ${pct(s.appeals.change_rate_pct)} решений`:'')}
+    ${kpi('Стоимость оценки',o.avg_cost_usd!=null?'$'+o.avg_cost_usd.toFixed(4):'—',`всего $${(o.total_cost_usd||0).toFixed(2)} · ~${Math.round((o.avg_duration_ms||0)/1000)} с`)}
+  </div>
+  <div class="st-grid">
+    <div class="panel box"><h3>Распределение баллов</h3>
+      ${['85-100','70-84','50-69','0-49','n/a'].filter(k=>dist[k]).map(k=>`<div class="wl"><span class="t">${k}</span>${bar(dist[k],maxD)}<span>${dist[k]}</span></div>`).join('')}</div>
+    <div class="panel box"><h3>Согласие Gemini и Jev по критериям</h3>
+      ${Object.entries(ag).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="wl"><span class="t">${AGREE_RU[k]||k}</span>${bar(v,agTotal)}<span>${Math.round(v/agTotal*100)}%</span></div>`).join('')}
+      <small>Ответ изменён после перепроверки: ${s.model_agreement.adjudication_changed_answer}</small></div>
+  </div>
+  <div class="panel tbl st-t"><div class="tr-h">Критерии — от самых проблемных</div><table><thead><tr><th>Критерий</th><th class="r">Средний % балла</th><th class="r">N/A</th><th>Ответы</th><th>Согласие моделей</th></tr></thead><tbody>
+    ${s.by_criterion.map(c=>`<tr><td>${esc(c.name||c.key)}</td><td class="r ${c.avg_score_pct!==null&&c.avg_score_pct<60?'low-score':''}">${pct(c.avg_score_pct)}</td><td class="r">${pct(c.na_rate)}</td>
+      <td class="mut">${Object.entries(c.answers).map(([a,n])=>`${a==='yes'?'Да':a==='no'?'Нет':a==='na'?'N/A':a}: ${n}`).join(' · ')}</td>
+      <td class="mut">${Object.entries(c.model_agreement).filter(([k])=>k!=='null').map(([a,n])=>`${AGREE_RU[a]||a}: ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>
+  <div class="st-grid">${groupTable('По языкам',s.by_language)}${groupTable('По каналам',s.by_channel)}</div>
+  <div class="st-grid">
+    <div class="panel tbl st-t"><div class="tr-h">Операторы <small class="mut">— нажмите, чтобы открыть рекомендации</small></div><table><thead><tr><th>Оператор</th><th class="r">Диалогов</th><th class="r">Средний балл</th><th class="r">Грубые</th></tr></thead><tbody id="opRows">
+      ${Object.entries(s.by_operator).sort((a,b)=>(a[1].avg_total??999)-(b[1].avg_total??999)).map(([k,v])=>`<tr data-op="${esc(k)}" class="${opSel===k?'on':''}"><td>${esc(k)}</td><td class="r">${v.count}</td><td class="r ${v.avg_total!==null&&v.avg_total<60?'low-score':''}">${fmt(v.avg_total)}</td><td class="r">${v.gross_errors||''}</td></tr>`).join('')}</tbody></table></div>
+    <div id="opCard"></div>
+  </div>
+  <div class="st-grid">
+    <div class="panel tbl st-t"><div class="tr-h">Самые низкие баллы</div><table><tbody>
+      ${s.lowest.map(x=>`<tr data-conv="${esc(x.conversation_id)}"><td class="did">${esc(x.conversation_id)}</td><td class="r low-score">${fmt(x.total)}</td><td>${x.gross_error?'<span class="fl g">Грубая ошибка</span>':''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="panel tbl st-t"><div class="tr-h">Грубые ошибки</div><table><tbody>
+      ${s.gross_errors.map(x=>`<tr data-conv="${esc(x.conversation_id)}"><td class="did">${esc(x.conversation_id)}</td><td>${esc(x.explanation||'')}</td></tr>`).join('')||'<tr><td class="mut">Не выявлено</td></tr>'}</tbody></table></div>
+  </div>`;
+  if(opSel)renderOperator(opSel);
+}
+async function renderOperator(name){
+  opSel=name;$$('#opRows tr').forEach(t=>t.classList.toggle('on',t.dataset.op===name));
+  const box=$('#opCard');box.innerHTML='<div class="panel box">Загрузка…</div>';
+  let p;try{p=await CQA_API.operator(name)}catch(e){box.innerHTML=`<div class="panel box">Ошибка: ${esc(e.message)}</div>`;return}
+  const areas=p.most_frequent_improvement_areas.map(([k,n])=>{const c=p.criteria.find(x=>x.key===k);return `${esc(c?c.name:k)} (${n})`}).join(', ');
+  box.innerHTML=`<div class="panel box op-card"><h3>Оператор</h3><h2>${esc(p.operator)} · ${fmt(p.avg_total)}</h2>
+    ${areas?`<p class="mut">Чаще всего зоны роста: ${areas}</p>`:''}
+    <ul class="fbl">${p.improvements.slice(0,12).map(i=>`<li class="ev"><button class="lk" data-conv="${esc(i.conversation_id)}">${esc(i.conversation_id)}</button> ${esc(i.text)}${i.example_phrase?`<span class="q">Можно сказать: «${esc(i.example_phrase)}»</span>`:''}</li>`).join('')||'<li class="mut">Рекомендаций нет</li>'}</ul></div>`;
+}
+$('#v-stats').addEventListener('click',e=>{
+  const op=e.target.closest('[data-op]');if(op){renderOperator(op.dataset.op);return}
+  const cv=e.target.closest('[data-conv]');if(cv&&D[cv.dataset.conv])go('#/card/'+encodeURIComponent(cv.dataset.conv));
+});
 
 </script>
 <script>
 /* Общие события, окно прогресса, тема, запуск. */
 /* ================= ОБЩИЕ СОБЫТИЯ ================= */
-document.addEventListener('click',e=>{
+document.addEventListener('click',async e=>{
   const g=e.target.closest('[data-go-msg]');
-  if(g){
+  if(g&&$('#m'+g.dataset.goMsg)){
     $$('.m.mark').forEach(m=>m.classList.remove('mark'));
-    [...g.closest('.ev').querySelectorAll('[data-go-msg]')].forEach(b=>{
-      const m=$('#m'+b.dataset.goMsg);m.classList.add('mark');
-      motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300);
+    const grp=g.closest('.ev');
+    (grp?[...grp.querySelectorAll('[data-go-msg]')]:[g]).forEach(b=>{
+      const m=$('#m'+b.dataset.goMsg);
+      if(m){m.classList.add('mark');motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300)}
     });
     $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
+    seekTo(+g.dataset.goMsg);
   }
+  const sk=e.target.closest('[data-seek]');if(sk&&$('#aud'))seekTo(+sk.dataset.seek);
   const ap=e.target.closest('[data-ap]');if(ap)openAppeal(+ap.dataset.ap);
+  const ai=e.target.closest('[data-ai]');
+  if(ai){
+    const d=ai.dataset.d,a=appeals[d][+ai.dataset.ai];
+    ai.disabled=true;ai.textContent='ИИ перепроверяет…';
+    try{await CQA_API.aiReview(a._id);await beLoadDialog(d,true);
+      if(!$('#v-card').hidden)renderCrit();else renderAppeals()}
+    catch(err){toast('Ошибка: '+err.message);ai.disabled=false}
+  }
   const sv=e.target.closest('[data-save]');
   if(sv){
     const id=+sv.dataset.save,d=sv.dataset.d||cur,act=sv.dataset.act||'change',box=sv.closest('.decide');
@@ -914,7 +1376,9 @@ document.addEventListener('click',e=>{
     const c=CRIT.find(x=>x.id===id);
     if(!reason){toast('Укажите причину');box.querySelector('[data-r]').focus();return}
     if(act==='change'&&String(sel)===String(resOf(d,c).v)){toast('Выберите оценку, отличную от текущей');return}
-    saveDecision(d,id,sel,reason,act);syncCount();
+    sv.disabled=true;
+    try{await saveDecision(d,id,sel,reason,act)}catch(err){toast('Ошибка: '+err.message);sv.disabled=false;return}
+    syncCount();
     if(!$('#v-card').hidden){const t=total(cur);renderScore(t);renderCrit(t)}else renderAppeals();
     toast(act==='confirm'?'Оценка подтверждена':'Оценка изменена, итог пересчитан');
   }
@@ -938,51 +1402,7 @@ function runProgress(title,sub,rows,done,step=120){
   })();
   $('#runClose').onclick=()=>{$('#runDlg').close();done&&done()};
 }
-
-/* Реальная обработка: по диалогу на строку, у каждой свой итог; из готовой строки можно открыть результат. */
-function runJobs(title,sub,names,worker){
-  $('#runTitle').textContent=title;$('#runSub').textContent=sub;
-  $('#runList').innerHTML=names.map(n=>`<div><i></i><span>${esc(n)}</span></div>`).join('');
-  const close=$('#runClose');close.disabled=true;close.onclick=()=>$('#runDlg').close();
-  $('#runDlg').showModal();
-  const els=$$('#runList div');let ok=0;
-  (async()=>{
-    for(let i=0;i<els.length;i++){
-      const el=els[i];el.classList.add('go');
-      try{
-        const key=await worker(i);ok++;
-        el.classList.remove('go');el.classList.add('ok');el.firstChild.innerHTML=CHECK_SVG;
-        if(key){
-          const b=document.createElement('button');b.className='tx';b.textContent='Открыть';
-          b.onclick=()=>{$('#runDlg').close();go('#/card/'+key)};el.append(b);
-        }
-      }catch(e){
-        el.classList.remove('go');el.classList.add('err');el.firstChild.textContent='!';
-        const s=document.createElement('span');s.className='ermsg';s.textContent=e.message;el.append(s);
-      }
-    }
-    $('#runSub').textContent=`Обработано ${ok} из ${els.length}`;
-    close.disabled=false;
-  })();
-}
-
-/* Ответ бэкенда: {results:{<id критерия>:{v,ev,why,q,conf}}, gross:{bad,checked}}; ev — номера реплик с 1. */
-function addEvaluated(record,resp){
-  const base=String(record.conversation_id||'eval').replace(/[^\w-]/g,'')||'eval';
-  let key=base,n=1;while(D[key])key=base+'-'+(++n);
-  const res={};
-  Object.entries(resp.results||{}).forEach(([id,r])=>{
-    const c=CRIT.find(x=>String(x.id)===String(id));
-    if(c)res[c.id]={v:r.v,ev:r.ev||[],why:r.why||'',q:r.q||'',conf:r.conf??1,sig:sigOf(c)};
-  });
-  D[key]={id:record.conversation_id||key,lang:String(record.language||'').toUpperCase(),
-    channel:record.channel||'agent chat',operator:record.operator||'—',
-    msgs:record.transcript.map(m=>[m.speaker,m.timestamp,m.text]),
-    res,gross:resp.gross||{bad:false,checked:'—'}};
-  appeals[key]={};refreshPick();
-  return key;
-}
-/* окно «Оценить диалог»: загрузка транскрипта и выбор чек-листа */
+/* окно «Оценить диалог»: загрузка транскрипта или набора по group_id и выбор чек-листа */
 let evRecords=[];
 function parseRecords(text){
   const j=JSON.parse(text);
@@ -991,31 +1411,47 @@ function parseRecords(text){
   return arr;
 }
 function evCheck(){
-  const t=$('#evText').value.trim(),info=$('#evInfo');
-  if(!t){evRecords=[];info.textContent='';$('#evGo').disabled=true;return}
+  const t=$('#evText').value.trim(),info=$('#evInfo'),grp=($('#evGroup')?.value||'').trim();
+  if(!t){evRecords=[];info.textContent=grp?`Набор «${grp}» будет загружен из API организаторов и оценён`:'';$('#evGo').disabled=!grp;return}
   try{
     evRecords=parseRecords(t);
     info.textContent=evRecords.slice(0,3).map(r=>`${r.conversation_id||'без ID'} · ${r.language||'?'} · ${r.transcript.length} реплик`).join('; ')+(evRecords.length>3?` и ещё ${evRecords.length-3}`:'');
     $('#evGo').disabled=false;
   }catch(e){evRecords=[];info.textContent='Не удалось прочитать: '+e.message;$('#evGo').disabled=true}
 }
-$('#runNew').onclick=()=>{
-  $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
-  $('#evText').value='';$('#evFile').value='';evCheck();$('#evDlg').showModal();
+$('#runNew').onclick=async()=>{
+  $('#evText').value='';$('#evFile').value='';if($('#evGroup'))$('#evGroup').value='';
+  if(CQA_API.enabled){
+    $('#evChk').innerHTML='<option>Загрузка…</option>';
+    CQA_API.checklists().then(list=>{
+      $('#evChk').innerHTML=list.slice().reverse().map(c=>`<option value="${c.id}" ${c.is_active?'selected':''}>${esc(c.name)}${c.is_active?' (активный)':''}</option>`).join('');
+    }).catch(err=>toast('Ошибка: '+err.message));
+  }else $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
+  evCheck();$('#evDlg').showModal();
 };
 $('#evFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#evText').value=await f.text();evCheck()}};
 $('#evText').oninput=evCheck;
+if($('#evGroup'))$('#evGroup').oninput=evCheck;
 $('#evNo').onclick=()=>$('#evDlg').close();
-$('#evGo').onclick=()=>{
-  const recs=evRecords.slice();$('#evDlg').close();
-  if(!CQA_API.enabled){
-    runProgress(`Оценка: ${recs.length} диал.`,'Демонстрационный режим: результат не сохраняется',
-      CRIT.map(c=>({t:c.name})).concat([{t:'Грубые ошибки'}]),()=>toast('Демо: результат не сохраняется'));
+$('#evGo').onclick=async()=>{
+  const recs=evRecords.slice(),grp=($('#evGroup')?.value||'').trim();
+  if(CQA_API.enabled){
+    $('#evGo').disabled=true;
+    try{
+      let ids=[];
+      if(recs.length)ids=ids.concat((await CQA_API.upload(recs)).conversation_ids);
+      if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
+      $('#evDlg').close();
+      const s=await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});
+      await beRefreshAfterBatch();
+      toast(`Готово: ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:''));
+    }catch(err){toast('Ошибка: '+err.message)}
+    finally{$('#evGo').disabled=false}
     return;
   }
-  runJobs(`Оценка: ${recs.length} диал.`,`Чек-лист v${ver}`,
-    recs.map(r=>r.conversation_id||'без ID'),
-    async i=>addEvaluated(recs[i],await CQA_API.evaluate(recs[i],{version:ver,criteria:CRIT})));
+  $('#evDlg').close();
+  runProgress(`Оценка: ${recs.length} диал.`,'Демонстрационный режим: бэкенд не подключён',
+    CRIT.map(c=>({t:c.name})).concat([{t:'Грубые ошибки'}]),()=>toast('Демо: результат не сохраняется'));
 };
 
 function syncTheme(){
@@ -1031,7 +1467,17 @@ try{const s=localStorage.getItem('cqa-theme');if(s)document.documentElement.data
 if(CQA_CONFIG.theme)document.documentElement.dataset.theme=CQA_CONFIG.theme;
 if(CQA_CONFIG.embed)document.body.classList.add('embed');
 syncTheme();
-route();
+(async()=>{
+  let err=null;
+  if(CQA_API.enabled){try{await beLoadAll()}catch(e){err=e}}
+  else{const n=$('#navStats');if(n)n.hidden=true}
+  await route();
+  if(err){
+    toast('Бэкенд недоступен: '+err.message);
+    $('#none').hidden=false;
+    $('#none').innerHTML=`Не удалось подключиться к бэкенду <b>${esc(CQA_CONFIG.apiBase)}</b>. Запустите его или откройте демо: <a href="?demo=1">?demo=1</a>`;
+  }
+})();
 
 </script>
 </body>
