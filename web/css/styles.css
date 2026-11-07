@@ -62,7 +62,10 @@ h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
 .lk:hover{color:var(--ink);text-decoration-color:var(--warn)}
 .field{padding:7px 10px;border-radius:6px;border:1px solid var(--line-2);background:var(--panel);outline:none;min-width:0}
 .field:focus{border-color:var(--accent)}
-select.field{padding-right:8px}
+/* выпадающие списки: своя стрелка вместо встроенной, чтобы справа был нормальный отступ */
+select.field{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:36px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237d8883' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:10px 6px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .v{display:inline-flex;align-items:center;gap:6px;font-weight:500;white-space:nowrap}
 .v::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
