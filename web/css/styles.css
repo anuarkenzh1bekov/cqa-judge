@@ -52,6 +52,7 @@ h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
 .meta span+span::before{content:"·";margin:0 8px}
 .btn{padding:6px 12px;border-radius:6px;box-shadow:inset 0 0 0 1px var(--line-2)}
 .btn:hover{background:var(--raised)}
+a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
 .btn.primary{background:var(--accent);color:var(--accent-ink);font-weight:600;box-shadow:none}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn:disabled{opacity:.45;cursor:default}
@@ -278,10 +279,13 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 .tm[data-seek]:hover{text-decoration:underline;text-underline-offset:2px}
 .sc-act{display:flex;gap:16px;align-items:center;padding:12px 24px;border-top:1px solid var(--line)}
 .fb{margin-top:16px;padding-bottom:16px}
-.fb>.why,.fb>h4,.fb>.fbl{margin-left:20px;margin-right:20px}
-.fb>.why{margin-top:12px}
+.fb>.why,.fb>h4,.fb>.why{margin-top:12px}
 .fb h4{margin-top:14px;font-size:12px;font-weight:500;color:var(--muted)}
 .fbl{list-style:none;padding:0;margin:0}
+.tr-h small{font-weight:400;color:var(--muted)}
+.mood{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line);color:var(--ink-2)}
+.mood.yes{color:var(--yes);border-color:var(--yes)}.mood.no{color:var(--no);border-color:var(--no)}.mood.warn{color:var(--warn);border-color:var(--warn)}
+.mood-line small{margin-left:6px;color:var(--muted)}
 .fbl li.ev{margin-top:8px}
 .fbl li .lk{margin-left:0;margin-right:6px}
 .run div.err{color:var(--no)}.run div.err i{border-color:var(--no)}

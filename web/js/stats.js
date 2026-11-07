@@ -35,9 +35,9 @@ function calibrationHtml(c){
 async function renderStats(){
   const box=$('#statsBody');
   if(!CQA_API.enabled){box.innerHTML='<div class="empty">Аналитика доступна при подключённом бэкенде</div>';return}
+  const xb=$('#xlsBtn');xb.href=CQA_API.url('/api/export/stats.xlsx');xb.hidden=false;
   box.innerHTML='<div class="empty">Загрузка…</div>';
-  $('#expXlsx').href=CQA_API.exportUrl('xlsx');$('#expCsv').href=CQA_API.exportUrl('csv');
-  $('#expXlsx').hidden=$('#expCsv').hidden=false;
+  $('#expCsv').href=CQA_API.exportUrl('csv');$('#expCsv').hidden=false;
   let s,cal=null;
   try{[s,cal]=await Promise.all([CQA_API.stats(),CQA_API.calibration().catch(()=>null)])}
   catch(e){box.innerHTML=`<div class="empty">Ошибка: ${esc(e.message)}</div>`;return}

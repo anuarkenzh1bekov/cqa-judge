@@ -56,6 +56,7 @@
       </section>
       <div>
         <section class="panel score" id="score"></section>
+        <section class="panel fb" id="mood" hidden></section>
         <section class="panel fb" id="fb" hidden></section>
         <section class="panel crits" id="crit"></section>
       </div>
@@ -76,7 +77,7 @@
 
   <!-- АНАЛИТИКА -->
   <section id="v-stats" hidden>
-    <div class="page-h"><h1>Аналитика</h1><span class="meta">последняя оценка каждого диалога, баллы после апелляций</span><span class="grow"></span><a class="btn" id="expXlsx" hidden download>Отчёт в Excel</a><a class="btn" id="expCsv" hidden download>CSV</a></div>
+    <div class="page-h"><h1>Аналитика</h1><span class="meta">последняя оценка каждого диалога, баллы после апелляций</span><span class="grow"></span><a class="btn" id="xlsBtn" hidden download title="Все показатели, оценки по каждому диалогу и критерию, обоснования, грубые ошибки и апелляции">Скачать Excel</a><a class="btn" id="expCsv" hidden download>CSV</a></div>
     <div id="statsBody"></div>
   </section>
 
@@ -98,12 +99,12 @@
 </dialog>
 <dialog id="evDlg">
   <h3>Оценить диалог</h3>
-  <p>Загрузите набор из API организаторов по group_id или свой транскрипт и выберите чек-лист.</p>
+  <p>Загрузите набор из API организаторов по group_id, свой транскрипт или запись звонка и выберите чек-лист.</p>
   <div class="fld"><label for="evGroup">group_id набора (API организаторов)</label><input class="field" id="evGroup" placeholder="например, DEV или значение для контрольного набора"></div>
   <div class="fld"><label for="evFile">Файл JSON</label><input class="field" type="file" id="evFile" accept=".json,application/json"></div>
   <div class="fld"><label for="evText">Или вставьте JSON записи</label><textarea class="field" id="evText" placeholder='{"conversation_id": "p1-ru-001", "language": "RU", "transcript": [...]}'></textarea></div>
-  <div class="fld"><label for="evAudio">Аудио звонка (необязательно)</label><input class="field" type="file" id="evAudio" accept="audio/*,.mp3,.wav,.m4a,.ogg">
-    <p class="hint" id="evAudioInfo">Пока заглушка: файл выбирается, но не загружается и не распознаётся. Оценка идёт по транскрипту.</p></div>
+  <div class="fld"><label for="evAudio">Аудио звонка (необязательно)</label><input class="field" type="file" id="evAudio" accept=".mp3,.wav,.ogg,.flac,.aac,.aiff,audio/mpeg,audio/wav,audio/ogg,audio/flac,audio/aac">
+    <p class="hint" id="evAudioInfo"></p></div>
   <div class="fld"><label for="evChk">Чек-лист</label><select class="field" id="evChk"></select></div>
   <p class="evinfo" id="evInfo"></p>
   <div class="f"><button class="btn" id="evNo">Отмена</button><button class="btn primary" id="evGo" disabled>Запустить оценку</button></div>

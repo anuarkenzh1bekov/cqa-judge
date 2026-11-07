@@ -85,7 +85,8 @@ function parseRecords(text){
 }
 function evCheck(){
   const t=$('#evText').value.trim(),info=$('#evInfo'),grp=($('#evGroup')?.value||'').trim();
-  if(!t){evRecords=[];info.textContent=grp?`Набор «${grp}» будет загружен из API организаторов и оценён`:'';$('#evGo').disabled=!grp;return}
+  const aud=$('#evAudio')&&$('#evAudio').files[0];
+  if(!t){evRecords=[];info.textContent=grp?`Набор «${grp}» будет загружен из API организаторов и оценён`:'';$('#evGo').disabled=!(grp||aud);return}
   try{
     evRecords=parseRecords(t);
     info.textContent=evRecords.slice(0,3).map(r=>`${r.conversation_id||'без ID'} · ${r.language||'?'} · ${r.transcript.length} реплик`).join('; ')+(evRecords.length>3?` и ещё ${evRecords.length-3}`:'');
@@ -102,11 +103,13 @@ $('#runNew').onclick=async()=>{
   }else $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
   evCheck();$('#evDlg').showModal();
 };
-/* Аудио: пока заглушка. Файл можно выбрать, но он никуда не отправляется и не распознаётся. */
-const AUDIO_HINT='Пока заглушка: файл выбирается, но не загружается и не распознаётся. Оценка идёт по транскрипту.';
+/* Аудио звонка: с бэкендом запись распознаётся (Gemini), сохраняется для плеера и оценивается как звонок. */
+const AUDIO_HINT=()=>CQA_API.enabled?'MP3, WAV, OGG, FLAC, AAC до 15 МБ. Запись распознаётся (роли, время, персональные данные скрыты) и оценивается как звонок.'
+  :'В демо-режиме запись не распознаётся: нужен бэкенд.';
 function audioHint(){
   const f=$('#evAudio').files[0];
-  $('#evAudioInfo').textContent=f?`${f.name} · ${(f.size/1048576).toFixed(1)} МБ. Это заглушка: файл никуда не отправляется.`:AUDIO_HINT;
+  $('#evAudioInfo').textContent=f?`${f.name} · ${(f.size/1048576).toFixed(1)} МБ. `+(CQA_API.enabled?'Будет распознана и оценена.':'Демо-режим: не распознаётся.'):AUDIO_HINT();
+  evCheck();
 }
 $('#evAudio').onchange=audioHint;
 $('#evFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#evText').value=await f.text();evCheck()}};
@@ -120,6 +123,13 @@ $('#evGo').onclick=async()=>{
     try{
       let ids=[];
       if(recs.length)ids=ids.concat((await CQA_API.upload(recs)).conversation_ids);
+      const aud=$('#evAudio').files[0];
+      if(aud){
+        $('#evInfo').textContent='Распознаём запись… обычно 20–60 секунд';
+        const t=await CQA_API.transcribe(aud);
+        toast(`Запись распознана: ${t.turns} реплик, язык ${t.language}, ${(t.duration_ms/1000).toFixed(0)} с, $${t.cost_usd.toFixed(3)}`);
+        ids.push(t.conversation_id);
+      }
       if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
       $('#evDlg').close();
       /* итог показывает само окно: «Готово N из N», открытие каждого, повтор неудавшихся */

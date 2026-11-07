@@ -1,14 +1,17 @@
-import html
 import re
+import uuid
+from datetime import datetime
+from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import services
+from .. import audio, services, transcribe
+from ..config import settings
 from ..db import get_db
 from ..llm import gemini
 from ..models import Conversation, Evaluation
@@ -58,6 +61,36 @@ def upload_conversations(body: UploadIn, db: Session = Depends(get_db)):
     return {"imported": len(ids), "conversation_ids": ids}
 
 
+@router.post("/conversations/transcribe")
+async def transcribe_recording(file: UploadFile = File(...), conversation_id: str | None = Form(None),
+                               group: str = Form("UPLOAD"), db: Session = Depends(get_db)):
+    """Upload a call recording: Gemini transcribes it (speakers, timestamps, masked personal data), the file is kept
+    for the player and the voice-tone analysis, and the result is stored as a regular "voice call" conversation.
+    Evaluate it afterwards like any other conversation."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in transcribe.MIME:
+        raise HTTPException(415, f"Формат {ext or '?'} не поддерживается. Можно: {', '.join(sorted(transcribe.MIME))}")
+    data = await file.read(settings.audio_max_mb * 1_000_000 + 1)
+    if len(data) > settings.audio_max_mb * 1_000_000:
+        raise HTTPException(413, f"Файл больше {settings.audio_max_mb} МБ")
+    if not data:
+        raise HTTPException(422, "Пустой файл")
+    cid = re.sub(r"[^\w.-]", "-", conversation_id or "")[:60] or f"call-{datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:4]}"
+    try:
+        res = await transcribe.run(data, transcribe.MIME[ext])
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Не удалось распознать запись: {e}") from e
+    root = Path(settings.audio_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / f"{cid}{ext}").write_bytes(data)
+    services.upsert_conversations(db, [{"conversation_id": cid, "channel": "voice call", "language": res["language"],
+                                        "transcript": res["transcript"],
+                                        "audio_url": f"{audio.LOCAL}{cid}{ext}"}], group)
+    return {"conversation_id": cid, "language": res["language"], "turns": len(res["transcript"]),
+            "transcript": res["transcript"], "cost_usd": res["cost_usd"], "duration_ms": res["duration_ms"],
+            "usage": res["usage"]}
+
+
 @router.get("/conversations")
 def list_conversations(group: str | None = None, language: str | None = None, channel: str | None = None,
                        db: Session = Depends(get_db)):
@@ -96,23 +129,6 @@ def get_conversation(cid: str, db: Session = Depends(get_db)):
             "evaluations": [services.eval_summary(e) for e in evs]}
 
 
-_SRC_RE = re.compile(r"""<source[^>]+src=["']([^"']+)["']""", re.I)
-
-
-async def _resolve_audio(http: httpx.AsyncClient, url: str) -> str:
-    """The organizers' audio_url is an HTML player page whose <source> holds a short-lived (1 h) signed mp3 link.
-    Resolve it on every request so the link is always fresh."""
-    r = await http.get(url)
-    if r.status_code != 200:
-        raise HTTPException(502, f"audio page returned {r.status_code}")
-    if r.headers.get("content-type", "").startswith("audio/"):
-        return url
-    m = _SRC_RE.search(r.text)
-    if not m:
-        raise HTTPException(502, "no audio source found on the player page")
-    return html.unescape(m.group(1))
-
-
 _SUMMARY_CACHE: dict[str, dict] = {}
 _SUMMARY_SCHEMA = {"type": "object", "properties": {
     "summary": {"type": "string"},
@@ -148,11 +164,20 @@ async def conversation_audio(cid: str, request: Request, db: Session = Depends(g
     c = db.get(Conversation, cid)
     if not c or not c.audio_url:
         raise HTTPException(404, "no audio for this conversation")
+    try:
+        local = audio.local_path(c.audio_url)
+    except audio.AudioError as e:
+        raise HTTPException(404, str(e)) from e
+    if local:  # uploaded recording: FileResponse handles Range (seeking) itself
+        return FileResponse(local, media_type=transcribe.MIME.get(local.suffix.lower(), "audio/mpeg"))
     http = httpx.AsyncClient(timeout=120, follow_redirects=True)
     try:
-        src = await _resolve_audio(http, c.audio_url)
+        src = await audio.resolve(http, c.audio_url)
         headers = {"Range": request.headers["range"]} if "range" in request.headers else {}
         resp = await http.send(http.build_request("GET", src, headers=headers), stream=True)
+    except audio.AudioError as e:
+        await http.aclose()
+        raise HTTPException(502, str(e)) from e
     except Exception:
         await http.aclose()
         raise

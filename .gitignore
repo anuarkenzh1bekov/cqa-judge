@@ -18,3 +18,5 @@ venv/
 .pytest_cache/
 data/
 backend/reports/*.json
+
+backend/audio/

@@ -1,0 +1,145 @@
+{
+ "_about": "Hand-written dialogs that are NOT in the DEV set: edge cases for each criterion. 'expected' holds our labels; a list means any of these answers is acceptable (a genuinely borderline case). Run: python backend/scripts/run_synthetic.py",
+ "records": [
+  {"conversation_id": "s01-ru-ideal-account", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Перевёл деньги на брокерский счёт вчера, а их до сих пор нет"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM, ассистент Freedom Broker. Соединяю вас с оператором."},
+   {"timestamp": "00:05", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:40", "speaker": "operator", "text": "Здравствуйте! Меня зовут Дана. Понимаю, что ждать поступления неприятно, сейчас разберёмся. Чтобы проверить ваш счёт, нужна идентификация — подтвердите, пожалуйста, личность по ссылке."},
+   {"timestamp": "01:30", "speaker": "system", "text": "Личность клиента подтверждена."},
+   {"timestamp": "01:40", "speaker": "operator", "text": "Спасибо. Подскажите, из какого банка и в какой валюте был перевод?"},
+   {"timestamp": "02:05", "speaker": "client", "text": "Из Kaspi, в тенге, 500 000"},
+   {"timestamp": "02:50", "speaker": "operator", "text": "Вижу ваш платёж: он поступил сегодня в 09:12 и сейчас на проверке у финмониторинга, это стандартная процедура для первого пополнения. Деньги зачислятся на счёт до 18:00 сегодня, дополнительно ничего делать не нужно."},
+   {"timestamp": "03:20", "speaker": "client", "text": "Понял, спасибо"},
+   {"timestamp": "03:35", "speaker": "operator", "text": "Итак, платёж найден и будет зачислен до 18:00. Если к этому времени деньги не появятся — напишите сюда, проверим. Хорошего дня!"}
+  ]},
+  {"conversation_id": "s02-ru-rude-operator", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Приложение вылетает при входе, уже третий день не могу посмотреть портфель!"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM. Передаю ваш вопрос оператору."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:50", "speaker": "operator", "text": "Здравствуйте, меня зовут Арман. Переустановите приложение."},
+   {"timestamp": "01:40", "speaker": "client", "text": "Уже переустанавливал два раза, не помогает. Это ваша проблема, а не моя"},
+   {"timestamp": "02:10", "speaker": "operator", "text": "У всех работает. Значит телефон у вас старый. Вы вообще инструкции читать умеете?"},
+   {"timestamp": "02:40", "speaker": "client", "text": "Вы серьёзно? Позовите руководителя"},
+   {"timestamp": "03:00", "speaker": "operator", "text": "Пишите жалобу на сайте."}
+  ]},
+  {"conversation_id": "s03-ru-no-identification", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Какие у меня сейчас открытые позиции и какой баланс?"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM. Подключаю оператора."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:35", "speaker": "operator", "text": "Здравствуйте! Меня зовут Ержан."},
+   {"timestamp": "00:50", "speaker": "operator", "text": "У вас открыты позиции: Apple — 15 акций, Tesla — 4 акции, KazMunayGas — 120 акций. Свободный остаток на счёте — 2 340 USD."},
+   {"timestamp": "01:30", "speaker": "client", "text": "Отлично, спасибо!"},
+   {"timestamp": "01:45", "speaker": "operator", "text": "Пожалуйста! Если будут ещё вопросы — пишите. До свидания!"}
+  ]},
+  {"conversation_id": "s04-ru-private-service", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Хочу начать инвестировать, но не знаю с чего начать"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM. Соединяю с оператором."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:40", "speaker": "operator", "text": "Здравствуйте! Меня зовут Тимур. Подскажите, какая сумма и на какой срок вы рассматриваете вложения?"},
+   {"timestamp": "01:10", "speaker": "client", "text": "Около миллиона тенге, на год"},
+   {"timestamp": "01:50", "speaker": "operator", "text": "Могу предложить вариант выгоднее: я лично веду портфели, доходность 30% годовых. Переведите деньги на мою карту 4400 4301 2345 6789 или оставьте свой личный номер, я позвоню вечером."},
+   {"timestamp": "02:30", "speaker": "client", "text": "Хорошо, я подумаю"},
+   {"timestamp": "02:40", "speaker": "operator", "text": "Буду ждать. Хорошего дня!"}
+  ]},
+  {"conversation_id": "s05-kz-tariff-good", "channel": "agent chat", "language": "KZ", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "АҚШ акцияларын сатып алғанда комиссия қанша болады?"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Сәлеметсіз бе! Мен AIM, Freedom Broker көмекшісімін. Сізді операторға қосамын."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Операторға жіберілді."},
+   {"timestamp": "00:45", "speaker": "operator", "text": "Сәлеметсіз бе! Менің атым Айгерім. Сіз қандай тарифте екеніңізді білесіз бе? Комиссия тарифке байланысты."},
+   {"timestamp": "01:20", "speaker": "client", "text": "Білмеймін, ешқашан ауыстырған жоқпын"},
+   {"timestamp": "02:00", "speaker": "operator", "text": "Онда сізде стандартты «Free» тарифі. Онда АҚШ акцияларына комиссия мәміле сомасының 0,5%-ы және бір бағалы қағазға 1,2 цент. Тарифті қосымшада «Профиль → Тариф» бөлімінен тексеріп, қажет болса ауыстыра аласыз."},
+   {"timestamp": "02:40", "speaker": "client", "text": "Түсінікті, рахмет"},
+   {"timestamp": "02:55", "speaker": "operator", "text": "Қорытындылай кетсем: комиссия 0,5% + 1,2 цент, тарифті «Профиль → Тариф» бөлімінен көресіз. Басқа сұрақтарыңыз болса, жазыңыз. Сау болыңыз!"}
+  ]},
+  {"conversation_id": "s06-en-half-answer", "channel": "agent chat", "language": "EN", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "What is the fee for withdrawing USD to a foreign bank, and how long does it take?"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Hello! I'm AIM, Freedom Broker's assistant. Connecting you to an agent."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Escalated to an agent."},
+   {"timestamp": "00:40", "speaker": "operator", "text": "Hello! My name is Alex."},
+   {"timestamp": "01:10", "speaker": "operator", "text": "Withdrawals to foreign banks usually take 1-3 business days."},
+   {"timestamp": "01:40", "speaker": "client", "text": "Ok thanks"},
+   {"timestamp": "01:50", "speaker": "operator", "text": "You're welcome. Bye!"}
+  ]},
+  {"conversation_id": "s07-kz-client-ru-operator", "channel": "agent chat", "language": "KZ", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Қосымшада құпия сөзді қалай өзгертемін?"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Сәлеметсіз бе! Мен AIM. Сізді операторға қосамын."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Операторға жіберілді."},
+   {"timestamp": "00:40", "speaker": "operator", "text": "Здравствуйте! Меня зовут Олег."},
+   {"timestamp": "00:55", "speaker": "client", "text": "Қазақша жазыңызшы"},
+   {"timestamp": "01:30", "speaker": "operator", "text": "Кешіріңіз! Құпия сөзді өзгерту үшін қосымшада «Профиль → Қауіпсіздік → Құпия сөзді өзгерту» бөлімін ашыңыз, ескі және жаңа құпия сөзді енгізіңіз."},
+   {"timestamp": "02:00", "speaker": "client", "text": "Болды, рахмет"},
+   {"timestamp": "02:10", "speaker": "operator", "text": "Құпия сөз «Профиль → Қауіпсіздік» бөлімінде өзгертіледі. Тағы сұрақ болса, жазыңыз. Сау болыңыз!"}
+  ]},
+  {"conversation_id": "s08-ru-silent-wait", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Когда придут дивиденды по Halyk Bank?"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM. Подключаю оператора."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:40", "speaker": "operator", "text": "Здравствуйте! Меня зовут Асель."},
+   {"timestamp": "06:10", "speaker": "client", "text": "Алло? Вы здесь?"},
+   {"timestamp": "14:30", "speaker": "client", "text": "??? Я жду уже 15 минут"},
+   {"timestamp": "15:00", "speaker": "operator", "text": "Дивиденды Halyk Bank за 2025 год выплачиваются до 30 июня, на брокерский счёт они поступают в течение 3-5 рабочих дней после выплаты эмитентом."},
+   {"timestamp": "15:40", "speaker": "client", "text": "Ладно"},
+   {"timestamp": "15:50", "speaker": "operator", "text": "Если будут вопросы — пишите. До свидания!"}
+  ]},
+  {"conversation_id": "s09-ru-client-left", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "оператор"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM. Соединяю с оператором."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:45", "speaker": "operator", "text": "Здравствуйте! Меня зовут Мадина. Чем могу помочь?"},
+   {"timestamp": "05:45", "speaker": "operator", "text": "Вы здесь? Опишите, пожалуйста, ваш вопрос."},
+   {"timestamp": "15:45", "speaker": "system", "text": "Чат закрыт из-за неактивности клиента."}
+  ]},
+  {"conversation_id": "s10-ru-call-blocked-order", "channel": "voice call", "language": "RU", "transcript": [
+   {"timestamp": "2026-11-05T10:00:00.0000000+00:00", "speaker": "system", "text": "Запись и транскрибирование запущены."},
+   {"timestamp": "2026-11-05T10:00:05.0000000+00:00", "speaker": "bot", "text": "Здравствуйте, добро пожаловать в Фридом брокер. Для выбора русского языка нажмите 2."},
+   {"timestamp": "2026-11-05T10:00:09.0000000+00:00", "speaker": "client", "text": "2"},
+   {"timestamp": "2026-11-05T10:00:20.0000000+00:00", "speaker": "system", "text": "Агент присоединился к разговору с клиентом."},
+   {"timestamp": "2026-11-05T10:00:23.0000000+00:00", "speaker": "operator", "text": "Фридом брокер, здравствуйте, меня зовут [Имя скрыто], чем могу помочь?"},
+   {"timestamp": "2026-11-05T10:00:30.0000000+00:00", "speaker": "client", "text": "Здравствуйте, у меня заявка на покупку висит с утра и не исполняется, я не могу её отменить"},
+   {"timestamp": "2026-11-05T10:00:38.0000000+00:00", "speaker": "operator", "text": "Понимаю, неприятная ситуация, сейчас посмотрю. Для доступа к счёту назовите, пожалуйста, полностью фамилию имя отчество и дату рождения."},
+   {"timestamp": "2026-11-05T10:00:50.0000000+00:00", "speaker": "client", "text": "[ФИО скрыто], двенадцатое марта восемьдесят девятого"},
+   {"timestamp": "2026-11-05T10:00:58.0000000+00:00", "speaker": "operator", "text": "Спасибо, данные совпадают. Какую бумагу вы покупали и по какой цене стоит заявка?"},
+   {"timestamp": "2026-11-05T10:01:05.0000000+00:00", "speaker": "client", "text": "Нвидиа по сто двадцать"},
+   {"timestamp": "2026-11-05T10:01:10.0000000+00:00", "speaker": "operator", "text": "Одну минуту, пожалуйста, оставайтесь на линии, я проверю заявку."},
+   {"timestamp": "2026-11-05T10:02:00.0000000+00:00", "speaker": "operator", "text": "Спасибо за ожидание. Заявка лимитная по сто двадцать, а рынок сейчас сто тридцать два, поэтому она не исполняется. Отменить не получалось, потому что американский рынок ещё закрыт и заявка ждёт открытия. Я её сейчас отменила с нашей стороны, проверьте в приложении в разделе заявки."},
+   {"timestamp": "2026-11-05T10:02:25.0000000+00:00", "speaker": "client", "text": "Да, вижу отменена. Спасибо"},
+   {"timestamp": "2026-11-05T10:02:30.0000000+00:00", "speaker": "operator", "text": "Итак, заявка отменена, если захотите купить по рынку — выставьте рыночную заявку после открытия в шестнадцать тридцать. Могу ещё чем-то помочь? Всего доброго, до свидания."}
+  ]},
+  {"conversation_id": "s11-ru-template-apology", "channel": "agent chat", "language": "RU", "transcript": [
+   {"timestamp": "00:00", "speaker": "client", "text": "Третий день не могу вывести деньги, заявка висит в статусе «в обработке». Мне они нужны срочно!"},
+   {"timestamp": "00:02", "speaker": "bot", "text": "Здравствуйте! Я AIM. Подключаю оператора."},
+   {"timestamp": "00:04", "speaker": "system", "text": "Эскалация на оператора."},
+   {"timestamp": "00:40", "speaker": "operator", "text": "Здравствуйте! Меня зовут Ирина. Приносим извинения за доставленные неудобства."},
+   {"timestamp": "01:10", "speaker": "operator", "text": "Вывод средств обычно занимает до 3 рабочих дней."},
+   {"timestamp": "01:40", "speaker": "client", "text": "Так уже 3 дня прошло! Что мне делать?"},
+   {"timestamp": "02:10", "speaker": "operator", "text": "Приносим извинения за доставленные неудобства. Ожидайте."},
+   {"timestamp": "02:30", "speaker": "client", "text": "Понятно. Бесполезно"},
+   {"timestamp": "02:40", "speaker": "operator", "text": "Хорошего дня!"}
+  ]}
+ ],
+ "expected": {
+  "s01-ru-ideal-account": {"answers": {"c01_contact": "yes", "c02_needs": "yes", "c03_identification": "yes", "c04_consultation": "20", "c05_empathy": "yes", "c06_management": "10", "c07_closing": "yes", "c08_gross": "no"},
+   "note": "Эталон с идентификацией ДО раскрытия данных, уточнением банка/валюты, итогом и прощанием."},
+  "s02-ru-rude-operator": {"answers": {"c01_contact": "yes", "c02_needs": "no", "c03_identification": "na", "c04_consultation": ["0", "5"], "c05_empathy": "no", "c06_management": ["4", "7"], "c07_closing": "no", "c08_gross": "yes"},
+   "note": "Оскорбление клиента («инструкции читать умеете?») → грубая ошибка. Не уточнил устройство/версию."},
+  "s03-ru-no-identification": {"answers": {"c01_contact": "yes", "c02_needs": ["na", "yes"], "c03_identification": "no", "c04_consultation": ["20", "15"], "c05_empathy": "yes", "c06_management": "10", "c07_closing": "yes", "c08_gross": ["no", "yes"]},
+   "note": "Баланс и позиции раскрыты без проверки личности → c03 «Нет». Флаг спорный: данные свои, но кому — не проверено."},
+  "s04-ru-private-service": {"answers": {"c01_contact": "yes", "c02_needs": "yes", "c03_identification": "na", "c04_consultation": "0", "c05_empathy": "yes", "c06_management": "10", "c07_closing": ["no", "yes"], "c08_gross": "yes"},
+   "note": "Предложение перевести деньги лично оператору и личный номер → грубая ошибка; консультации по существу нет."},
+  "s05-kz-tariff-good": {"answers": {"c01_contact": "yes", "c02_needs": "yes", "c03_identification": "na", "c04_consultation": "20", "c05_empathy": "yes", "c06_management": "10", "c07_closing": "yes", "c08_gross": "no"},
+   "note": "Казахский, оператор уточнил тариф, дал ответ и путь в приложении, итог + предложение помощи + прощание."},
+  "s06-en-half-answer": {"answers": {"c01_contact": "yes", "c02_needs": ["na", "no"], "c03_identification": "na", "c04_consultation": "10", "c05_empathy": "yes", "c06_management": ["7", "10"], "c07_closing": "no", "c08_gross": "no"},
+   "note": "Из двух вопросов (комиссия и срок) ответ только на срок → 10. «You're welcome. Bye!» без итога/помощи → «Нет»."},
+  "s07-kz-client-ru-operator": {"answers": {"c01_contact": "no", "c02_needs": "na", "c03_identification": "na", "c04_consultation": "20", "c05_empathy": "yes", "c06_management": ["7", "10"], "c07_closing": "yes", "c08_gross": "no"},
+   "note": "Клиент пишет по-казахски, оператор поздоровался по-русски → c01 «Нет». Дальше всё корректно."},
+  "s08-ru-silent-wait": {"answers": {"c01_contact": "yes", "c02_needs": "na", "c03_identification": "na", "c04_consultation": ["20", "15"], "c05_empathy": "no", "c06_management": ["4", "7"], "c07_closing": "yes", "c08_gross": "no"},
+   "note": "14 минут тишины без предупреждения, клиент дважды переспрашивает, оператор не извинился и не отреагировал на ожидание."},
+  "s09-ru-client-left": {"answers": {"c01_contact": "yes", "c02_needs": "na", "c03_identification": "na", "c04_consultation": "na", "c05_empathy": "yes", "c06_management": "10", "c07_closing": "na", "c08_gross": "no"},
+   "note": "Клиент так и не сформулировал запрос и ушёл → консультация и завершение N/A."},
+  "s10-ru-call-blocked-order": {"answers": {"c01_contact": "yes", "c02_needs": "yes", "c03_identification": "yes", "c04_consultation": "20", "c05_empathy": "yes", "c06_management": "10", "c07_closing": "yes", "c08_gross": "no"},
+   "note": "Звонок: имя под маской, проверка ФИО+дата рождения до доступа, предупредил об ожидании, итог + помощь + прощание."},
+  "s11-ru-template-apology": {"answers": {"c01_contact": "yes", "c02_needs": "no", "c03_identification": ["na", "no"], "c04_consultation": ["0", "5"], "c05_empathy": "no", "c06_management": ["4", "7"], "c07_closing": "no", "c08_gross": "no"},
+   "note": "Шаблонные извинения без реакции на проблему, не проверил заявку → «Ожидайте»."}
+ }
+}

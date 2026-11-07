@@ -8,6 +8,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: sqlite:////data/cqa.db
+      AUDIO_DIR: /data/audio
     volumes:
       - cqa-data:/data
     restart: unless-stopped

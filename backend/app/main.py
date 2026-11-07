@@ -40,6 +40,16 @@ for r in (conversations, checklists, evaluations, appeals, stats, reports):
     app.include_router(r.router)
 
 
+@app.middleware("http")
+async def revalidate_static(request, call_next):
+    """The UI files change with every deploy: make the browser re-check them (cheap 304 via ETag) instead of
+    running stale JS from its heuristic cache - otherwise new buttons silently don't show up after an update."""
+    resp = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "gemini_model": settings.gemini_model, "jev_enabled": jev.enabled(),

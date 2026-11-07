@@ -18,7 +18,7 @@ def test_all_agree(fake, conv):
     r = by_key(out)
     assert all(x["agreement"] == "agree" for x in r.values())
     assert out["score"]["total"] == 100.0
-    assert fake.calls == {"gemini": 1, "adjudication": 0, "jev": 1}
+    assert fake.calls == {"gemini": 1, "adjudication": 0, "jev": 1, "mood": 1}
     assert not any(x["needs_review"] for x in r.values())
     assert r["c01_contact"]["evidence"][0]["speaker"] == "operator"  # evidence enriched from transcript
 
@@ -89,3 +89,15 @@ def test_prompt_is_built_from_checklist(conv):
     assert "Обращение по имени" in p and "[3] (00:40) OPERATOR" in p
     assert s["properties"]["criteria"]["properties"]["x_name"]["properties"]["answer"]["enum"] == ["yes", "no"]
     assert "x_name" in prompts.jev_questions(CRIT + [extra])
+
+
+def test_client_mood_is_stored_and_does_not_change_score(fake, conv):
+    from app import pipeline
+    out = asyncio.run(pipeline.evaluate(conv, CRIT, use_sem=False))
+    m = out["facts"]["client_mood"]
+    assert (m["start"], m["end"], m["source"]) == ("anxious", "positive", "text")
+    assert m["moments"][0]["timestamp"] == "00:00" and m["moments"][1]["turn"] is None  # bad index dropped
+    fake.mood_fail = True
+    out2 = asyncio.run(pipeline.evaluate(conv, CRIT, use_sem=False))
+    assert out2["facts"]["client_mood"] is None and out2["usage"]["mood_error"]
+    assert out2["score"]["total"] == out["score"]["total"]

@@ -12,3 +12,4 @@
 backend/reports
 *.pdf
 web/dist
+backend/audio

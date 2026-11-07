@@ -8,6 +8,7 @@ os.environ["JEV_ENABLED"] = "true"
 os.environ["TYPESAFE_API_KEY"] = "test"
 os.environ["GOOGLE_API_KEY"] = "test"
 os.environ["SEED_DATASET"] = ""  # keep the test DB small; seeding is tested explicitly
+os.environ["AUDIO_DIR"] = f"{_tmp}/audio"  # uploaded recordings go to the temp dir, not the repo
 
 import pytest  # noqa: E402
 
@@ -38,15 +39,16 @@ class FakeModels:
         self.jev_prob = 0.95
         self.adjudicate_to = {}  # key -> answer returned by the re-check
         self.evidence = {k: [3] for k in GOOD}
-        self.calls = {"gemini": 0, "adjudication": 0, "jev": 0}
+        self.calls = {"gemini": 0, "adjudication": 0, "jev": 0, "mood": 0}
         self.jev_fail = False
+        self.mood_fail = False
 
     def _crit_block(self, keys, answers):
         return {k: {"analysis": "a", "answer": answers[k], "explanation": f"{k} — {answers[k]} [3]",
                     "evidence": self.evidence.get(k, [3]), "checked_range": [3, 5], "confidence": "high"}
                 for k in keys}
 
-    async def generate_json(self, prompt, schema, system=None, retries=2, validate=None):
+    async def generate_json(self, prompt, schema, system=None, retries=2, validate=None, contents=None):
         props = schema["properties"]
         usage = {"input_tokens": 1000, "output_tokens": 200, "thinking_tokens": 100, "calls": 1}
         if "facts" in props:  # main evaluation call
@@ -62,6 +64,18 @@ class FakeModels:
                 data["feedback"] = {"summary": "ok", "strengths": [{"text": "s", "turn": 3}],
                                     "improvements": [{"text": "i", "turn": 5, "criterion_key": "c07_closing",
                                                       "example_phrase": None}]}
+        elif "turns" in props:  # speech-to-text of an uploaded recording
+            data = {"language": "RU", "turns": [
+                {"start": "0:03", "speaker": "operator", "text": "Фридом брокер, здравствуйте, меня зовут [Имя скрыто]."},
+                {"start": "00:09", "speaker": "client", "text": "Где  посмотреть тариф?"},
+                {"start": "1:02", "speaker": "operator", "text": "В разделе «Профиль». До свидания!"}]}
+        elif "trajectory" in props:  # client mood
+            self.calls["mood"] += 1
+            if self.mood_fail:
+                raise RuntimeError("mood down")
+            data = {"start": "anxious", "end": "positive", "trajectory": "improved", "confidence": "high",
+                    "summary": "Волновался, в конце поблагодарил [4].",
+                    "moments": [{"turn": 0, "mood": "anxious", "note": "n"}, {"turn": 99, "mood": "calm", "note": "x"}]}
         elif "appeal_justified" in props:  # appeal AI review
             data = {"analysis": "a", "answer": "no", "explanation": "review", "evidence": [5],
                     "checked_range": None, "confidence": "medium", "appeal_justified": True}

@@ -2,7 +2,7 @@
 /* ================= КАРТОЧКА ================= */
 function renderCard(){
   const t=total(cur);   /* итог считаем один раз на обновление карточки */
-  $('#pick').value=cur;renderChat();renderScore(t);renderFeedback();renderCrit(t);
+  $('#pick').value=cur;renderChat();renderScore(t);renderMood();renderFeedback();renderCrit(t);
 }
 function bubble(d,i,opt={}){
   const [who,t,text]=D[d].msgs[i],n=i+1;
@@ -209,6 +209,31 @@ function renderScoreHtml(t){
       await beRefreshAfterBatch();
     }catch(e){toast('Ошибка: '+e.message)}
   };
+}
+/* Настроение клиента: отдельный анализ, на балл не влияет. Для звонков — ещё и по голосу из записи. */
+const MOOD={calm:'спокоен',positive:'доволен',confused:'растерян',anxious:'волнуется',irritated:'раздражён',angry:'злится'};
+const MOOD_CLS={calm:'',positive:'yes',confused:'warn',anxious:'warn',irritated:'no',angry:'no'};
+const OP_TONE={friendly:'доброжелательный',neutral:'нейтральный',tense:'напряжённый',irritated:'раздражённый'};
+const TRAJ={improved:'стало лучше',unchanged:'без изменений',worsened:'стало хуже'};
+function renderMood(){
+  const box=$('#mood');if(!box)return;
+  const m=CQA_API.enabled&&D[cur].facts&&D[cur].facts.client_mood;
+  if(!m){box.hidden=true;box.innerHTML='';return}
+  const tag=x=>`<span class="mood ${MOOD_CLS[x]||''}">${esc(MOOD[x]||x)}</span>`;
+  const v=m.voice;
+  box.hidden=false;
+  box.innerHTML=`<div class="tr-h">Настроение клиента <small>· на балл не влияет</small></div>
+    <p class="why mood-line">${tag(m.start)} → ${tag(m.end)} <small>${esc(TRAJ[m.trajectory]||'')}${m.confidence==='low'?' · уверенность низкая':''}</small></p>
+    <p class="why">${linkify(m.summary||'')}</p>
+    ${m.moments&&m.moments.length?`<ul class="fbl">${m.moments.map(x=>`<li class="ev">${x.turn!=null?`<button class="lk" data-go-msg="${x.turn+1}">#${x.turn+1}</button>`:''} ${tag(x.mood)} ${linkify(x.note||'')}</li>`).join('')}</ul>`:''}
+    ${v?`<h4>По голосу в записи</h4>
+      <p class="why">Клиент: ${tag(v.client_tone)} · оператор: ${esc(OP_TONE[v.operator_tone]||v.operator_tone||'')}. ${esc(v.summary||'')}</p>
+      ${v.moments&&v.moments.length?`<ul class="fbl">${v.moments.map(x=>`<li class="ev"><button class="lk" data-seek-t="${esc(x.time)}">${esc(x.time)}</button> ${tag(x.mood)} ${esc(x.cue||'')}</li>`).join('')}</ul>`:''}`
+      :(m.audio_error?`<p class="why"><small>Запись недоступна, настроение определено по тексту.</small></p>`:'')}`;
+  box.querySelectorAll('[data-seek-t]').forEach(b=>b.onclick=()=>{
+    const a=$('#aud');if(!a)return;const [mm,ss]=b.dataset.seekT.split(':').map(Number);
+    if(isNaN(mm)||isNaN(ss))return;a.currentTime=mm*60+ss;a.play().catch(()=>{});
+  });
 }
 function renderFeedback(){
   const box=$('#fb');if(!box)return;
