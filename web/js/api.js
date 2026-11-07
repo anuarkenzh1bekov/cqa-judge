@@ -22,6 +22,8 @@ const CQA_API={
   activeChecklist(){return this.get('/api/checklists/active')},
   checklists(){return this.get('/api/checklists')},
   defaultChecklist(){return this.get('/api/checklists/default-template')},
+  conversationSummary(id){return this.get('/api/conversations/'+encodeURIComponent(id)+'/summary')},
+  suggestCriterion(body){return this.post('/api/checklists/suggest-criterion',body)},
   createChecklist(body){return this.post('/api/checklists?activate=true',body)},
   importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
   upload(records){return this.post('/api/conversations',{records,group:'UPLOAD'})},

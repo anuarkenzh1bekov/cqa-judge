@@ -35,6 +35,8 @@ async def generate_json(prompt: str, schema: dict, system: str | None = None, re
         temperature=0.0,
         seed=7,
         automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+        **({"thinking_config": types.ThinkingConfig(thinking_level=settings.gemini_thinking.upper())}
+           if settings.gemini_thinking else {}),
     )
     usage = {"input_tokens": 0, "output_tokens": 0, "thinking_tokens": 0, "calls": 0}
     last_err = None

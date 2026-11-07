@@ -29,8 +29,8 @@ async function route(){
     if(CQA_API.enabled&&view==='appeals')await beLoadAppealDialogs();
   }catch(e){toast('Ошибка загрузки: '+e.message)}
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
-  if(view==='list')renderList();
-  if(view==='card'){syncPick();if(cur)renderCard();else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
+  if(view==='list'){renderList();if(CQA_API.enabled)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
+  if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
   if(view==='checklist')renderEditor();
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();

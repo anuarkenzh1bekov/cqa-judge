@@ -209,6 +209,74 @@ function beRunBatch(title,body){
     return {done:all.filter(r=>r.status==='done').length,total:rows.size,error:all.filter(r=>r.status==='error').length};
   });
 }
+/* Автооценка: диалог без оценки оценивается сразу при открытии, нажимать ничего не нужно.
+   Попытка одна на диалог за сеанс: при ошибке цикла нет, остаётся кнопка «Оценить диалог». */
+const beAutoTried=new Set();
+async function beAutoEvaluate(cid){
+  const d=D[cid];
+  if(!CQA_API.enabled||!d||!d.loaded||d.evalId||beAutoTried.has(cid))return;
+  beAutoTried.add(cid);
+  const redraw=()=>{if(cur===cid&&!$('#v-card').hidden)renderCard()};
+  try{
+    if(!d.running){
+      d.running=true;redraw();
+      await CQA_API.batch({conversation_ids:[cid]});
+    }else redraw();
+    let conv;
+    for(let i=0;i<120;i++){   // до ~5 минут
+      await beSleep(2500);
+      conv=await CQA_API.get('/api/conversations/'+encodeURIComponent(cid));
+      if(!conv.evaluations.some(e=>e.status==='pending'||e.status==='running'))break;
+    }
+    const bad=conv&&conv.evaluations.find(e=>e.status==='error');
+    await beLoadDialog(cid,true);
+    if(!D[cid].evalId&&bad)toast('Не удалось оценить диалог: '+beShortErr(bad.error));
+  }catch(e){
+    d.running=false;
+    toast('Не удалось оценить диалог: '+beShortErr(e.message));
+  }finally{
+    redraw();
+    try{if(!$('#v-list').hidden)renderList()}catch(_){}
+  }
+}
+/* Прогрев: все диалоги без оценки оцениваются в фоне, по 3 за раз (четвёртый слот остаётся тому, что
+   открыл пользователь), поэтому в карточке оценка чаще всего уже готова. Очередь идёт в порядке списка;
+   открытый диалог оценивается сразу, вне очереди. */
+const WARM_PAR=3,warmQueue=[],warmSeen=new Set();
+let warmActive=0;
+const needsEval=d=>!!d&&!d.evalId&&!d.running&&!(d.summary&&['done','pending','running'].includes(d.summary.status));
+function beWarm(ids){
+  if(!CQA_API.enabled)return;
+  ids.forEach(id=>{
+    if(needsEval(D[id])&&!warmSeen.has(id)&&!beAutoTried.has(id)){warmSeen.add(id);warmQueue.push(id)}
+  });
+  warmPump();
+}
+function warmPump(){
+  while(warmActive<WARM_PAR&&warmQueue.length){
+    const id=warmQueue.shift();
+    if(!needsEval(D[id])||beAutoTried.has(id))continue;   // за это время диалог могли открыть
+    warmActive++;
+    warmOne(id).finally(()=>{warmActive--;warmPump()});
+  }
+}
+async function warmOne(id){
+  try{
+    const b=await CQA_API.batch({conversation_ids:[id]});
+    for(let i=0;i<120;i++){
+      await beSleep(2500);
+      if((await CQA_API.batchStatus(b.batch_id)).finished)break;
+    }
+    const c=(await CQA_API.conversations()).find(x=>x.id===id);
+    const d=D[id];
+    if(c&&d&&!d.loaded){
+      const s=c.latest_evaluation;
+      d.summary=s;d.gross={bad:!!(s&&s.gross_error),checked:''};
+      if(s&&s.operator_name)d.operator=s.operator_name;
+    }
+    try{if(!$('#v-list').hidden)renderList()}catch(_){}
+  }catch(_){/* тихо: при открытии диалога сработает обычная автооценка */}
+}
 /* после оценки одного диалога из карточки: перечитать его и перерисовать экран */
 async function beRefreshAfterBatch(){
   if(cur&&D[cur])await beLoadDialog(cur,true);

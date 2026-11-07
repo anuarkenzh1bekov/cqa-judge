@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.8-flash"
     # USD per 1M tokens, Gemini 3.8 Flash paid Standard tier (ai.google.dev pricing, valid through 2026-12-31;
     # doubles to 1.50 / 7.50 from 2027-01-01). Output price includes thinking tokens.
+    # reasoning effort for Gemini: "" = model default, or minimal / low / medium / high
+    gemini_thinking: str = ""
     gemini_price_in_per_m: float = 0.75
     gemini_price_out_per_m: float = 3.75
 

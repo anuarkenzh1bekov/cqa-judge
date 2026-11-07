@@ -1,7 +1,6 @@
 /* Экран «Аналитика» (для администратора): по последней оценке каждого диалога, финальные баллы после апелляций. */
 /* ================= АНАЛИТИКА ================= */
 let opSel=null;
-const AGREE_RU={agree:'согласны',minor:'соседние ступени',disputed:'перепроверено',review:'проверить',gemini_only:'только Gemini'};
 const pct=v=>v==null?'—':fmt(v)+'%';
 function kpi(t,v,sub){return `<div class="panel kpi"><small>${t}</small><b>${v}</b>${sub?`<span>${sub}</span>`:''}</div>`}
 function bar(v,max){const w=max?Math.max(2,Math.round(v/max*100)):0;return `<span class="bar"><i style="width:${w}%"></i></span>`}
@@ -16,27 +15,21 @@ async function renderStats(){
   box.innerHTML='<div class="empty">Загрузка…</div>';
   let s;try{s=await CQA_API.stats()}catch(e){box.innerHTML=`<div class="empty">Ошибка: ${esc(e.message)}</div>`;return}
   const o=s.overview,dist=s.score_distribution,maxD=Math.max(1,...Object.values(dist));
-  const ag=s.model_agreement.per_criterion_counts,agTotal=Object.values(ag).reduce((a,b)=>a+b,0)||1;
-  box.innerHTML=`
+    box.innerHTML=`
   <div class="kpis">
     ${kpi('Оценено диалогов',o.evaluated_conversations)}
     ${kpi('Средний балл',fmt(o.avg_total),o.avg_initial_total!==o.avg_total?`до апелляций ${fmt(o.avg_initial_total)}`:'')}
     ${kpi('С грубыми ошибками',o.gross_error_conversations)}
-    ${kpi('Критериев на проверку',o.criteria_needing_review,'модели не согласны или мало уверенности')}
+    ${kpi('Критериев на проверку',o.criteria_needing_review,'нужен взгляд проверяющего')}
     ${kpi('Апелляции',s.appeals.total||0,s.appeals.total?`изменено ${s.appeals.changed||0} · ${pct(s.appeals.change_rate_pct)} решений`:'')}
-    ${kpi('Стоимость оценки',o.avg_cost_usd!=null?'$'+o.avg_cost_usd.toFixed(4):'—',`всего $${(o.total_cost_usd||0).toFixed(2)} · ~${Math.round((o.avg_duration_ms||0)/1000)} с`)}
   </div>
   <div class="st-grid">
     <div class="panel box"><h3>Распределение баллов</h3>
       ${['85-100','70-84','50-69','0-49','n/a'].filter(k=>dist[k]).map(k=>`<div class="wl"><span class="t">${k}</span>${bar(dist[k],maxD)}<span>${dist[k]}</span></div>`).join('')}</div>
-    <div class="panel box"><h3>Согласие Gemini и Jev по критериям</h3>
-      ${Object.entries(ag).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="wl"><span class="t">${AGREE_RU[k]||k}</span>${bar(v,agTotal)}<span>${Math.round(v/agTotal*100)}%</span></div>`).join('')}
-      <small>Ответ изменён после перепроверки: ${s.model_agreement.adjudication_changed_answer}</small></div>
   </div>
-  <div class="panel tbl st-t"><div class="tr-h">Критерии — от самых проблемных</div><table><thead><tr><th>Критерий</th><th class="r">Средний % балла</th><th class="r">N/A</th><th>Ответы</th><th>Согласие моделей</th></tr></thead><tbody>
+  <div class="panel tbl st-t"><div class="tr-h">Критерии — от самых проблемных</div><table><thead><tr><th>Критерий</th><th class="r">Средний % балла</th><th class="r">N/A</th><th>Ответы</th></tr></thead><tbody>
     ${s.by_criterion.map(c=>`<tr><td>${esc(c.name||c.key)}</td><td class="r ${c.avg_score_pct!==null&&c.avg_score_pct<60?'low-score':''}">${pct(c.avg_score_pct)}</td><td class="r">${pct(c.na_rate)}</td>
-      <td class="mut">${Object.entries(c.answers).map(([a,n])=>`${a==='yes'?'Да':a==='no'?'Нет':a==='na'?'N/A':a}: ${n}`).join(' · ')}</td>
-      <td class="mut">${Object.entries(c.model_agreement).filter(([k])=>k!=='null').map(([a,n])=>`${AGREE_RU[a]||a}: ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>
+      <td class="mut">${Object.entries(c.answers).map(([a,n])=>`${a==='yes'?'Да':a==='no'?'Нет':a==='na'?'N/A':a}: ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>
   <div class="st-grid">${groupTable('По языкам',s.by_language)}${groupTable('По каналам',s.by_channel)}</div>
   <div class="st-grid">
     <div class="panel tbl st-t"><div class="tr-h">Операторы <small class="mut">— нажмите, чтобы открыть рекомендации</small></div><table><thead><tr><th>Оператор</th><th class="r">Диалогов</th><th class="r">Средний балл</th><th class="r">Грубые</th></tr></thead><tbody id="opRows">

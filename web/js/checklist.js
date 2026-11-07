@@ -87,6 +87,25 @@ $('#addCrit').onclick=()=>{
   CRIT.push({id:nextId++,name:'Новый критерий',q:'',w:5,type:'yn',na:false,nac:''});
   dirty=true;renderEditor();$$('.ec').at(-1).scrollIntoView({block:'center'});
 };
+/* «Помощь ИИ»: модель собирает черновик критерия из описания; ничего не сохраняется, пока не нажато «Сохранить» */
+if(CQA_API.enabled)$('#aiCrit').hidden=false;
+$('#aiCrit').onclick=()=>{$('#aiText').value='';$('#aiInfo').textContent='';$('#aiGo').disabled=true;$('#aiDlg').showModal();$('#aiText').focus()};
+$('#aiNo').onclick=()=>$('#aiDlg').close();
+$('#aiText').oninput=()=>{$('#aiGo').disabled=$('#aiText').value.trim().length<3};
+$('#aiGo').onclick=async()=>{
+  const go=$('#aiGo'),info=$('#aiInfo');
+  go.disabled=true;go.textContent='Думаю…';info.textContent='';
+  try{
+    const r=await CQA_API.suggestCriterion({brief:$('#aiText').value.trim(),existing:CRIT.map(c=>c.name),
+      sections:[...new Set(CRIT.map(c=>c.section).filter(Boolean))]});
+    const c=critToFront({...r.criterion,key:'ai_'+Date.now().toString(36)});
+    CRIT.push(c);dirty=true;renderEditor();
+    $('#aiDlg').close();
+    $$('.ec').at(-1).scrollIntoView({block:'center'});
+    toast('Критерий добавлен внизу списка: проверьте формулировку и вес');
+  }catch(e){info.textContent='Не получилось: '+e.message}
+  finally{go.textContent='Предложить критерий';go.disabled=$('#aiText').value.trim().length<3}
+};
 $('#applyBtn').onclick=async()=>{
   if(CQA_API.enabled){
     const bad=CRIT.find(c=>!String(c.name).trim());

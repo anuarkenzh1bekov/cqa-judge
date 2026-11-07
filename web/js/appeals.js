@@ -22,7 +22,6 @@ function renderAppeals(){
     ${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:`<div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>Итог сейчас</small><b>${fmt(total(d).score)}</b></div></div>`}
     <div class="st">${esc(a.text)}</div>
     <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
-    ${CQA_API.enabled?modelsLine(c,r):''}
     <div class="frag">${frag}</div>
     ${a.decision?'':decideForm(d,c,a)}
     <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>

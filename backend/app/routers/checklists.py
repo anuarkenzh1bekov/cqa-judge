@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from .. import prompts, services
 from ..checklist import DEFAULT_CHECKLIST, ChecklistIn
 from ..db import get_db
+from ..llm import gemini
 from ..models import Checklist, Conversation
 
 router = APIRouter(prefix="/api/checklists", tags=["checklists"])
@@ -37,6 +39,70 @@ def get_active(db: Session = Depends(get_db)):
 def default_template():
     """The checklist from the PDF - handy for 'reset to default' in the editor."""
     return DEFAULT_CHECKLIST
+
+
+class SuggestIn(BaseModel):
+    brief: str = Field(min_length=3, max_length=2000)  # what the user wants to check, in their own words
+    existing: list[str] = []  # names of criteria already in the checklist (avoid duplicates)
+    sections: list[str] = []
+
+
+_SUGGEST_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "section": {"type": "string"},
+        "description": {"type": "string"},
+        "type": {"type": "string", "enum": ["binary", "scale"]},
+        "weight": {"type": "number"},
+        "na_allowed": {"type": "boolean"},
+        "na_condition": {"type": "string"},
+        "scale": {"type": "array", "items": {"type": "object", "properties": {
+            "value": {"type": "number"}, "description": {"type": "string"}},
+            "required": ["value", "description"]}},
+        "guidance": {"type": "string"},
+    },
+    "required": ["name", "section", "description", "type", "weight", "na_allowed", "na_condition", "scale", "guidance"],
+}
+
+_SUGGEST_SYSTEM = (
+    "Ты помогаешь методологу составлять чек-лист качества диалогов службы поддержки брокера. "
+    "По описанию на человеческом языке составь ОДИН критерий. Пиши по-русски, коротко и проверяемо по тексту диалога. "
+    "name: короткое название (2-5 слов). description: для binary - одно утверждение, на которое можно ответить «Да» или «Нет» "
+    "(«Да» = требование выполнено); для scale - что оценивается. type: binary, если достаточно да/нет; scale - если нужна градация. "
+    "Для scale дай 3-5 ступеней по убыванию (value - числа, высшая = полный балл, низшая 0), у каждой description с наблюдаемым признаком. "
+    "Для binary scale = []. weight: от 5 до 20. na_allowed: true только если критерий бывает неприменим, тогда заполни na_condition, иначе пустая строка. "
+    "section: выбери из имеющихся секций, если подходит, иначе придумай короткую. "
+    "guidance: 1-2 предложения о пограничных случаях, иначе пустая строка. Критерий должен проверять ровно то, что просит пользователь, ничего не подменяй и не добавляй от себя; "
+    "существующие критерии нужны только чтобы не дублировать их."
+)
+
+
+@router.post("/suggest-criterion")
+async def suggest_criterion(body: SuggestIn):
+    """Draft one criterion from a free-text brief (the editor's "AI help" button). Nothing is saved."""
+    existing = "; ".join(body.existing) or "нет"
+    sections = "; ".join(body.sections) or "нет"
+    prompt = (f"Запрос методолога (составь критерий именно про это):\n«{body.brief.strip()}»\n\n"
+              f"Уже есть критерии (не дублировать): {existing}\n"
+              f"Имеющиеся секции: {sections}")
+    try:
+        data, usage = await gemini.generate_json(prompt, _SUGGEST_SCHEMA, system=_SUGGEST_SYSTEM)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Не удалось получить ответ модели: {e}") from e
+    scale = data.get("scale") or []
+    if data["type"] == "scale" and len(scale) < 2:
+        data["type"], scale = "binary", []
+    if data["type"] == "binary":
+        scale = []
+    na_cond = (data.get("na_condition") or "").strip()
+    return {"criterion": {
+        "section": data.get("section") or None, "name": data["name"].strip(), "description": data["description"].strip(),
+        "type": data["type"], "weight": max(0, min(100, data.get("weight") or 10)),
+        "na_allowed": bool(data.get("na_allowed")) and bool(na_cond), "na_condition": na_cond or None,
+        "scale": sorted(scale, key=lambda s: -s["value"]) or None,
+        "guidance": (data.get("guidance") or "").strip() or None},
+        "cost_usd": round(gemini.cost_usd(usage), 5)}
 
 
 @router.get("/{cid}")

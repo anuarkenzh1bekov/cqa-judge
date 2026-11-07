@@ -9,7 +9,8 @@ document.addEventListener('click',async e=>{
       const m=$('#m'+b.dataset.goMsg);
       if(m){m.classList.add('mark');motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300)}
     });
-    $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
+    const tgt=$('#m'+g.dataset.goMsg),sg=tgt.closest('details');if(sg)sg.open=true;
+    tgt.scrollIntoView({block:'center'});
     seekTo(+g.dataset.goMsg);
   }
   const sk=e.target.closest('[data-seek]');if(sk&&$('#aud'))seekTo(+sk.dataset.seek);

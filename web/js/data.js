@@ -13,7 +13,7 @@ let CRIT=[
 let nextId=8, ver=1, savedSigs={};
 const iso=s=>new Date(Date.UTC(2026,10,5,9,20,s)).toISOString().slice(0,19)+'+00:00';
 const D={
- ru:{id:'p1-ru-014',lang:'RU',channel:'agent chat',operator:'Айгерим',
+ ru:{id:'p1-ru-014',mood:'negative',sum:'Клиент не может вывести 20 000 тенге на карту Kaspi. Карта привязана к другому имени, оператор объяснил, что нужно перепривязать карту.',lang:'RU',channel:'agent chat',operator:'Айгерим',
   msgs:[
    ['system','00:00','Чат начат'],
    ['bot','00:01','Здравствуйте! Я виртуальный помощник Freedom Broker. Опишите ваш вопрос.'],
@@ -41,7 +41,7 @@ const D={
    7:{v:'yes',ev:[15],why:'Оператор предложил дальнейшую помощь и попрощался.',q:'«Хорошего дня!»',conf:.96}
   },
   gross:{bad:false,checked:'#5–#15, все реплики оператора'}},
- en:{id:'p1-en-031',lang:'EN',channel:'agent chat',operator:'Daniel',
+ en:{id:'p1-en-031',mood:'neutral',sum:'Клиент спросил о комиссиях за торговлю американскими акциями. Оператор назвал ставку и минимум за ордер, клиент вышел из чата.',lang:'EN',channel:'agent chat',operator:'Daniel',
   msgs:[
    ['system','00:00','Chat started'],
    ['bot','00:01','Hello! I am the Freedom Broker virtual assistant. How can I help?'],
@@ -60,7 +60,7 @@ const D={
    7:{v:'na',ev:[6],why:'N/A: клиент вышел из чата сразу после ответа, завершить диалог было невозможно.',q:'Системное сообщение: «Client left the chat»',conf:.9}
   },
   gross:{bad:false,checked:'#4–#5, все реплики оператора'}},
- kz:{id:'p1-kz-007',lang:'KZ',channel:'agent chat',operator:'Динара',
+ kz:{id:'p1-kz-007',mood:'neutral',sum:'Клиент жалуется, что деньги не поступили на счёт уже 2 часа. Оператор подтвердил личность и объяснил, что перевод обрабатывается до одного рабочего дня.',lang:'KZ',channel:'agent chat',operator:'Динара',
   msgs:[
    ['system','00:00','Чат басталды'],
    ['bot','00:01','Сәлеметсіз бе! Мен Freedom Broker виртуалды көмекшісімін. Сұрағыңызды жазыңыз.'],
@@ -83,7 +83,7 @@ const D={
    7:{v:'yes',ev:[10],why:'Оператор предложил дальнейшую помощь и попрощался.',q:'«Сау болыңыз!»',conf:.93}
   },
   gross:{bad:false,checked:'#4–#10, все реплики оператора'}},
- call:{id:'p3-ru-002',lang:'RU',channel:'voice call',operator:'Азамат',
+ call:{id:'p3-ru-002',mood:'neutral',sum:'Клиент хочет подключить торговлю американскими акциями и спрашивает о комиссии. Оператор объяснил, как подать заявку, а точную комиссию клиент решил посмотреть сам.',lang:'RU',channel:'voice call',operator:'Азамат',
   msgs:[
    ['system',iso(0),'Звонок соединён'],
    ['operator',iso(3),'Добрый день, Freedom Broker, меня зовут Азамат. Чем могу помочь?'],

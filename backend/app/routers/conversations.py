@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from .. import services
 from ..db import get_db
+from ..llm import gemini
 from ..models import Conversation, Evaluation
+from ..prompts import format_transcript
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 
@@ -109,6 +111,35 @@ async def _resolve_audio(http: httpx.AsyncClient, url: str) -> str:
     if not m:
         raise HTTPException(502, "no audio source found on the player page")
     return html.unescape(m.group(1))
+
+
+_SUMMARY_CACHE: dict[str, dict] = {}
+_SUMMARY_SCHEMA = {"type": "object", "properties": {
+    "summary": {"type": "string"},
+    "mood": {"type": "string", "enum": ["positive", "neutral", "negative"]}},
+    "required": ["summary", "mood"]}
+_SUMMARY_SYSTEM = (
+    "Ты кратко пересказываешь диалог клиента со службой поддержки брокера. Напиши 1-2 предложения по-русски "
+    "(не больше 220 символов): с чем обратился клиент, что ответили и чем закончилось. Только факты из диалога, "
+    "без оценок качества работы оператора, без цитат и без номеров реплик. Если клиент заметно недоволен или раздражён, скажи это в тексте. "
+    "mood: настроение клиента к концу диалога: positive (доволен, благодарит), neutral (спокоен, деловой тон), negative (недоволен, раздражён, жалуется). "
+)
+
+
+@router.get("/conversations/{cid}/summary")
+async def conversation_summary(cid: str, db: Session = Depends(get_db)):
+    """One-two sentence retelling of what the dialog was about (shown above the transcript). Cached in memory."""
+    conv = db.get(Conversation, cid)
+    if not conv:
+        raise HTTPException(404, "conversation not found")
+    if cid not in _SUMMARY_CACHE:
+        try:
+            data, _ = await gemini.generate_json(format_transcript(conv.transcript), _SUMMARY_SCHEMA, system=_SUMMARY_SYSTEM)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(502, f"Не удалось получить краткое содержание: {e}") from e
+        _SUMMARY_CACHE[cid] = {"summary": " ".join(str(data.get("summary", "")).split()),
+                               "mood": data.get("mood", "neutral")}
+    return _SUMMARY_CACHE[cid]
 
 
 @router.get("/conversations/{cid}/audio")

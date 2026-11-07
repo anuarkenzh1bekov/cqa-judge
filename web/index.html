@@ -51,7 +51,7 @@
     <div class="page-h"><button class="tx" id="back">← Диалоги</button><h1 id="cardTitle"></h1><span class="meta" id="meta"></span><span class="grow"></span><select class="field" id="pick" aria-label="Диалог"></select></div>
     <main class="grid">
       <section class="panel tr">
-        <div class="tr-h">Транскрипт</div>
+        <div class="tr-h">Транскрипт<span class="asr" id="asrTag" hidden title="Текст получен автоматическим распознаванием речи, в нём возможны неточности">Распознан автоматически</span></div>
         <div class="msgs" id="chat"></div>
       </section>
       <div>
@@ -64,7 +64,7 @@
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -108,6 +108,13 @@
   <p class="evinfo" id="evInfo"></p>
   <div class="f"><button class="btn" id="evNo">Отмена</button><button class="btn primary" id="evGo" disabled>Запустить оценку</button></div>
 </dialog>
+<dialog id="aiDlg">
+  <h3>Критерий с помощью ИИ</h3>
+  <p>Опишите своими словами, что нужно проверять. Модель предложит формулировку, тип ответа и вес; их можно поправить.</p>
+  <div class="fld"><label for="aiText">Что проверять</label><textarea class="field" id="aiText" placeholder="Например: оператор должен предложить клиенту оценить качество обслуживания в конце звонка"></textarea></div>
+  <p class="evinfo" id="aiInfo"></p>
+  <div class="f"><button class="btn" id="aiNo">Отмена</button><button class="btn primary" id="aiGo" disabled>Предложить критерий</button></div>
+</dialog>
 <dialog id="runDlg">
   <h3 id="runTitle"></h3>
   <p id="runSub"></p>
@@ -122,6 +129,7 @@
 <script src="js/backend.js"></script>
 <script src="js/scoring.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/dropdown.js"></script>
 <script src="js/router.js"></script>
 <script src="js/list.js"></script>
 <script src="js/card.js"></script>

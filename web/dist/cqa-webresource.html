@@ -106,6 +106,7 @@ tbody tr:last-child td{border-bottom:0}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,520px);gap:24px;align-items:start}
 .tr{position:sticky;top:16px;height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden}
 .tr-h{padding:14px 20px;border-bottom:1px solid var(--line);font-weight:600}
+.tr-h .asr{margin-left:10px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:400;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line-2)}
 .msgs{overflow:auto;flex:1;padding:20px 20px 24px;display:flex;flex-direction:column}
 .gl{font-size:12px;color:var(--muted);margin:16px 8px 4px}
 .gl:first-child{margin-top:0}
@@ -117,7 +118,7 @@ tbody tr:last-child td{border-bottom:0}
 .m.operator .b{background:var(--bub-op);border-bottom-right-radius:4px}
 .m.bot .b{color:var(--muted)}
 .mf{font-size:11px;color:var(--muted);text-align:right;margin-top:2px}
-.m.system{justify-content:center;gap:6px;margin:16px 0;font-size:12px;color:var(--muted)}
+.m.system{flex-direction:column;align-items:center;gap:2px;margin:16px auto;max-width:88%;text-align:center;font-size:12px;line-height:1.5;color:var(--muted)}
 .m.system .mf{margin:0}
 .m.mark .b{background:var(--mark);box-shadow:0 0 0 1.5px var(--warn)}
 
@@ -126,7 +127,7 @@ tbody tr:last-child td{border-bottom:0}
 .score .of{color:var(--muted);padding-bottom:6px}
 .score .sc-side{margin-left:auto;text-align:right;color:var(--muted);font-size:13px;padding-bottom:6px}
 .up{color:var(--accent);font-weight:600}
-.gross{display:flex;justify-content:space-between;gap:12px;padding:12px 24px;border-top:1px solid var(--line);font-size:13px}
+.gross{display:grid;grid-template-columns:auto 1fr;gap:4px 24px;padding:12px 24px;border-top:1px solid var(--line);font-size:13px}
 .gross .m2{color:var(--muted)}
 .gross.bad .gt{color:var(--no)}
 .crits{margin-top:16px}
@@ -259,12 +260,29 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 #fKinds,#fLangs,#fGroups{display:contents}
 
 /* ===== подключение к бэкенду: плеер, рекомендации, мнения моделей, аналитика ===== */
-.player{position:sticky;top:0;z-index:2;padding:10px 0 12px;background:var(--panel);border-bottom:1px solid var(--line);margin-bottom:8px}
-.player audio{width:100%}
-.player small{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+.player{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:8px 14px 8px 8px;margin:0 0 10px;border-radius:999px;background:var(--raised);box-shadow:inset 0 0 0 1px var(--line-2),0 0 0 8px var(--panel)}
+.player .pp{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink)}
+.player .pp:hover{filter:brightness(1.08)}
+.player .pt{flex:none;font-size:12px;color:var(--ink-2);min-width:34px}
+.player .pt:last-of-type{text-align:right}
+.player .spd{flex:none;min-width:36px;height:24px;padding:0 6px;border-radius:6px;font-size:12px;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line-2)}
+.player .spd:hover{color:var(--ink);background:var(--panel)}
+.player .vol{flex:none;display:grid;place-items:center;color:var(--muted)}
+.player .vol{width:28px;height:28px;border-radius:6px;transition:color .15s,background-color .15s,transform .15s}
+.player .vol:hover{color:var(--ink);background:var(--panel)}
+.player .vol:active{transform:scale(.92)}
+.player .vol.off{color:var(--no)}
+.player .vol svg{transition:opacity .15s}
+.rng{--p:0%;flex:1;min-width:40px;height:14px;appearance:none;-webkit-appearance:none;background:transparent;cursor:pointer}
+.rng.vl{flex:none;width:64px}
+.rng::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--accent) var(--p),var(--line-2) var(--p))}
+.rng::-moz-range-track{height:4px;border-radius:2px;background:var(--line-2)}
+.rng::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4px;border-radius:50%;background:var(--accent);border:0}
+.rng::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--accent);border:0}
+@media(max-width:560px){.player .vol,.rng.vl{display:none}}
 .tm[data-seek]{cursor:pointer}
 .tm[data-seek]:hover{text-decoration:underline;text-underline-offset:2px}
-.mdl{margin-top:8px;font-size:12px;color:var(--muted)}
 .sc-act{display:flex;gap:16px;align-items:center;padding:12px 24px;border-top:1px solid var(--line)}
 .fb{margin-top:16px;padding-bottom:16px}
 .fb>.why,.fb>h4,.fb>.fbl{margin-left:20px;margin-right:20px}
@@ -294,7 +312,7 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 .lk.inl{color:var(--warn);font-weight:600;text-decoration:none;margin:0}
 
 /* «с чего начать проверку» */
-.rv{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:12px 24px;border-top:1px solid var(--line);font-size:13px}
+.rv{display:flex;flex-direction:column;gap:10px;padding:14px 24px;border-top:1px solid var(--line);font-size:13px}
 .rvt{color:var(--warn);font-weight:600}
 .rv .lk{color:var(--ink-2)}
 /* доказательства: время, роль, цитата */
@@ -331,6 +349,105 @@ dialog .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
 .boot{display:flex;align-items:center;justify-content:center;gap:12px;padding:120px 0;color:var(--muted)}
 .boot i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:sp .7s linear infinite}
 @media(prefers-reduced-motion:reduce){.boot i{animation:none}}
+
+/* свой выпадающий список */
+.dd{position:relative;display:inline-block;max-width:100%}
+.fld>.dd,.fi>.dd,.decide .dd.fi{display:block;width:100%}
+.dd-native{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none}
+.ddb{width:100%;text-align:left;cursor:pointer;padding-right:36px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237d8883' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:10px 6px;transition:border-color .15s}
+.ddb:hover{border-color:var(--muted)}
+.ddb[aria-expanded="true"]{border-color:var(--accent)}
+.page-h .dd{max-width:260px}
+.ddm{position:fixed;z-index:1000;overflow:auto;padding:4px;border-radius:8px;background:var(--panel);border:1px solid var(--line-2);box-shadow:0 8px 24px rgba(0,0,0,.28);animation:ddin .12s ease-out}
+.ddi{padding:7px 10px;border-radius:5px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.ddi.hot,.ddi:hover{background:var(--raised)}
+.ddi.on{color:var(--accent);font-weight:500}
+.ddi.dis{color:var(--muted);cursor:default}
+@keyframes ddin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.ddm{animation:none}}
+
+/* краткое содержание диалога над транскриптом */
+.sum{margin:0 0 14px;padding:0 0 12px;border-bottom:1px solid var(--line);color:var(--ink-2);font-size:13px;line-height:1.55}
+.gross .gt{white-space:nowrap}
+
+/* итог: цвет по уровню */
+.score .n{transition:color .4s}
+.score .n.hi{color:var(--yes)}.score .n.mid{color:var(--warn)}.score .n.lo{color:var(--no)}
+/* критерии, требующие проверки */
+.rvh{display:flex;align-items:baseline;gap:12px}
+.rvh .rvt::before{content:"";display:inline-block;width:6px;height:6px;margin-right:8px;border-radius:50%;background:var(--warn);vertical-align:1px}
+.rvc{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:4px 10px;border-radius:999px;font-size:13px;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line-2);transition:background-color .15s,color .15s,box-shadow .15s}
+.chip:hover{color:var(--ink);background:var(--raised);box-shadow:inset 0 0 0 1px var(--warn)}
+
+.rvh .rvt{color:var(--ink)}
+.rvh .rvt::before{background:#E0A100}
+
+/* свёрнутые служебные сообщения в начале транскрипта */
+.sysgrp{margin:4px 0 8px;text-align:center}
+.sysgrp summary{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;color:var(--muted);cursor:pointer;list-style:none;transition:color .15s,background-color .15s}
+.sysgrp summary::-webkit-details-marker{display:none}
+.sysgrp summary:hover{color:var(--ink);background:var(--raised)}
+.sysgrp[open] summary{color:var(--ink-2)}
+
+/* основание: аккуратный блок, в нём время, роль и цитата */
+.evg{margin-top:14px;border-radius:8px;background:var(--raised);overflow:hidden}
+.evg .evh{display:flex;align-items:baseline;gap:6px;margin:0;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-2)}
+.evg .evh small{margin-left:auto;font-weight:400;color:var(--muted)}
+.evg .evh span+.rgb{margin-left:auto}
+.evg .evh small+.rgb{margin-left:0}
+.rgb{font-size:12px;font-weight:400;color:var(--muted);text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+.rgb:hover{color:var(--ink);text-decoration-color:var(--accent)}
+/* рекомендации оператору: только типографика; разделы различаются цветом подчёркивания заголовка */
+.fb .why{color:var(--ink);font-size:14px;line-height:1.6}
+.fb .fbh{margin-top:22px;margin-bottom:2px;font-size:14px;font-weight:600;color:var(--ink)}
+.fbh>span{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+.fbh.w>span{text-decoration-color:#E0A100}
+.fbh.g>span{text-decoration-color:var(--yes)}
+.fbl li.ev{margin:0;padding:10px 0;border-top:1px solid var(--line);color:var(--ink);font-size:13px;line-height:1.55}
+.fbl li.ev:first-child{border-top:0}
+.fbl li small{color:var(--muted)}
+.fbl li .lk{color:var(--muted);font-weight:400;font-size:12px}
+.say{display:block;margin-top:4px;color:var(--ink-2);font-style:italic}
+.say small{display:block;font-size:11px;font-style:normal;color:var(--muted)}
+
+/* цитаты основания в виде реплик: клиент слева, оператор справа */
+.evg .evb.bub{display:flex;border:0;padding:6px 12px}
+.evg .evb.bub:hover{background:transparent}
+.evg .bb{display:block;max-width:86%;padding:8px 12px;border-radius:12px 12px 12px 4px;background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink);font-size:13px;line-height:1.5}
+.evg .bb small{display:block;margin-top:2px;font-size:11px;color:var(--muted)}
+.evg .evb.operator{justify-content:flex-end}
+.evg .evb.operator .bb{border-radius:12px 12px 4px 12px;background:var(--bub-op);box-shadow:none}
+.evg .evh+.evb{padding-top:10px}.evg .evb:last-child{padding-bottom:10px}
+
+.gross .m2 .lk{font:inherit;font-weight:600;line-height:inherit;vertical-align:baseline;padding:0;margin:0}
+
+/* настроение клиента: цветная черта слева и жирное начало резюме */
+.sum.neutral,.sum.positive,.sum.negative{padding-left:12px;border-bottom:0;box-shadow:inset 2px 0 0 var(--line-2)}
+.sum.negative{box-shadow:inset 2px 0 0 var(--no)}.sum.positive{box-shadow:inset 2px 0 0 var(--yes)}
+.sum .lead{color:var(--ink)}
+
+/* ожидание оценки */
+.spin{display:inline-block;width:12px;height:12px;margin-right:8px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);vertical-align:-2px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sc-prog{position:relative;height:2px;overflow:hidden;background:var(--line)}
+.sc-prog::after{content:"";position:absolute;inset:0 auto 0 0;width:35%;background:var(--accent);animation:sweep 1.4s ease-in-out infinite}
+@keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(290%)}}
+.load{display:flex;gap:7px;align-items:center;height:64px}
+.load i{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:dotp 1.1s ease-in-out infinite}
+.load i:nth-child(2){animation-delay:.15s}.load i:nth-child(3){animation-delay:.3s}
+@keyframes dotp{0%,80%,100%{opacity:.25;transform:scale(.75)}40%{opacity:1;transform:scale(1)}}
+.sc-side.wait{margin-left:8px;text-align:left;color:var(--muted);font-size:13px;line-height:1.5}
+.sc-side.wait b{display:block;color:var(--ink);font-weight:600}
+.sk{display:block;height:10px;margin-top:8px;border-radius:5px;background:linear-gradient(90deg,var(--raised) 25%,var(--line) 50%,var(--raised) 75%);background-size:200% 100%;animation:shim 1.4s ease-in-out infinite;animation-delay:calc(var(--i,0)*-.12s)}
+.sk.s{width:60%}
+.cr.loading .cr-b{margin-top:6px}
+@keyframes shim{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.btn .spin{margin-right:8px}
+@media(prefers-reduced-motion:reduce){.spin,.sc-prog::after,.load i,.sk{animation:none}.sc-prog::after{width:100%;opacity:.4}}
+.v:has(.spin)::before{display:none}
 
 </style>
 </head>
@@ -378,7 +495,7 @@ dialog .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
     <div class="page-h"><button class="tx" id="back">← Диалоги</button><h1 id="cardTitle"></h1><span class="meta" id="meta"></span><span class="grow"></span><select class="field" id="pick" aria-label="Диалог"></select></div>
     <main class="grid">
       <section class="panel tr">
-        <div class="tr-h">Транскрипт</div>
+        <div class="tr-h">Транскрипт<span class="asr" id="asrTag" hidden title="Текст получен автоматическим распознаванием речи, в нём возможны неточности">Распознан автоматически</span></div>
         <div class="msgs" id="chat"></div>
       </section>
       <div>
@@ -391,7 +508,7 @@ dialog .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -434,6 +551,13 @@ dialog .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
   <div class="fld"><label for="evChk">Чек-лист</label><select class="field" id="evChk"></select></div>
   <p class="evinfo" id="evInfo"></p>
   <div class="f"><button class="btn" id="evNo">Отмена</button><button class="btn primary" id="evGo" disabled>Запустить оценку</button></div>
+</dialog>
+<dialog id="aiDlg">
+  <h3>Критерий с помощью ИИ</h3>
+  <p>Опишите своими словами, что нужно проверять. Модель предложит формулировку, тип ответа и вес; их можно поправить.</p>
+  <div class="fld"><label for="aiText">Что проверять</label><textarea class="field" id="aiText" placeholder="Например: оператор должен предложить клиенту оценить качество обслуживания в конце звонка"></textarea></div>
+  <p class="evinfo" id="aiInfo"></p>
+  <div class="f"><button class="btn" id="aiNo">Отмена</button><button class="btn primary" id="aiGo" disabled>Предложить критерий</button></div>
 </dialog>
 <dialog id="runDlg">
   <h3 id="runTitle"></h3>
@@ -484,6 +608,8 @@ const CQA_API={
   activeChecklist(){return this.get('/api/checklists/active')},
   checklists(){return this.get('/api/checklists')},
   defaultChecklist(){return this.get('/api/checklists/default-template')},
+  conversationSummary(id){return this.get('/api/conversations/'+encodeURIComponent(id)+'/summary')},
+  suggestCriterion(body){return this.post('/api/checklists/suggest-criterion',body)},
   createChecklist(body){return this.post('/api/checklists?activate=true',body)},
   importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
   upload(records){return this.post('/api/conversations',{records,group:'UPLOAD'})},
@@ -515,7 +641,7 @@ let CRIT=[
 let nextId=8, ver=1, savedSigs={};
 const iso=s=>new Date(Date.UTC(2026,10,5,9,20,s)).toISOString().slice(0,19)+'+00:00';
 const D={
- ru:{id:'p1-ru-014',lang:'RU',channel:'agent chat',operator:'Айгерим',
+ ru:{id:'p1-ru-014',mood:'negative',sum:'Клиент не может вывести 20 000 тенге на карту Kaspi. Карта привязана к другому имени, оператор объяснил, что нужно перепривязать карту.',lang:'RU',channel:'agent chat',operator:'Айгерим',
   msgs:[
    ['system','00:00','Чат начат'],
    ['bot','00:01','Здравствуйте! Я виртуальный помощник Freedom Broker. Опишите ваш вопрос.'],
@@ -543,7 +669,7 @@ const D={
    7:{v:'yes',ev:[15],why:'Оператор предложил дальнейшую помощь и попрощался.',q:'«Хорошего дня!»',conf:.96}
   },
   gross:{bad:false,checked:'#5–#15, все реплики оператора'}},
- en:{id:'p1-en-031',lang:'EN',channel:'agent chat',operator:'Daniel',
+ en:{id:'p1-en-031',mood:'neutral',sum:'Клиент спросил о комиссиях за торговлю американскими акциями. Оператор назвал ставку и минимум за ордер, клиент вышел из чата.',lang:'EN',channel:'agent chat',operator:'Daniel',
   msgs:[
    ['system','00:00','Chat started'],
    ['bot','00:01','Hello! I am the Freedom Broker virtual assistant. How can I help?'],
@@ -562,7 +688,7 @@ const D={
    7:{v:'na',ev:[6],why:'N/A: клиент вышел из чата сразу после ответа, завершить диалог было невозможно.',q:'Системное сообщение: «Client left the chat»',conf:.9}
   },
   gross:{bad:false,checked:'#4–#5, все реплики оператора'}},
- kz:{id:'p1-kz-007',lang:'KZ',channel:'agent chat',operator:'Динара',
+ kz:{id:'p1-kz-007',mood:'neutral',sum:'Клиент жалуется, что деньги не поступили на счёт уже 2 часа. Оператор подтвердил личность и объяснил, что перевод обрабатывается до одного рабочего дня.',lang:'KZ',channel:'agent chat',operator:'Динара',
   msgs:[
    ['system','00:00','Чат басталды'],
    ['bot','00:01','Сәлеметсіз бе! Мен Freedom Broker виртуалды көмекшісімін. Сұрағыңызды жазыңыз.'],
@@ -585,7 +711,7 @@ const D={
    7:{v:'yes',ev:[10],why:'Оператор предложил дальнейшую помощь и попрощался.',q:'«Сау болыңыз!»',conf:.93}
   },
   gross:{bad:false,checked:'#4–#10, все реплики оператора'}},
- call:{id:'p3-ru-002',lang:'RU',channel:'voice call',operator:'Азамат',
+ call:{id:'p3-ru-002',mood:'neutral',sum:'Клиент хочет подключить торговлю американскими акциями и спрашивает о комиссии. Оператор объяснил, как подать заявку, а точную комиссию клиент решил посмотреть сам.',lang:'RU',channel:'voice call',operator:'Азамат',
   msgs:[
    ['system',iso(0),'Звонок соединён'],
    ['operator',iso(3),'Добрый день, Freedom Broker, меня зовут Азамат. Чем могу помочь?'],
@@ -852,6 +978,74 @@ function beRunBatch(title,body){
     return {done:all.filter(r=>r.status==='done').length,total:rows.size,error:all.filter(r=>r.status==='error').length};
   });
 }
+/* Автооценка: диалог без оценки оценивается сразу при открытии, нажимать ничего не нужно.
+   Попытка одна на диалог за сеанс: при ошибке цикла нет, остаётся кнопка «Оценить диалог». */
+const beAutoTried=new Set();
+async function beAutoEvaluate(cid){
+  const d=D[cid];
+  if(!CQA_API.enabled||!d||!d.loaded||d.evalId||beAutoTried.has(cid))return;
+  beAutoTried.add(cid);
+  const redraw=()=>{if(cur===cid&&!$('#v-card').hidden)renderCard()};
+  try{
+    if(!d.running){
+      d.running=true;redraw();
+      await CQA_API.batch({conversation_ids:[cid]});
+    }else redraw();
+    let conv;
+    for(let i=0;i<120;i++){   // до ~5 минут
+      await beSleep(2500);
+      conv=await CQA_API.get('/api/conversations/'+encodeURIComponent(cid));
+      if(!conv.evaluations.some(e=>e.status==='pending'||e.status==='running'))break;
+    }
+    const bad=conv&&conv.evaluations.find(e=>e.status==='error');
+    await beLoadDialog(cid,true);
+    if(!D[cid].evalId&&bad)toast('Не удалось оценить диалог: '+beShortErr(bad.error));
+  }catch(e){
+    d.running=false;
+    toast('Не удалось оценить диалог: '+beShortErr(e.message));
+  }finally{
+    redraw();
+    try{if(!$('#v-list').hidden)renderList()}catch(_){}
+  }
+}
+/* Прогрев: все диалоги без оценки оцениваются в фоне, по 3 за раз (четвёртый слот остаётся тому, что
+   открыл пользователь), поэтому в карточке оценка чаще всего уже готова. Очередь идёт в порядке списка;
+   открытый диалог оценивается сразу, вне очереди. */
+const WARM_PAR=3,warmQueue=[],warmSeen=new Set();
+let warmActive=0;
+const needsEval=d=>!!d&&!d.evalId&&!d.running&&!(d.summary&&['done','pending','running'].includes(d.summary.status));
+function beWarm(ids){
+  if(!CQA_API.enabled)return;
+  ids.forEach(id=>{
+    if(needsEval(D[id])&&!warmSeen.has(id)&&!beAutoTried.has(id)){warmSeen.add(id);warmQueue.push(id)}
+  });
+  warmPump();
+}
+function warmPump(){
+  while(warmActive<WARM_PAR&&warmQueue.length){
+    const id=warmQueue.shift();
+    if(!needsEval(D[id])||beAutoTried.has(id))continue;   // за это время диалог могли открыть
+    warmActive++;
+    warmOne(id).finally(()=>{warmActive--;warmPump()});
+  }
+}
+async function warmOne(id){
+  try{
+    const b=await CQA_API.batch({conversation_ids:[id]});
+    for(let i=0;i<120;i++){
+      await beSleep(2500);
+      if((await CQA_API.batchStatus(b.batch_id)).finished)break;
+    }
+    const c=(await CQA_API.conversations()).find(x=>x.id===id);
+    const d=D[id];
+    if(c&&d&&!d.loaded){
+      const s=c.latest_evaluation;
+      d.summary=s;d.gross={bad:!!(s&&s.gross_error),checked:''};
+      if(s&&s.operator_name)d.operator=s.operator_name;
+    }
+    try{if(!$('#v-list').hidden)renderList()}catch(_){}
+  }catch(_){/* тихо: при открытии диалога сработает обычная автооценка */}
+}
 /* после оценки одного диалога из карточки: перечитать его и перерисовать экран */
 async function beRefreshAfterBatch(){
   if(cur&&D[cur])await beLoadDialog(cur,true);
@@ -954,6 +1148,90 @@ function motion(el,frames,ms=180){
 
 </script>
 <script>
+/* Выпадающие списки: встроенное меню браузера не стилизуется (синее выделение, нет отступов),
+   поэтому каждый select.field получает свою кнопку и меню. Сам <select> остаётся источником значения:
+   его value, change и изменение options продолжают работать как раньше. */
+(function(){
+  const proto=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value');
+  let openDd=null;
+
+  function close(){
+    if(!openDd)return;
+    const {menu,btn}=openDd;menu.remove();btn.setAttribute('aria-expanded','false');openDd=null;
+  }
+
+  function enhance(sel){
+    if(sel.dataset.dd)return;
+    sel.dataset.dd='1';
+    const wrap=document.createElement('span');wrap.className='dd';
+    sel.parentNode.insertBefore(wrap,sel);wrap.appendChild(sel);
+    sel.tabIndex=-1;sel.setAttribute('aria-hidden','true');sel.classList.add('dd-native');
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='field ddb';btn.setAttribute('aria-haspopup','listbox');btn.setAttribute('aria-expanded','false');
+    const al=sel.getAttribute('aria-label');if(al)btn.setAttribute('aria-label',al);
+    wrap.appendChild(btn);
+    const label=()=>{const o=sel.options[sel.selectedIndex];btn.textContent=o?o.textContent:'';btn.title=btn.textContent};
+    label();
+    /* программная запись sel.value = … тоже обновляет подпись */
+    Object.defineProperty(sel,'value',{configurable:true,get(){return proto.get.call(this)},set(v){proto.set.call(this,v);label()}});
+    new MutationObserver(label).observe(sel,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['selected']});
+    sel.addEventListener('change',label);
+
+    function openMenu(){
+      close();
+      const menu=document.createElement('div');menu.className='ddm';menu.setAttribute('role','listbox');
+      [...sel.options].forEach((o,i)=>{
+        const it=document.createElement('div');it.className='ddi'+(i===sel.selectedIndex?' on':'');
+        it.setAttribute('role','option');it.dataset.i=i;it.textContent=o.textContent;
+        if(o.disabled)it.classList.add('dis');
+        menu.appendChild(it);
+      });
+      wrap.appendChild(menu);
+      const r=btn.getBoundingClientRect(),h=menu.offsetHeight,below=innerHeight-r.bottom-12,up=r.top-12;
+      menu.style.minWidth=r.width+'px';menu.style.left=r.left+'px';
+      if(h>below&&up>below){menu.style.bottom=(innerHeight-r.top+6)+'px';menu.style.maxHeight=Math.min(h,up)+'px'}
+      else{menu.style.top=(r.bottom+6)+'px';menu.style.maxHeight=Math.max(120,Math.min(h,below))+'px'}
+      btn.setAttribute('aria-expanded','true');
+      openDd={menu,btn,sel};
+      const on=menu.querySelector('.on');if(on)on.scrollIntoView({block:'nearest'});
+      menu.onmousemove=e=>{const it=e.target.closest('.ddi');if(!it)return;menu.querySelectorAll('.hot').forEach(x=>x.classList.remove('hot'));it.classList.add('hot')};
+      menu.onmousedown=e=>e.preventDefault();
+      menu.onclick=e=>{const it=e.target.closest('.ddi');if(it&&!it.classList.contains('dis'))choose(+it.dataset.i)};
+    }
+    function choose(i){
+      close();
+      if(i!==sel.selectedIndex){sel.selectedIndex=i;label();sel.dispatchEvent(new Event('input',{bubbles:true}));sel.dispatchEvent(new Event('change',{bubbles:true}))}
+      btn.focus();
+    }
+    btn.onclick=()=>openDd&&openDd.btn===btn?close():openMenu();
+    btn.onkeydown=e=>{
+      const k=e.key,isOpen=openDd&&openDd.btn===btn;
+      if(!isOpen&&(k==='ArrowDown'||k==='ArrowUp'||k==='Enter'||k===' ')){e.preventDefault();openMenu();return}
+      if(!isOpen)return;
+      const items=[...openDd.menu.querySelectorAll('.ddi:not(.dis)')];
+      let cur=items.findIndex(x=>x.classList.contains('hot'));if(cur<0)cur=items.findIndex(x=>x.classList.contains('on'));
+      if(k==='ArrowDown'||k==='ArrowUp'){
+        e.preventDefault();cur=Math.max(0,Math.min(items.length-1,cur+(k==='ArrowDown'?1:-1)));
+        openDd.menu.querySelectorAll('.hot').forEach(x=>x.classList.remove('hot'));items[cur].classList.add('hot');items[cur].scrollIntoView({block:'nearest'});
+      }else if(k==='Enter'||k===' '){e.preventDefault();if(items[cur])choose(+items[cur].dataset.i)}
+      else if(k==='Escape'){e.preventDefault();e.stopPropagation();close()}
+      else if(k==='Tab')close();
+    };
+  }
+
+  const scan=root=>(root.querySelectorAll?root.querySelectorAll('select.field'):[]).forEach(enhance);
+  scan(document);
+  new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{
+    if(n.nodeType!==1)return;
+    if(n.matches&&n.matches('select.field'))enhance(n);else scan(n);
+  }))).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener('mousedown',e=>{if(openDd&&!e.target.closest('.ddm')&&!e.target.closest('.ddb'))close()});
+  addEventListener('resize',close);
+  addEventListener('scroll',e=>{if(openDd&&!e.target.closest?.('.ddm'))close()},true);
+})();
+
+</script>
+<script>
 /* Маршрутизация между экранами. */
 /* ================= РОУТИНГ ================= */
 let H=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
@@ -985,8 +1263,8 @@ async function route(){
     if(CQA_API.enabled&&view==='appeals')await beLoadAppealDialogs();
   }catch(e){toast('Ошибка загрузки: '+e.message)}
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
-  if(view==='list')renderList();
-  if(view==='card'){syncPick();if(cur)renderCard();else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
+  if(view==='list'){renderList();if(CQA_API.enabled)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
+  if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
   if(view==='checklist')renderEditor();
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
@@ -1113,6 +1391,15 @@ function bubble(d,i,opt={}){
 function msgList(d,idx,opt={}){
   const names={client:'Клиент',operator:'Оператор',bot:'Бот'};
   let last='',out='';
+  /* служебные реплики в самом начале (смена языка, «чат начат») сворачиваем в одну строку: они не часть разговора */
+  let lead=0;
+  if(!opt.noId)while(lead<idx.length&&D[d].msgs[idx[lead]][0]==='system')lead++;
+  if(lead>=2){
+    const hit=(opt.marks||[]).some(n=>idx.slice(0,lead).includes(n-1));
+    out+=`<details class="sysgrp"${hit?' open':''}><summary>Служебные сообщения: ${lead}</summary>`
+      +idx.slice(0,lead).map(i=>bubble(d,i,{noId:opt.noId,mark:(opt.marks||[]).includes(i+1)})).join('')+'</details>';
+    idx=idx.slice(lead);
+  }
   idx.forEach(i=>{
     const who=D[d].msgs[i][0];
     if(who!=='system'&&who!==last)out+=`<div class="gl ${who}">${names[who]||esc(who)}</div>`;
@@ -1121,18 +1408,86 @@ function msgList(d,idx,opt={}){
   });
   return out;
 }
+const AP_ICON={
+  play:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',
+  pause:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  vol:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  low:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  mute:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>'
+};
+/* плеер собственный: <audio> скрыт, им управляют кнопки; seekTo() работает с тем же элементом */
+function initPlayer(){
+  const a=$('#aud');if(!a)return;
+  const play=$('#apPlay'),seek=$('#apSeek'),cur_=$('#apCur'),dur=$('#apDur'),vol=$('#apVol'),mute=$('#apMute'),spd=$('#apSpd');
+  const fill=(el,v)=>el.style.setProperty('--p',v+'%');
+  const sync=()=>{
+    const D_=a.duration;
+    cur_.textContent=mm(a.currentTime||0);
+    if(isFinite(D_)){dur.textContent=mm(D_);if(!seek.matches(':active'))seek.value=D_?a.currentTime/D_*1000:0}
+    fill(seek,seek.value/10);
+  };
+  const state=()=>{play.innerHTML=a.paused?AP_ICON.play:AP_ICON.pause;play.setAttribute('aria-label',a.paused?'Воспроизвести':'Пауза')};
+  play.onclick=()=>a.paused?a.play().catch(()=>{}):a.pause();
+  ['play','pause','ended'].forEach(e=>a.addEventListener(e,state));
+  ['timeupdate','loadedmetadata','durationchange','seeked'].forEach(e=>a.addEventListener(e,sync));
+  seek.oninput=()=>{if(isFinite(a.duration))a.currentTime=seek.value/1000*a.duration;sync()};
+  const rates=[1,1.25,1.5,2,0.75];
+  spd.onclick=()=>{const i=(rates.indexOf(a.playbackRate)+1)%rates.length;a.playbackRate=rates[i];spd.textContent=rates[i]+'×'};
+  /* иконка звука отражает уровень: нет звука / тихо / громко */
+  let last=100;
+  const level=()=>{
+    const v=a.muted?0:a.volume;
+    mute.innerHTML=v===0?AP_ICON.mute:v<.5?AP_ICON.low:AP_ICON.vol;
+    mute.setAttribute('aria-label',a.muted||!v?'Включить звук':'Выключить звук');
+    mute.classList.toggle('off',v===0);
+    fill(vol,v*100);vol.value=v*100;
+  };
+  vol.oninput=()=>{a.muted=false;a.volume=vol.value/100;if(a.volume)last=vol.value;level()};
+  mute.onclick=()=>{
+    if(a.muted||!a.volume){a.muted=false;a.volume=(last||100)/100}else a.muted=true;
+    level();
+  };
+  level();sync();
+}
 function renderChat(){
   const d=D[cur];
   const player=CQA_API.enabled&&d.audio
-    ?`<div class="player"><audio id="aud" controls preload="none" src="${CQA_API.audioUrl(d.id)}"></audio><small>Нажмите на время реплики или ссылку на реплику — запись перемотается к этому месту</small></div>`:'';
+    ?`<div class="player" title="Нажмите на время реплики — запись перемотается к этому месту"><audio id="aud" preload="metadata" src="${CQA_API.audioUrl(d.id)}"></audio>
+      <button class="pp" id="apPlay" aria-label="Воспроизвести">${AP_ICON.play}</button>
+      <span class="pt" id="apCur">00:00</span>
+      <input class="rng" id="apSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Перемотка">
+      <span class="pt" id="apDur">--:--</span>
+      <button class="spd" id="apSpd" aria-label="Скорость">1×</button>
+      <button class="vol" id="apMute" aria-label="Звук">${AP_ICON.vol}</button>
+      <input class="rng vl" id="apVol" type="range" min="0" max="100" value="100" aria-label="Громкость">
+    </div>`:'';
   const chat=$('#chat');
-  chat.innerHTML=player+msgList(cur,d.msgs.map((_,i)=>i));
+  chat.innerHTML=player+'<p class="sum" id="dlgSum" hidden></p>'+msgList(cur,d.msgs.map((_,i)=>i));
+  loadSummary(d);
   /* реплики появляются по очереди: шаг 50 мс, весь каскад не дольше секунды */
-  [...chat.children].filter(el=>!el.classList.contains('player')).forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
+  [...chat.children].filter(el=>!el.classList.contains('player')&&el.id!=='dlgSum').forEach((el,i)=>el.style.setProperty('--d',Math.min(i*50,1000)+'ms'));
   chat.classList.add('in');
+  initPlayer();
   $('#cardTitle').textContent=d.id;
+  $('#asrTag').hidden=d.channel!=='voice call';
   $('#meta').innerHTML=`<span>${d.lang}</span><span>${d.channel}</span><span>${esc(d.operator)}</span>`
     +(d.checklistName?`<span title="Чек-лист оценки">${esc(d.checklistName)}</span>`:'');
+}
+/* краткое содержание над транскриптом: в демо оно записано в данных, с бэкендом строится по запросу и кэшируется */
+const MOOD_L={positive:'Клиент доволен',neutral:'Спокойный тон',negative:'Клиент недоволен'};
+function loadSummary(d){
+  const el=$('#dlgSum');if(!el)return;
+  const show=()=>{
+    if(!d.sum||!$('#dlgSum')||D[cur]!==d)return;
+    const e=$('#dlgSum'),k=d.mood||'neutral';
+    e.className='sum '+k;
+    e.title='Оценка модели, на итоговый балл не влияет';
+    e.innerHTML=`<b class="lead">${MOOD_L[k]}.</b> `+esc(d.sum);
+    e.hidden=false;
+  };
+  if(d.sum)return show();
+  if(!CQA_API.enabled)return;
+  CQA_API.conversationSummary(d.id).then(r=>{d.sum=r.summary;d.mood=r.mood;show()}).catch(()=>{});
 }
 const mm=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
 /* время реплики в секундах от начала: чаты дают MM:SS, звонки — ISO 8601 с часовым поясом */
@@ -1148,7 +1503,33 @@ function seekTo(n){
 
 function renderScore(t=total(cur)){
   renderScoreHtml(t);
-  countUp($('#score .n'),t.score,cur);
+  const num=$('#score .n');if(num)countUp(num,t.score,cur);   /* при ожидании оценки числа нет */
+}
+/* пояснение к грубым ошибкам: без повтора заголовка («Грубые ошибки — Нет.») */
+const grossText=s=>{
+  let x=String(s||'').replace(/^\s*Грубые ошибки\s*[—–-]\s*(Нет|Да)\.?\s*/i,'').replace(/^\s*Грубых нарушений не выявлено\.?\s*/i,'').trim();
+  /* осталось только «(#13–#45)»: пишем, что это проверенный участок */
+  const m=x.match(/^\((.+)\)$/);
+  return m?'проверены реплики '+m[1].replace(/#(\d+)\s*[–—-]\s*#(\d+)/,'с #$1 по #$2'):x;
+};
+/* ссылки на реплики показываем, только если их нет в самом тексте пояснения */
+function grossRefs(g){
+  const txt=String(g.checked||''),rest=(g.ev||[]).filter(n=>!new RegExp('#'+n+'(?!\\d)').test(txt));
+  return rest.length?' '+rest.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join(', '):'';
+}
+/* цвет итога: от 85 — зелёный, от 60 — жёлтый, ниже — красный (как в аналитике) */
+const scoreLvl=s=>s===null||s===undefined?'':s>=85?'hi':s>=60?'mid':'lo';
+/* строка справа от «Грубые ошибки: …». Нет нарушений: что проверяли и на каком участке, без ссылок на реплики.
+   Есть нарушение: пояснение модели со ссылками на реплики. */
+function grossLine(g){
+  if(g.bad||!CQA_API.enabled)return (CQA_API.enabled?'':'проверено ')+linkify(grossText(g.checked))+grossRefs(g);
+  const s=String(g.checked||'').replace(/^\s*Грубые ошибки\s*[—–-]\s*(Нет|Да)\.?\s*/i,'');
+  const m=s.match(/^\s*Грубых нарушений\s*(?:\(([^)]*)\))?\s*не выявлено\.?\s*/i);
+  const r=s.match(/#(\d+)\s*[–—-]\s*#(\d+)/);
+  const parts=[];
+  if(m&&m[1])parts.push('проверено: '+esc(m[1]));
+  if(r)parts.push((parts.length?'реплики':'проверены реплики')+` с #${r[1]} по #${r[2]}`);
+  return parts.length?parts.join(' · '):linkify(grossText(g.checked));
 }
 function renderScoreHtml(t){
   /* исходный итог нужен только для сравнения после решения проверяющего */
@@ -1160,14 +1541,15 @@ function renderScoreHtml(t){
   if(diff)notes.push(`<span class="up">${diff>0?'+':''}${fmt(diff)} после решения</span>, было ${fmt(o.score)}`);
   if(act.length&&act.length<CRIT.length)notes.push(`ожидают оценки: ${CRIT.length-act.length}`);
   const g=d.gross;
-  const btn=CQA_API.enabled?`<div class="sc-act"><button class="btn ${d.evalId?'':'primary'}" id="evalNow">${d.running?'Оценивается…':d.evalId?'Переоценить':'Оценить диалог'}</button>`
+  const btn=CQA_API.enabled?`<div class="sc-act"><button class="btn ${d.evalId?'':'primary'}" id="evalNow">${d.running?'<span class="spin"></span>Оценивается':d.evalId?'Переоценить':'Оценить диалог'}</button>`
     +'</div>':'';
   if(CQA_API.enabled&&!d.evalId){
-    $('#score').innerHTML=`<div class="sc-top"><span class="n">—</span><span class="of">из 100</span><div class="sc-side">${d.running?'Оценка выполняется, обновите через минуту':'Диалог ещё не оценён'}</div></div>${btn}`;
+    $('#score').innerHTML=d.running
+      ?`<div class="sc-prog" aria-hidden="true"></div><div class="sc-top"><span class="load" aria-hidden="true"><i></i><i></i><i></i></span><div class="sc-side wait"><b>Подождите, идёт оценка</b>Читаем диалог и проверяем критерии</div></div>${btn}`
+      :`<div class="sc-top"><span class="n">—</span><span class="of">из 100</span><div class="sc-side">Диалог ещё не оценён</div></div>${btn}`;
   }else{
-    $('#score').innerHTML=`<div class="sc-top"><span class="n">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
-     <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${CQA_API.enabled?'':'проверено '}${linkify(g.checked)}</span>
-     ${g.ev&&g.ev.length?`<span class="ev">${g.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('')}</span>`:''}</div>${reviewRow()}${btn}`;
+    $('#score').innerHTML=`<div class="sc-top"><span class="n ${scoreLvl(t.score)}">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
+     <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${grossLine(g)}</span></div>${reviewRow()}${btn}`;
   }
   const b=$('#evalNow');
   if(b)b.onclick=async()=>{
@@ -1187,8 +1569,8 @@ function renderFeedback(){
   box.hidden=false;
   box.innerHTML=`<div class="tr-h">Рекомендации оператору</div>
     <p class="why">${linkify(f.summary||'')}</p>
-    ${f.improvements&&f.improvements.length?`<h4>Что улучшить</h4><ul class="fbl">${f.improvements.map(x=>`<li class="ev">${link(x)} ${linkify(x.text)}${x.criterion_key&&nameOf(x.criterion_key)?` <small>· ${esc(nameOf(x.criterion_key))}</small>`:''}${x.example_phrase?`<span class="q">Можно сказать: «${esc(x.example_phrase)}»</span>`:''}</li>`).join('')}</ul>`:''}
-    ${f.strengths&&f.strengths.length?`<h4>Что получилось хорошо</h4><ul class="fbl">${f.strengths.map(x=>`<li class="ev">${link(x)} ${linkify(x.text)}</li>`).join('')}</ul>`:''}`;
+    ${f.improvements&&f.improvements.length?`<h4 class="fbh w"><span>Что улучшить</span></h4><ul class="fbl w">${f.improvements.map(x=>`<li class="ev">${link(x)} ${linkify(x.text)}${x.criterion_key&&nameOf(x.criterion_key)?` <small>· ${esc(nameOf(x.criterion_key))}</small>`:''}${x.example_phrase?`<span class="say"><small>Можно сказать</small>«${esc(x.example_phrase)}»</span>`:''}</li>`).join('')}</ul>`:''}
+    ${f.strengths&&f.strengths.length?`<h4 class="fbh g"><span>Что получилось хорошо</span></h4><ul class="fbl g">${f.strengths.map(x=>`<li class="ev">${link(x)} ${linkify(x.text)}</li>`).join('')}</ul>`:''}`;
 }
 function decideForm(d,c,ap){
   const r=resOf(d,c);
@@ -1210,16 +1592,10 @@ function renderCrit(t=total(cur)){
     return head+critRow(c,i,t);
   }).join('');
 }
-const AGREE={agree:'модели согласны',minor:'соседние ступени шкалы',disputed:'модели разошлись — Gemini перепроверил',
-  review:'модели разошлись, проверьте',gemini_only:'Jev недоступен'};
-function modelsLine(c,r){
-  if(!r.gemini)return '';
-  const j=r.jev?`Jev: ${esc(label(c,ansToFront(c,r.jev.answer)))} (${Math.round(r.jev.probability*100)}%)`:'';
-  const adj=r.adjudication&&r.adjudication.changed?' · ответ изменён после перепроверки':'';
-  return `<div class="mdl">Gemini: ${esc(label(c,ansToFront(c,r.gemini.answer)))}${j?' · '+j:''} · ${AGREE[r.agreement]||''}${adj}</div>`;
-}
 function critRow(c,i,t){
     if(pending(cur,c)){
+      if(CQA_API.enabled&&!D[cur].evalId&&D[cur].running)
+        return `<div class="cr loading" data-id="${c.id}" style="--i:${i}"><div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v na"><span class="spin"></span>Оценивается</span><span></span></div><div class="cr-b"><span class="sk"></span><span class="sk s"></span></div></div>`;
       const msg=CQA_API.enabled&&!D[cur].evalId?'Диалог ещё не оценён.':'Критерий изменён. Примените чек-лист, чтобы оценить его в этом диалоге.';
       return `<div class="cr" data-id="${c.id}"><div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v na">Ожидает оценки</span><span></span></div><div class="cr-b why">${msg}</div></div>`;
     }
@@ -1236,7 +1612,6 @@ function critRow(c,i,t){
       ${eff!==null&&Math.abs(eff-c.w)>.05?`<div class="cr-w">вес ${c.w} → ${fmt(Math.round(eff*100)/100)} с учётом N/A</div>`:''}
       <div class="cr-b"><p class="why">${linkify(r.why)}</p>
         ${evHtml}
-        ${modelsLine(c,r)}
         <div class="cr-f">${isReview(cur,c)?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
         ${state}${dec}</div></div>`;
 }
@@ -1284,9 +1659,8 @@ function reviewRow(){
   if(!flagged.length)return '';
   const rv=flagged.filter(c=>isReview(cur,c)),done=flagged.length-rv.length;
   if(!rv.length)return `<div class="rv"><span class="rvt ok">Все спорные критерии проверены: ${done}</span></div>`;
-  return `<div class="rv"><span class="rvt">Требуют проверки: ${rv.length}</span>`
-    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')
-    +(done?`<span class="rvd">проверено: ${done}</span>`:'')+'</div>';
+  return `<div class="rv"><div class="rvh"><span class="rvt">Требуют проверки: ${rv.length}</span>${done?`<span class="rvd">проверено: ${done}</span>`:''}</div>`
+    +`<div class="rvc">${rv.map(c=>`<button class="chip" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>`;
 }
 
 /* ---------- доказательства: время, роль и цитата видны без клика ---------- */
@@ -1297,22 +1671,23 @@ function quoteOf(d,n,max=90){
 }
 function evItem(d,n){
   const m=D[d].msgs[n-1];if(!m)return '';
-  return `<button class="evb" data-go-msg="${n}"><span class="evt">${mm(secOf(d,n))} · ${esc(ROLE[m[0]]||m[0])}</span><span class="evq">«${esc(quoteOf(d,n))}»</span></button>`;
+  return `<button class="evb bub ${esc(m[0])}" data-go-msg="${n}"><span class="bb">${esc(quoteOf(d,n,160))}<small>${mm(secOf(d,n))} · ${esc(ROLE[m[0]]||m[0])}</small></span></button>`;
 }
 /* действие пропущено или выполнено не полностью */
 const missed=(c,v)=>v==='no'||(c.type==='scale'&&v!=='na'&&v<Math.max(...c.steps));
 function evidenceHtml(d,c,r,v){
   const ev=(r.ev||[]).filter(n=>D[d].msgs[n-1]);
-  let out='';
-  if(ev.length)out+=`<div class="ev"><div class="evh">Основание</div>${ev.map(n=>evItem(d,n)).join('')}</div>`;
   const explicit=r.range?[r.range[0]+1,r.range[1]+1]:null;
   const derived=missed(c,v)&&ev.length>1?[Math.min(...ev),Math.max(...ev)]:null;
   const rg=explicit||derived;
+  let range='';
   if(rg&&(explicit||missed(c,v))){
     const a=Math.min(...rg),b=Math.max(...rg);
     if(D[d].msgs[a-1]&&D[d].msgs[b-1])
-      out+=`<div class="ev"><button class="evb" data-go-range="${a}-${b}"><span class="evt">Проверенный участок: ${a===b?`реплика ${a}`:`реплики ${a}–${b}`}</span><span class="evq">${mm(secOf(d,a))}–${mm(secOf(d,b))}</span></button></div>`;
+      range=`<button class="rgb" data-go-range="${a}-${b}" title="Показать участок в транскрипте">${a===b?`реплика ${a}`:`реплики ${a}–${b}`} · ${mm(secOf(d,a))}–${mm(secOf(d,b))}</button>`;
   }
+  let out='';
+  if(ev.length||range)out+=`<div class="evg"><div class="evh"><span>${ev.length?'Основание':'Проверенный участок'}</span>${ev.length&&range?'<small>проверено: </small>':''}${range}</div>${ev.map(n=>evItem(d,n)).join('')}</div>`;
   if(r.q&&!/^«/.test(r.q))out+=`<div class="ev"><span class="q">${esc(r.q)}</span></div>`;
   return out;
 }
@@ -1421,6 +1796,25 @@ $('#addCrit').onclick=()=>{
   CRIT.push({id:nextId++,name:'Новый критерий',q:'',w:5,type:'yn',na:false,nac:''});
   dirty=true;renderEditor();$$('.ec').at(-1).scrollIntoView({block:'center'});
 };
+/* «Помощь ИИ»: модель собирает черновик критерия из описания; ничего не сохраняется, пока не нажато «Сохранить» */
+if(CQA_API.enabled)$('#aiCrit').hidden=false;
+$('#aiCrit').onclick=()=>{$('#aiText').value='';$('#aiInfo').textContent='';$('#aiGo').disabled=true;$('#aiDlg').showModal();$('#aiText').focus()};
+$('#aiNo').onclick=()=>$('#aiDlg').close();
+$('#aiText').oninput=()=>{$('#aiGo').disabled=$('#aiText').value.trim().length<3};
+$('#aiGo').onclick=async()=>{
+  const go=$('#aiGo'),info=$('#aiInfo');
+  go.disabled=true;go.textContent='Думаю…';info.textContent='';
+  try{
+    const r=await CQA_API.suggestCriterion({brief:$('#aiText').value.trim(),existing:CRIT.map(c=>c.name),
+      sections:[...new Set(CRIT.map(c=>c.section).filter(Boolean))]});
+    const c=critToFront({...r.criterion,key:'ai_'+Date.now().toString(36)});
+    CRIT.push(c);dirty=true;renderEditor();
+    $('#aiDlg').close();
+    $$('.ec').at(-1).scrollIntoView({block:'center'});
+    toast('Критерий добавлен внизу списка: проверьте формулировку и вес');
+  }catch(e){info.textContent='Не получилось: '+e.message}
+  finally{go.textContent='Предложить критерий';go.disabled=$('#aiText').value.trim().length<3}
+};
 $('#applyBtn').onclick=async()=>{
   if(CQA_API.enabled){
     const bad=CRIT.find(c=>!String(c.name).trim());
@@ -1493,7 +1887,6 @@ function renderAppeals(){
     ${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:`<div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>Итог сейчас</small><b>${fmt(total(d).score)}</b></div></div>`}
     <div class="st">${esc(a.text)}</div>
     <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
-    ${CQA_API.enabled?modelsLine(c,r):''}
     <div class="frag">${frag}</div>
     ${a.decision?'':decideForm(d,c,a)}
     <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>
@@ -1507,7 +1900,6 @@ $('#apDetail').onclick=e=>{const o=e.target.closest('[data-open]');if(o)go('#/ca
 /* Экран «Аналитика» (для администратора): по последней оценке каждого диалога, финальные баллы после апелляций. */
 /* ================= АНАЛИТИКА ================= */
 let opSel=null;
-const AGREE_RU={agree:'согласны',minor:'соседние ступени',disputed:'перепроверено',review:'проверить',gemini_only:'только Gemini'};
 const pct=v=>v==null?'—':fmt(v)+'%';
 function kpi(t,v,sub){return `<div class="panel kpi"><small>${t}</small><b>${v}</b>${sub?`<span>${sub}</span>`:''}</div>`}
 function bar(v,max){const w=max?Math.max(2,Math.round(v/max*100)):0;return `<span class="bar"><i style="width:${w}%"></i></span>`}
@@ -1522,27 +1914,21 @@ async function renderStats(){
   box.innerHTML='<div class="empty">Загрузка…</div>';
   let s;try{s=await CQA_API.stats()}catch(e){box.innerHTML=`<div class="empty">Ошибка: ${esc(e.message)}</div>`;return}
   const o=s.overview,dist=s.score_distribution,maxD=Math.max(1,...Object.values(dist));
-  const ag=s.model_agreement.per_criterion_counts,agTotal=Object.values(ag).reduce((a,b)=>a+b,0)||1;
-  box.innerHTML=`
+    box.innerHTML=`
   <div class="kpis">
     ${kpi('Оценено диалогов',o.evaluated_conversations)}
     ${kpi('Средний балл',fmt(o.avg_total),o.avg_initial_total!==o.avg_total?`до апелляций ${fmt(o.avg_initial_total)}`:'')}
     ${kpi('С грубыми ошибками',o.gross_error_conversations)}
-    ${kpi('Критериев на проверку',o.criteria_needing_review,'модели не согласны или мало уверенности')}
+    ${kpi('Критериев на проверку',o.criteria_needing_review,'нужен взгляд проверяющего')}
     ${kpi('Апелляции',s.appeals.total||0,s.appeals.total?`изменено ${s.appeals.changed||0} · ${pct(s.appeals.change_rate_pct)} решений`:'')}
-    ${kpi('Стоимость оценки',o.avg_cost_usd!=null?'$'+o.avg_cost_usd.toFixed(4):'—',`всего $${(o.total_cost_usd||0).toFixed(2)} · ~${Math.round((o.avg_duration_ms||0)/1000)} с`)}
   </div>
   <div class="st-grid">
     <div class="panel box"><h3>Распределение баллов</h3>
       ${['85-100','70-84','50-69','0-49','n/a'].filter(k=>dist[k]).map(k=>`<div class="wl"><span class="t">${k}</span>${bar(dist[k],maxD)}<span>${dist[k]}</span></div>`).join('')}</div>
-    <div class="panel box"><h3>Согласие Gemini и Jev по критериям</h3>
-      ${Object.entries(ag).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="wl"><span class="t">${AGREE_RU[k]||k}</span>${bar(v,agTotal)}<span>${Math.round(v/agTotal*100)}%</span></div>`).join('')}
-      <small>Ответ изменён после перепроверки: ${s.model_agreement.adjudication_changed_answer}</small></div>
   </div>
-  <div class="panel tbl st-t"><div class="tr-h">Критерии — от самых проблемных</div><table><thead><tr><th>Критерий</th><th class="r">Средний % балла</th><th class="r">N/A</th><th>Ответы</th><th>Согласие моделей</th></tr></thead><tbody>
+  <div class="panel tbl st-t"><div class="tr-h">Критерии — от самых проблемных</div><table><thead><tr><th>Критерий</th><th class="r">Средний % балла</th><th class="r">N/A</th><th>Ответы</th></tr></thead><tbody>
     ${s.by_criterion.map(c=>`<tr><td>${esc(c.name||c.key)}</td><td class="r ${c.avg_score_pct!==null&&c.avg_score_pct<60?'low-score':''}">${pct(c.avg_score_pct)}</td><td class="r">${pct(c.na_rate)}</td>
-      <td class="mut">${Object.entries(c.answers).map(([a,n])=>`${a==='yes'?'Да':a==='no'?'Нет':a==='na'?'N/A':a}: ${n}`).join(' · ')}</td>
-      <td class="mut">${Object.entries(c.model_agreement).filter(([k])=>k!=='null').map(([a,n])=>`${AGREE_RU[a]||a}: ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>
+      <td class="mut">${Object.entries(c.answers).map(([a,n])=>`${a==='yes'?'Да':a==='no'?'Нет':a==='na'?'N/A':a}: ${n}`).join(' · ')}</td></tr>`).join('')}</tbody></table></div>
   <div class="st-grid">${groupTable('По языкам',s.by_language)}${groupTable('По каналам',s.by_channel)}</div>
   <div class="st-grid">
     <div class="panel tbl st-t"><div class="tr-h">Операторы <small class="mut">— нажмите, чтобы открыть рекомендации</small></div><table><thead><tr><th>Оператор</th><th class="r">Диалогов</th><th class="r">Средний балл</th><th class="r">Грубые</th></tr></thead><tbody id="opRows">
@@ -1584,7 +1970,8 @@ document.addEventListener('click',async e=>{
       const m=$('#m'+b.dataset.goMsg);
       if(m){m.classList.add('mark');motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300)}
     });
-    $('#m'+g.dataset.goMsg).scrollIntoView({block:'center'});
+    const tgt=$('#m'+g.dataset.goMsg),sg=tgt.closest('details');if(sg)sg.open=true;
+    tgt.scrollIntoView({block:'center'});
     seekTo(+g.dataset.goMsg);
   }
   const sk=e.target.closest('[data-seek]');if(sk&&$('#aud'))seekTo(+sk.dataset.seek);
