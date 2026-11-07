@@ -4,6 +4,10 @@ Prototype for the Freedom Broker hackathon: scoring an operator's work against a
 with explanations that link to the exact message and to the moment in the recording, appeals with review, operator feedback and analytics.
 The interface is in Russian; Russian labels are shown in quotes with their English meaning.
 
+![CQA Judge: from a conversation to an appeal decision](docs/demo.gif)
+
+*A real run of the interface in demo mode: open a conversation, jump from "Требуют проверки" (Needs review) to the evidence, dispute a score, and see the outcome and the new total in one line.*
+
 ## Run with Docker
 
 ```bash

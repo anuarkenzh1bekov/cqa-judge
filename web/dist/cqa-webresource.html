@@ -193,7 +193,7 @@ tbody tr:last-child td{border-bottom:0}
 .hist{display:grid;gap:8px;margin-top:16px}
 
 /* окна и уведомление */
-dialog{border:1px solid var(--line-2);border-radius:8px;padding:24px;width:min(460px,92vw);background:var(--panel);color:var(--ink)}
+dialog{margin:auto;border:1px solid var(--line-2);border-radius:8px;padding:24px;width:min(460px,92vw);background:var(--panel);color:var(--ink)}
 dialog::backdrop{background:rgba(0,0,0,.55)}
 dialog h3{font-size:16px;font-weight:600}
 dialog p{color:var(--muted);margin:4px 0 12px}
@@ -314,6 +314,8 @@ tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 /* длинный пакет (например, весь набор) прокручивается внутри окна */
 .run{max-height:50vh;overflow:auto}
+.rvt.ok{color:var(--yes)}
+.rvd{margin-left:auto;color:var(--muted)}
 
 </style>
 </head>
@@ -866,6 +868,13 @@ function sectionScores(d){
 /* Итог до и после решения по одному критерию (остальные решения учтены как есть). */
 function decisionImpact(d,c){return {before:total(d,false,c.id).score,after:total(d).score}}
 
+/* Критерий требует проверки, пока модель не уверена и человек ещё не принял решение. */
+function isReview(d,c){
+  if(pending(d,c))return false;
+  const a=appeals[d][c.id];
+  return resOf(d,c).conf<.65&&!(a&&a.decision);
+}
+
 </script>
 <script>
 /* Общие вспомогательные функции. */
@@ -924,7 +933,16 @@ function motion(el,frames,ms=180){
 /* Маршрутизация между экранами. */
 /* ================= РОУТИНГ ================= */
 let H=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
-function go(h){H=h;try{history.replaceState(null,'',h)}catch(_){}route()}
+/* История браузера: каждый переход отдельной записью, поэтому стрелка «Назад» идёт по экранам
+   приложения и не уводит из него. Прокруткой списка управляем сами (см. restoreListFocus). */
+try{history.scrollRestoration='manual';history.replaceState({i:0,from:null},'',H)}catch(_){}
+function go(h){
+  if(h===H){route();return}
+  const prev=H,i=((history.state&&history.state.i)||0)+1;
+  H=h;
+  try{history.pushState({i,from:prev},'',h)}catch(_){}
+  route();
+}
 let routeSeq=0,curView=null;
 async function route(){
   const seq=++routeSeq;
@@ -959,9 +977,20 @@ async function beLoadAppealDialogs(){
   const ids=[...new Set(list.map(a=>a.conversation_id))].filter(id=>D[id]);
   await Promise.all(ids.map(id=>beLoadDialog(id)));
 }
-addEventListener('hashchange',()=>{if(location.hash.startsWith('#/')&&location.hash!==H){H=location.hash;route()}});
+/* стрелки браузера «Назад» и «Вперёд» */
+function syncFromUrl(){
+  const h=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
+  if(h!==H){H=h;route()}
+}
+addEventListener('popstate',syncFromUrl);
+addEventListener('hashchange',syncFromUrl);
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.r==='card'?'#/card/'+encodeURIComponent(cur):'#/'+b.dataset.r)};
-$('#back').onclick=()=>go('#/list');
+/* «← Диалоги»: если пришли из списка, ведём себя как стрелка браузера (в истории не копятся лишние записи) */
+$('#back').onclick=()=>{
+  const s=history.state;
+  if(s&&s.from&&String(s.from).startsWith('#/list'))history.back();
+  else go('#/list');
+};
 
 </script>
 <script>
@@ -991,7 +1020,7 @@ function listRows(){
         s:done?s.final_total:null,g:!!(done&&s.gross_error),a:(s&&s.open_appeals)||0,needsReview:!!(done&&s.needs_review),
         status:s?s.status:'none'};
     }
-    const needsReview=CRIT.some(c=>!pending(key,c)&&dialog.res[c.id].conf<.65);
+    const needsReview=CRIT.some(c=>isReview(key,c));
     const anyRes=CRIT.some(c=>!pending(key,c));
     return {key,id:dialog.id,lang:dialog.lang,ch:dialog.channel,op:dialog.operator,group:dialog.group,
       s:total(key).score,g:dialog.gross.bad,a:nAppeals(key),needsReview,
@@ -1186,7 +1215,7 @@ function critRow(c,i,t){
       <div class="cr-b"><p class="why">${linkify(r.why)}</p>
         ${evHtml}
         ${modelsLine(c,r)}
-        <div class="cr-f">${r.conf<.65?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
+        <div class="cr-f">${isReview(cur,c)?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
         ${state}${dec}</div></div>`;
 }
 async function saveDecision(d,id,sel,reason,act){
@@ -1227,12 +1256,15 @@ $('#dlgYes').onclick=async()=>{
 
 /* ---------- «с чего начать»: критерии, которым модель сама не уверена ---------- */
 const ROLE={client:'Клиент',operator:'Оператор',bot:'Бот',system:'Система'};
-const reviewList=d=>CRIT.filter(c=>!pending(d,c)&&resOf(d,c).conf<.65);
 function reviewRow(){
-  const rv=reviewList(cur);
-  if(!rv.length)return '';
+  /* спорные: модель не уверена; из них ждут решения те, по которым человек его ещё не принял */
+  const flagged=CRIT.filter(c=>!pending(cur,c)&&resOf(cur,c).conf<.65);
+  if(!flagged.length)return '';
+  const rv=flagged.filter(c=>isReview(cur,c)),done=flagged.length-rv.length;
+  if(!rv.length)return `<div class="rv"><span class="rvt ok">Все спорные критерии проверены: ${done}</span></div>`;
   return `<div class="rv"><span class="rvt">Требуют проверки: ${rv.length}</span>`
-    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')+'</div>';
+    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')
+    +(done?`<span class="rvd">проверено: ${done}</span>`:'')+'</div>';
 }
 
 /* ---------- доказательства: время, роль и цитата видны без клика ---------- */

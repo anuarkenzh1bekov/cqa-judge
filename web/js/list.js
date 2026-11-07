@@ -24,7 +24,7 @@ function listRows(){
         s:done?s.final_total:null,g:!!(done&&s.gross_error),a:(s&&s.open_appeals)||0,needsReview:!!(done&&s.needs_review),
         status:s?s.status:'none'};
     }
-    const needsReview=CRIT.some(c=>!pending(key,c)&&dialog.res[c.id].conf<.65);
+    const needsReview=CRIT.some(c=>isReview(key,c));
     const anyRes=CRIT.some(c=>!pending(key,c));
     return {key,id:dialog.id,lang:dialog.lang,ch:dialog.channel,op:dialog.operator,group:dialog.group,
       s:total(key).score,g:dialog.gross.bad,a:nAppeals(key),needsReview,

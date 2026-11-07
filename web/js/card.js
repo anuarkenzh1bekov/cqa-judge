@@ -141,7 +141,7 @@ function critRow(c,i,t){
       <div class="cr-b"><p class="why">${linkify(r.why)}</p>
         ${evHtml}
         ${modelsLine(c,r)}
-        <div class="cr-f">${r.conf<.65?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
+        <div class="cr-f">${isReview(cur,c)?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
         ${state}${dec}</div></div>`;
 }
 async function saveDecision(d,id,sel,reason,act){
@@ -182,12 +182,15 @@ $('#dlgYes').onclick=async()=>{
 
 /* ---------- «с чего начать»: критерии, которым модель сама не уверена ---------- */
 const ROLE={client:'Клиент',operator:'Оператор',bot:'Бот',system:'Система'};
-const reviewList=d=>CRIT.filter(c=>!pending(d,c)&&resOf(d,c).conf<.65);
 function reviewRow(){
-  const rv=reviewList(cur);
-  if(!rv.length)return '';
+  /* спорные: модель не уверена; из них ждут решения те, по которым человек его ещё не принял */
+  const flagged=CRIT.filter(c=>!pending(cur,c)&&resOf(cur,c).conf<.65);
+  if(!flagged.length)return '';
+  const rv=flagged.filter(c=>isReview(cur,c)),done=flagged.length-rv.length;
+  if(!rv.length)return `<div class="rv"><span class="rvt ok">Все спорные критерии проверены: ${done}</span></div>`;
   return `<div class="rv"><span class="rvt">Требуют проверки: ${rv.length}</span>`
-    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')+'</div>';
+    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')
+    +(done?`<span class="rvd">проверено: ${done}</span>`:'')+'</div>';
 }
 
 /* ---------- доказательства: время, роль и цитата видны без клика ---------- */

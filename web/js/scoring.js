@@ -29,3 +29,10 @@ function sectionScores(d){
 
 /* Итог до и после решения по одному критерию (остальные решения учтены как есть). */
 function decisionImpact(d,c){return {before:total(d,false,c.id).score,after:total(d).score}}
+
+/* Критерий требует проверки, пока модель не уверена и человек ещё не принял решение. */
+function isReview(d,c){
+  if(pending(d,c))return false;
+  const a=appeals[d][c.id];
+  return resOf(d,c).conf<.65&&!(a&&a.decision);
+}

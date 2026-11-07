@@ -1,7 +1,16 @@
 /* Маршрутизация между экранами. */
 /* ================= РОУТИНГ ================= */
 let H=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
-function go(h){H=h;try{history.replaceState(null,'',h)}catch(_){}route()}
+/* История браузера: каждый переход отдельной записью, поэтому стрелка «Назад» идёт по экранам
+   приложения и не уводит из него. Прокруткой списка управляем сами (см. restoreListFocus). */
+try{history.scrollRestoration='manual';history.replaceState({i:0,from:null},'',H)}catch(_){}
+function go(h){
+  if(h===H){route();return}
+  const prev=H,i=((history.state&&history.state.i)||0)+1;
+  H=h;
+  try{history.pushState({i,from:prev},'',h)}catch(_){}
+  route();
+}
 let routeSeq=0,curView=null;
 async function route(){
   const seq=++routeSeq;
@@ -36,6 +45,17 @@ async function beLoadAppealDialogs(){
   const ids=[...new Set(list.map(a=>a.conversation_id))].filter(id=>D[id]);
   await Promise.all(ids.map(id=>beLoadDialog(id)));
 }
-addEventListener('hashchange',()=>{if(location.hash.startsWith('#/')&&location.hash!==H){H=location.hash;route()}});
+/* стрелки браузера «Назад» и «Вперёд» */
+function syncFromUrl(){
+  const h=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
+  if(h!==H){H=h;route()}
+}
+addEventListener('popstate',syncFromUrl);
+addEventListener('hashchange',syncFromUrl);
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.r==='card'?'#/card/'+encodeURIComponent(cur):'#/'+b.dataset.r)};
-$('#back').onclick=()=>go('#/list');
+/* «← Диалоги»: если пришли из списка, ведём себя как стрелка браузера (в истории не копятся лишние записи) */
+$('#back').onclick=()=>{
+  const s=history.state;
+  if(s&&s.from&&String(s.from).startsWith('#/list'))history.back();
+  else go('#/list');
+};
