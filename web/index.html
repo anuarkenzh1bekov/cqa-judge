@@ -57,7 +57,7 @@
       </section>
       <div>
         <section class="panel score" id="score"></section>
-        <section class="panel fb sec" id="sec" hidden></section>
+        <section class="panel fb sec-warn" id="sec" hidden></section>
         <section class="panel fb" id="mood" hidden></section>
         <section class="panel fb" id="fb" hidden></section>
         <section class="panel crits" id="crit"></section>
@@ -129,7 +129,9 @@
   <h3 id="runTitle"></h3>
   <p id="runSub"></p>
   <div class="run-prog" id="runProg" aria-hidden="true"><i></i></div>
+  <p class="run-phase" id="runPhase" aria-live="polite"></p>
   <div class="run" id="runList"></div>
+  <div class="live-box" id="runLive" hidden></div>
   <div class="f"><button class="btn primary" id="runClose" disabled>Готово</button></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
@@ -148,6 +150,7 @@
 <script src="js/compare.js"></script>
 <script src="js/appeals.js"></script>
 <script src="js/stats.js"></script>
+<script src="js/live.js"></script>
 <script src="js/role.js"></script>
 <script src="js/aitext.js"></script>
 <script src="js/app.js"></script>

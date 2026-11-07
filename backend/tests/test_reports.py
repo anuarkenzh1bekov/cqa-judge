@@ -48,8 +48,15 @@ def test_changed_appeal_becomes_example_for_next_evaluation(client, fake, monkey
         seen.append(prompt)
         return await orig(prompt, schema, **kw)
 
+    orig_stream = fake.stream_json
+
+    async def spy_stream(prompt, schema, **kw):  # the evaluation streams its main call
+        seen.append(prompt)
+        return await orig_stream(prompt, schema, **kw)
+
     from app.llm import gemini
     monkeypatch.setattr(gemini, "generate_json", spy)
+    monkeypatch.setattr(gemini, "stream_json", spy_stream)
     upload(client, "cal-1")
     upload(client, "cal-2")
     fake.gemini_answers["c07_closing"] = fake.jev_answers["c07_closing"] = "no"

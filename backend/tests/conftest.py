@@ -1,4 +1,5 @@
 """Test setup: a throwaway SQLite DB and fake models (no network, no API keys used)."""
+import json
 import os
 import tempfile
 
@@ -102,6 +103,19 @@ class FakeModels:
             validate(data)
         return data, usage
 
+    async def stream_json(self, prompt, schema, system=None, validate=None, contents=None, on_partial=None):
+        """Same data as generate_json, delivered like a stream: facts first, then the criteria one by one."""
+        data, usage = await self.generate_json(prompt, schema, system=system, validate=validate)
+        if on_partial:
+            on_partial({"facts": data["facts"]})
+            part = {"facts": data["facts"], "criteria": {}}
+            for k, v in data["criteria"].items():
+                part["criteria"][k] = {"analysis": v["analysis"][:1]}
+                on_partial(json.loads(json.dumps(part)))
+                part["criteria"][k] = v
+            on_partial(data)
+        return data, usage
+
     async def jev_ask(self, state, questions, retries=2):
         self.calls["jev"] += 1
         if self.jev_fail:
@@ -115,6 +129,7 @@ class FakeModels:
 def fake(monkeypatch):
     f = FakeModels()
     monkeypatch.setattr(gemini, "generate_json", f.generate_json)
+    monkeypatch.setattr(gemini, "stream_json", f.stream_json)
     monkeypatch.setattr(jev, "ask", f.jev_ask)
     monkeypatch.setattr(jev, "enabled", lambda: True)
     return f

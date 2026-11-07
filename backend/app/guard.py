@@ -34,10 +34,9 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [(k, re.compile(p, re.I | re.S)) for k
                      r"(максимальн\w*\s+(?:балл\w*|оценк\w*)|максимум\s+балл\w*|полн\w*\s+балл\w*|100\s*(?:%|балл\w*|points?)|"
                      r"все\s+\"?да\"?|full\s+(?:marks|score|points)|max(?:imum)?\s+(?:score|points?|marks?)|perfect\s+score|"
                      r"(?:all|every)\s+(?:criteria|answers?)\s+(?:yes|pass)|all\s+yes)"),
-    ("address_evaluator", r"(оценщик\w*|асессор\w*|модел[ьию]\w*|нейросет\w*|искусственн\w*\s+интеллект|\bии\b|\bai\b|"
-                          r"evaluator|grader|assessor|language\s+model|\bllm\b|assistant|chatgpt|gemini|claude)\W+"
-                          r"(?:\w+\W+){0,6}?(постав\w*|оцени\w*|засчита\w*|игнорир\w*|выполни\w*|ответь\w*|"
-                          r"rate|score|grade|ignore|follow|obey|answer|respond|output|mark)"),
+    ("address_evaluator", r"(оценщик\w*|асессор\w*|нейросет\w*|модел[ьию]\b|evaluator|grader|assessor|\bllm\b|language\s+model|"
+                          r"\b(?:ии|ai)\b\s*[,:!])\W+(?:\w+\W+){0,4}?"
+                          r"(постав\w*|выстав\w*|засчита\w*|игнорир\w*|rate|score|grade|ignore|mark|approve)"),
     ("role_hijack", r"(ты\s+теперь|с\s+этого\s+момента\s+ты|веди\s+себя\s+как|притворись|you\s+are\s+now|from\s+now\s+on|"
                     r"act\s+as|pretend\s+(?:to\s+be|you)|new\s+instructions?|новые\s+инструкции)"),
     ("fake_marker", r"(?:^|[\s>\]\)])(system|assistant|developer|система|ассистент)\s*(?:prompt|message|:)\s*\S"
@@ -67,6 +66,8 @@ def detect(transcript: list[dict]) -> list[dict]:
     """Findings for every turn that tries to talk to the evaluator. Never raises."""
     found = []
     for i, turn in enumerate(transcript or []):
+        if turn.get("speaker") in ("bot", "system"):  # the platform's own lines (greeting, events) are not a threat
+            continue
         text = normalize(turn.get("text", ""))
         if not text:
             continue
@@ -85,3 +86,16 @@ def summarize(findings: list[dict]) -> dict:
         "note": ("В диалоге найдены попытки повлиять на оценку. Они игнорируются, а критерии, опирающиеся на эти "
                  "реплики, помечены для проверки." if findings else None),
     }
+
+
+def review_reasons(security: dict, evidence: list[dict], checked_range, row_type: str) -> list[str]:
+    """Why a criterion needs a human look because of injection attempts (used at evaluation time and when refreshing)."""
+    injected = {f["turn"] for f in security.get("attempts", [])}
+    if not injected:
+        return []
+    if security.get("operator_attempt") and row_type != "flag":
+        return ["operator_injection"]
+    rng = checked_range or [None, None]
+    touched = any(e["index"] in injected for e in evidence) or any(
+        rng[0] is not None and rng[0] <= t <= rng[1] for t in injected)
+    return ["prompt_injection"] if touched else []

@@ -27,6 +27,7 @@ async def lifespan(_app: FastAPI):
         db.execute(update(Evaluation).where(Evaluation.status.in_(("pending", "running")))
                    .values(status="error", error="Прервано перезапуском сервера"))
         db.commit()
+        services.refresh_security(db)
         if settings.seed_dataset:
             services.seed_conversations(db, settings.seed_dataset)
     yield

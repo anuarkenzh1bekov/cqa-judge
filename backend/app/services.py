@@ -8,7 +8,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import pipeline, scoring
+from . import guard, live, pipeline, scoring
 from .checklist import DEFAULT_CHECKLIST, ChecklistIn, Criterion
 from .config import ROOT, settings
 from .db import SessionLocal
@@ -149,7 +149,18 @@ def calibration_examples(db: Session, criteria: list[Criterion], exclude_convers
 
 
 async def run_evaluation(eval_id: int, with_feedback: bool = True) -> None:
-    """Always calls the models - no caching by conversation_id (results must come from real analysis)."""
+    """Always calls the models - no caching by conversation_id (results must come from real analysis).
+    Open cards follow it live (live.py); `done` is sent only after the result is saved."""
+    with SessionLocal() as db:
+        cid = db.get(Evaluation, eval_id).conversation_id
+    live.start(cid)
+    try:
+        await _run_evaluation(eval_id, with_feedback, cid)
+    finally:
+        live.finish(cid)
+
+
+async def _run_evaluation(eval_id: int, with_feedback: bool, cid: str) -> None:
     with SessionLocal() as db:
         ev = db.get(Evaluation, eval_id)
         conv = conv_dict(ev.conversation)
@@ -161,7 +172,8 @@ async def run_evaluation(eval_id: int, with_feedback: bool = True) -> None:
                 db.get(Evaluation, eval_id).status = "running"
                 db.commit()
             out = await pipeline.evaluate(conv, criteria, with_feedback=with_feedback, use_sem=False,
-                                          examples=examples)
+                                          examples=examples,
+                                          on_event=(lambda e: live.publish(cid, e)) if settings.stream_enabled else None)
     except Exception as e:  # noqa: BLE001
         log.exception("evaluation %s failed", eval_id)
         with SessionLocal() as db:
@@ -178,6 +190,28 @@ async def run_evaluation(eval_id: int, with_feedback: bool = True) -> None:
         ev.cost_usd, ev.duration_ms = out["cost_usd"], out["duration_ms"]
         ev.status, ev.error, ev.finished_at = "done", None, datetime.now(timezone.utc)
         db.commit()
+
+
+def refresh_security(db: Session) -> int:
+    """Stored evaluations keep the security findings made by the rules of their time. Recompute them from the
+    transcript with the current rules (cheap, no model call) and fix the review flags that depended on them."""
+    changed = 0
+    for ev in db.scalars(select(Evaluation).where(Evaluation.status == "done")):
+        old = (ev.facts or {}).get("security")
+        if not old or not old.get("injection_detected"):
+            continue
+        sec = guard.summarize(guard.detect(ev.conversation.transcript))
+        if sec["attempts"] == old.get("attempts"):
+            continue
+        rows = []
+        for r in ev.results or []:
+            reasons = [x for x in r.get("review_reasons", []) if x not in ("prompt_injection", "operator_injection")]
+            reasons += guard.review_reasons(sec, r.get("evidence", []), r.get("checked_range"), r.get("type"))
+            rows.append({**r, "review_reasons": reasons, "needs_review": bool(reasons)})
+        ev.facts, ev.results = {**ev.facts, "security": sec}, rows
+        changed += 1
+    db.commit()
+    return changed
 
 
 def spawn(coro) -> None:

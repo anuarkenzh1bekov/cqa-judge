@@ -69,21 +69,37 @@ async def _run_jev(criteria, conv):
         return None, None, str(e)
 
 
+def _snapshot(p: dict) -> dict:
+    """What the card shows while Gemini is still writing: per criterion the answer and the text written so far."""
+    crit = {}
+    for k, v in ((p.get("criteria") or {}).items()):
+        if isinstance(v, dict):
+            crit[k] = {"answer": v.get("answer"), "text": v.get("explanation") or v.get("analysis") or "",
+                       "done": "confidence" in v}
+    return {"type": "partial", "request": (p.get("facts") or {}).get("client_request"), "criteria": crit}
+
+
 async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = True, use_sem: bool = True,
-                   examples: dict[str, list[str]] | None = None) -> dict:
+                   examples: dict[str, list[str]] | None = None, on_event=None) -> dict:
     transcript = conv["transcript"]
     n = len(transcript)
     security = guard.summarize(guard.detect(transcript))
-    injected = {f["turn"] for f in security["attempts"]}
 
     async with (sem() if use_sem else contextlib.nullcontext()):
         t_start = time.perf_counter()  # model time only, not time spent queued for a slot
-        g_task = gemini.generate_json(
-            prompts.build_eval_prompt(criteria, conv, with_feedback, examples),
-            prompts.build_eval_schema(criteria, with_feedback),
-            system=prompts.SYSTEM_PROMPT,
-            validate=_make_validator(criteria, n),
-        )
+        g_args = (prompts.build_eval_prompt(criteria, conv, with_feedback, examples),
+                  prompts.build_eval_schema(criteria, with_feedback))
+        g_kw = {"system": prompts.SYSTEM_PROMPT, "validate": _make_validator(criteria, n)}
+
+        async def g_call():
+            if on_event:  # stream so the card fills in while the model writes; on any failure do the normal call
+                try:
+                    return await gemini.stream_json(*g_args, **g_kw, on_partial=lambda p: on_event(_snapshot(p)))
+                except Exception:  # noqa: BLE001
+                    pass
+            return await gemini.generate_json(*g_args, **g_kw)
+
+        g_task = g_call()
         (g, g_usage), (j_answers, j_usage, j_err), (m_data, m_usage, m_err) = await asyncio.gather(
             g_task, _run_jev(criteria, conv), mood.analyze(conv))
 
@@ -155,14 +171,7 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
             reasons.append("low_confidence")
         if bad:
             reasons.append("invalid_evidence_dropped")
-        if injected:
-            rng = row["checked_range"] or [None, None]
-            touched = any(e["index"] in injected for e in ev) or any(
-                rng[0] is not None and rng[0] <= t <= rng[1] for t in injected)
-            if security["operator_attempt"] and row["type"] != "flag":
-                reasons.append("operator_injection")
-            elif touched:
-                reasons.append("prompt_injection")
+        reasons += guard.review_reasons(security, ev, row["checked_range"], row["type"])
         if not ev and not row["checked_range"] and row["type"] != "flag":
             reasons.append("no_evidence")
         row["needs_review"] = bool(reasons)

@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # Personal coaching plan per operator (one Gemini call, cached; works without the model too).
     coaching_enabled: bool = True
 
+    # Stream the evaluation: criteria appear on screen while the model is still writing (SSE, /api/conversations/{id}/live).
+    stream_enabled: bool = True
+
     max_concurrency: int = 4
     cors_origins: str = "*"
 

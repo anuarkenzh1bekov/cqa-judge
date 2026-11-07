@@ -1,3 +1,5 @@
+import asyncio
+import json
 import re
 import uuid
 from datetime import datetime
@@ -10,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import audio, services, transcribe
+from .. import audio, live, services, transcribe
 from ..config import settings
 from ..db import get_db
 from ..llm import gemini
@@ -18,6 +20,39 @@ from ..models import Conversation, Evaluation
 from ..prompts import format_transcript
 
 router = APIRouter(prefix="/api", tags=["conversations"])
+
+
+LIVE_WAIT_TICKS = 32
+
+
+@router.get("/conversations/{cid}/live")
+async def live_stream(cid: str, request: Request):
+    """Server-sent events with the running evaluation of this conversation: `partial` snapshots while the model writes,
+    then `done`. Waits a few seconds for an evaluation that is queued but has not started; `idle` if nothing runs."""
+    async def gen():
+        for _ in range(LIVE_WAIT_TICKS):  # up to ~8 s for a queued evaluation to start
+            if live.is_active(cid) or await request.is_disconnected():
+                break
+            await asyncio.sleep(0.25)
+        if not live.is_active(cid):
+            yield 'data: {"type":"idle"}\n\n'
+            return
+        q = live.subscribe(cid)
+        try:
+            yield ": ok\n\n"
+            while not await request.is_disconnected():
+                try:
+                    ev = await asyncio.wait_for(q.get(), 15)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                if ev.get("type") == "done":
+                    break
+        finally:
+            live.unsubscribe(cid, q)
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 class ImportIn(BaseModel):

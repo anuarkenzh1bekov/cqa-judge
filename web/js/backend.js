@@ -147,6 +147,19 @@ async function beSaveChecklist(){
    и повтор только неудавшихся диалогов. */
 const beSleep=ms=>new Promise(r=>setTimeout(r,ms));
 const beShortErr=s=>{s=String(s||'ошибка');return s.length>60?s.slice(0,59)+'…':s};
+/* спокойная смена фраз под прогрессом, пока идёт оценка */
+const RUN_PHASES=['Читаем диалог','Сверяем с критериями','Проверяем цитаты','Считаем итог'];
+let phaseTimer=null,phaseI=0;
+function runPhase(on){
+  const el=$('#runPhase');if(!el)return;
+  if(!on){clearInterval(phaseTimer);phaseTimer=null;el.textContent='';el.classList.remove('in');return}
+  if(phaseTimer)return;
+  phaseI=0;el.textContent=RUN_PHASES[0];requestAnimationFrame(()=>el.classList.add('in'));
+  phaseTimer=setInterval(()=>{
+    el.classList.remove('in');
+    setTimeout(()=>{phaseI=(phaseI+1)%RUN_PHASES.length;el.textContent=RUN_PHASES[phaseI];el.classList.add('in')},260);
+  },2600);
+}
 function beRunBatch(title,body){
   const ids=(body.conversation_ids||[]).slice();
   const checklist_id=body.checklist_id||null;
@@ -158,10 +171,11 @@ function beRunBatch(title,body){
   function render(){
     const all=[...rows.values()],n=s=>all.filter(r=>r.status===s).length;
     const work=n('pending')+n('running'),bad=failed();
+    runPhase(work>0);
     const prog=$('#runProg');
     prog.classList.toggle('busy',work>0);prog.classList.toggle('full',!work&&!bad.length);
     prog.firstElementChild.style.width=(work?Math.max(8,(n('done')+bad.length)/rows.size*100):100)+'%';
-    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work} <span class="load sm" aria-hidden="true"><i></i><i></i><i></i></span>`:'')
+    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work}`:'')
       +(bad.length&&!work?` · ${bad.length===1?'не обработан':'не обработаны'}: ${bad.map(esc).join(', ')}`:'');
     $('#runList').innerHTML=[...rows].map(([id,r])=>{
       const cls=r.status==='done'?'ok':r.status==='running'?'go':r.status==='error'?'err':'';
@@ -209,7 +223,9 @@ function beRunBatch(title,body){
     if(r&&!busy.size)start([r.dataset.retry]);
     if(ra&&!busy.size)start(failed());
   };
-  close.onclick=()=>$('#runDlg').close();
+  const lv=$('#runLive');lv.innerHTML='';lv.hidden=ids.length!==1;
+  if(ids.length===1)liveStart(ids[0]);
+  close.onclick=()=>{liveStop();$('#runDlg').close()};
   $('#runDlg').showModal();render();
   return start(ids).then(()=>{
     const all=[...rows.values()];
@@ -226,9 +242,9 @@ async function beAutoEvaluate(cid){
   const redraw=()=>{if(cur===cid&&!$('#v-card').hidden)renderCard()};
   try{
     if(!d.running){
-      d.running=true;redraw();
+      d.running=true;redraw();liveStart(cid);
       await CQA_API.batch({conversation_ids:[cid]});
-    }else redraw();
+    }else{redraw();liveStart(cid)}
     let conv;
     for(let i=0;i<120;i++){   // до ~5 минут
       await beSleep(2500);
@@ -242,7 +258,7 @@ async function beAutoEvaluate(cid){
     d.running=false;
     toast('Не удалось оценить диалог: '+beShortErr(e.message));
   }finally{
-    redraw();
+    liveStop();redraw();
     try{if(!$('#v-list').hidden)renderList()}catch(_){}
   }
 }

@@ -3,6 +3,7 @@
 function renderCard(){
   const t=total(cur);   /* итог считаем один раз на обновление карточки */
   $('#pick').value=cur;renderChat();renderScore(t);renderSecurity();renderMood();renderFeedback();renderCrit(t);
+  liveRows();
 }
 /* нарушения в транскрипте: реплики-основания критериев, где действие пропущено. {номер реплики: [названия критериев]} */
 function violsOf(d){
@@ -244,7 +245,7 @@ const MOOD={calm:'спокоен',positive:'доволен',confused:'расте
 const MOOD_CLS={calm:'',positive:'yes',confused:'warn',anxious:'warn',irritated:'no',angry:'no'};
 const OP_TONE={friendly:'доброжелательный',neutral:'нейтральный',tense:'напряжённый',irritated:'раздражённый'};
 const TRAJ={improved:'стало лучше',unchanged:'без изменений',worsened:'стало хуже'};
-const INJ_KIND={override:'сбросить правила',score_demand:'потребовать баллы',address_evaluator:'обращение к оценщику',role_hijack:'смена роли',fake_marker:'поддельная системная метка',format_hijack:'навязать формат ответа',kz_override:'сбросить правила'};
+const INJ_KIND={override:'сбросить правила',score_demand:'потребовать баллы',address_evaluator:'обращение к проверяющему',role_hijack:'смена роли',fake_marker:'поддельная системная метка',format_hijack:'навязать формат ответа',kz_override:'сбросить правила'};
 function renderSecurity(){
   const box=$('#sec');if(!box)return;
   const s=CQA_API.enabled&&D[cur].facts&&D[cur].facts.security;
@@ -252,7 +253,7 @@ function renderSecurity(){
   const who={client:'клиент',operator:'оператор',bot:'бот',system:'система'};
   box.hidden=false;
   box.innerHTML=`<div class="tr-h">Попытка повлиять на оценку <small>· проигнорирована</small></div>
-    <p class="why">${s.operator_attempt?'<b>Оператор пытался повлиять на оценку.</b> ':''}В диалоге есть реплики, обращённые к оценщику. Они не засчитаны, балл посчитан по правилам; критерии, которые опираются на эти реплики${s.operator_attempt?' (и все критерии из-за попытки оператора)':''}, помечены для проверки.</p>
+    <p class="why">${s.operator_attempt?'<b>Оператор пытался повлиять на оценку.</b> ':''}В диалоге есть реплики, обращённые к проверяющему. Они не засчитаны, балл посчитан по правилам; критерии, которые опираются на эти реплики${s.operator_attempt?' (и все критерии из-за попытки оператора)':''}, помечены для проверки.</p>
     <ul class="fbl">${s.attempts.map(a=>`<li class="ev"><button class="lk" data-go-msg="${a.turn+1}">#${a.turn+1}</button> <small>${esc(who[a.speaker]||a.speaker||'')} · ${esc(a.kinds.map(k=>INJ_KIND[k]||k).join(', '))}</small><span class="q">«${esc(a.text)}»</span></li>`).join('')}</ul>`;
 }
 function renderMood(){

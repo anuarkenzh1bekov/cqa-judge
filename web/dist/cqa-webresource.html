@@ -519,7 +519,7 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .fb>.fbl li.ev{padding-top:12px;padding-bottom:12px}
 
 /* Защита от инъекций и коучинг оператора */
-.panel.sec{border-left:3px solid var(--no)}
+.panel.sec-warn{border-left:3px solid var(--warn)}
 .coach{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .coach .tr-h{display:flex;align-items:center;gap:8px}
 .coach .tr-h .lk{margin-left:auto}
@@ -592,6 +592,32 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .aiw:has(>:disabled) .aib{display:none}
 @media(prefers-reduced-motion:reduce){.aib.busy svg{animation:none;opacity:.5}}
 
+/* окно оценки: спокойнее — тонкая плоская полоса, без бликов, точек и переливов */
+.run-prog{height:2px;margin:14px 0 10px;border-radius:1px;background:var(--line)}
+.run-prog i{border-radius:1px;background:var(--accent)}
+.run-prog.busy{animation:none}
+.run-prog.busy i::after{display:none}
+.run-prog.busy i{animation:rbreathe 2.4s ease-in-out infinite}
+@keyframes rbreathe{50%{opacity:.5}}
+.run-phase{min-height:20px;margin:0 0 6px;font-size:13px;color:var(--muted);opacity:0;transform:translateY(2px);transition:opacity .26s ease,transform .26s ease}
+.run-phase.in{opacity:1;transform:none}
+.run div.go .rid{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--ink);animation:none}
+.run div:not(.ok):not(.go):not(.err) i{animation:none}
+@media(prefers-reduced-motion:reduce){.run-prog.busy i{animation:none}.run-phase{transition:none}}
+
+/* живая оценка: текст появляется по мере написания */
+.live-t{margin:0;font-size:13px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap}
+.caret{display:inline-block;width:2px;height:1em;margin-left:2px;vertical-align:-2px;background:var(--accent);animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
+.live-box{max-height:34vh;overflow:auto;margin:8px 0 4px;padding:2px 2px 2px 0;scroll-behavior:smooth}
+.lv-req{margin-bottom:10px;padding:8px 10px;border-radius:6px;background:var(--raised);font-size:13px;color:var(--ink-2)}
+.lv-req small{display:block;margin-bottom:2px;color:var(--muted);font-size:11px}
+.lv-i{padding:10px 0;border-top:1px solid var(--line)}
+.lv-i:first-of-type{border-top:0}
+.lv-h{display:flex;justify-content:space-between;gap:12px;margin-bottom:4px;font-size:13px;font-weight:500}
+.live-box[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.caret{animation:none}.live-box{scroll-behavior:auto}}
+
 </style>
 </head>
 <body>
@@ -644,7 +670,7 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
       </section>
       <div>
         <section class="panel score" id="score"></section>
-        <section class="panel fb sec" id="sec" hidden></section>
+        <section class="panel fb sec-warn" id="sec" hidden></section>
         <section class="panel fb" id="mood" hidden></section>
         <section class="panel fb" id="fb" hidden></section>
         <section class="panel crits" id="crit"></section>
@@ -716,7 +742,9 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
   <h3 id="runTitle"></h3>
   <p id="runSub"></p>
   <div class="run-prog" id="runProg" aria-hidden="true"><i></i></div>
+  <p class="run-phase" id="runPhase" aria-live="polite"></p>
   <div class="run" id="runList"></div>
+  <div class="live-box" id="runLive" hidden></div>
   <div class="f"><button class="btn primary" id="runClose" disabled>Готово</button></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
@@ -1086,6 +1114,19 @@ async function beSaveChecklist(){
    и повтор только неудавшихся диалогов. */
 const beSleep=ms=>new Promise(r=>setTimeout(r,ms));
 const beShortErr=s=>{s=String(s||'ошибка');return s.length>60?s.slice(0,59)+'…':s};
+/* спокойная смена фраз под прогрессом, пока идёт оценка */
+const RUN_PHASES=['Читаем диалог','Сверяем с критериями','Проверяем цитаты','Считаем итог'];
+let phaseTimer=null,phaseI=0;
+function runPhase(on){
+  const el=$('#runPhase');if(!el)return;
+  if(!on){clearInterval(phaseTimer);phaseTimer=null;el.textContent='';el.classList.remove('in');return}
+  if(phaseTimer)return;
+  phaseI=0;el.textContent=RUN_PHASES[0];requestAnimationFrame(()=>el.classList.add('in'));
+  phaseTimer=setInterval(()=>{
+    el.classList.remove('in');
+    setTimeout(()=>{phaseI=(phaseI+1)%RUN_PHASES.length;el.textContent=RUN_PHASES[phaseI];el.classList.add('in')},260);
+  },2600);
+}
 function beRunBatch(title,body){
   const ids=(body.conversation_ids||[]).slice();
   const checklist_id=body.checklist_id||null;
@@ -1097,10 +1138,11 @@ function beRunBatch(title,body){
   function render(){
     const all=[...rows.values()],n=s=>all.filter(r=>r.status===s).length;
     const work=n('pending')+n('running'),bad=failed();
+    runPhase(work>0);
     const prog=$('#runProg');
     prog.classList.toggle('busy',work>0);prog.classList.toggle('full',!work&&!bad.length);
     prog.firstElementChild.style.width=(work?Math.max(8,(n('done')+bad.length)/rows.size*100):100)+'%';
-    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work} <span class="load sm" aria-hidden="true"><i></i><i></i><i></i></span>`:'')
+    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work}`:'')
       +(bad.length&&!work?` · ${bad.length===1?'не обработан':'не обработаны'}: ${bad.map(esc).join(', ')}`:'');
     $('#runList').innerHTML=[...rows].map(([id,r])=>{
       const cls=r.status==='done'?'ok':r.status==='running'?'go':r.status==='error'?'err':'';
@@ -1148,7 +1190,9 @@ function beRunBatch(title,body){
     if(r&&!busy.size)start([r.dataset.retry]);
     if(ra&&!busy.size)start(failed());
   };
-  close.onclick=()=>$('#runDlg').close();
+  const lv=$('#runLive');lv.innerHTML='';lv.hidden=ids.length!==1;
+  if(ids.length===1)liveStart(ids[0]);
+  close.onclick=()=>{liveStop();$('#runDlg').close()};
   $('#runDlg').showModal();render();
   return start(ids).then(()=>{
     const all=[...rows.values()];
@@ -1165,9 +1209,9 @@ async function beAutoEvaluate(cid){
   const redraw=()=>{if(cur===cid&&!$('#v-card').hidden)renderCard()};
   try{
     if(!d.running){
-      d.running=true;redraw();
+      d.running=true;redraw();liveStart(cid);
       await CQA_API.batch({conversation_ids:[cid]});
-    }else redraw();
+    }else{redraw();liveStart(cid)}
     let conv;
     for(let i=0;i<120;i++){   // до ~5 минут
       await beSleep(2500);
@@ -1181,7 +1225,7 @@ async function beAutoEvaluate(cid){
     d.running=false;
     toast('Не удалось оценить диалог: '+beShortErr(e.message));
   }finally{
-    redraw();
+    liveStop();redraw();
     try{if(!$('#v-list').hidden)renderList()}catch(_){}
   }
 }
@@ -1560,6 +1604,7 @@ $('#sortScore').onclick=()=>{sortDir=sortDir===1?-1:1;renderRows()};
 function renderCard(){
   const t=total(cur);   /* итог считаем один раз на обновление карточки */
   $('#pick').value=cur;renderChat();renderScore(t);renderSecurity();renderMood();renderFeedback();renderCrit(t);
+  liveRows();
 }
 /* нарушения в транскрипте: реплики-основания критериев, где действие пропущено. {номер реплики: [названия критериев]} */
 function violsOf(d){
@@ -1801,7 +1846,7 @@ const MOOD={calm:'спокоен',positive:'доволен',confused:'расте
 const MOOD_CLS={calm:'',positive:'yes',confused:'warn',anxious:'warn',irritated:'no',angry:'no'};
 const OP_TONE={friendly:'доброжелательный',neutral:'нейтральный',tense:'напряжённый',irritated:'раздражённый'};
 const TRAJ={improved:'стало лучше',unchanged:'без изменений',worsened:'стало хуже'};
-const INJ_KIND={override:'сбросить правила',score_demand:'потребовать баллы',address_evaluator:'обращение к оценщику',role_hijack:'смена роли',fake_marker:'поддельная системная метка',format_hijack:'навязать формат ответа',kz_override:'сбросить правила'};
+const INJ_KIND={override:'сбросить правила',score_demand:'потребовать баллы',address_evaluator:'обращение к проверяющему',role_hijack:'смена роли',fake_marker:'поддельная системная метка',format_hijack:'навязать формат ответа',kz_override:'сбросить правила'};
 function renderSecurity(){
   const box=$('#sec');if(!box)return;
   const s=CQA_API.enabled&&D[cur].facts&&D[cur].facts.security;
@@ -1809,7 +1854,7 @@ function renderSecurity(){
   const who={client:'клиент',operator:'оператор',bot:'бот',system:'система'};
   box.hidden=false;
   box.innerHTML=`<div class="tr-h">Попытка повлиять на оценку <small>· проигнорирована</small></div>
-    <p class="why">${s.operator_attempt?'<b>Оператор пытался повлиять на оценку.</b> ':''}В диалоге есть реплики, обращённые к оценщику. Они не засчитаны, балл посчитан по правилам; критерии, которые опираются на эти реплики${s.operator_attempt?' (и все критерии из-за попытки оператора)':''}, помечены для проверки.</p>
+    <p class="why">${s.operator_attempt?'<b>Оператор пытался повлиять на оценку.</b> ':''}В диалоге есть реплики, обращённые к проверяющему. Они не засчитаны, балл посчитан по правилам; критерии, которые опираются на эти реплики${s.operator_attempt?' (и все критерии из-за попытки оператора)':''}, помечены для проверки.</p>
     <ul class="fbl">${s.attempts.map(a=>`<li class="ev"><button class="lk" data-go-msg="${a.turn+1}">#${a.turn+1}</button> <small>${esc(who[a.speaker]||a.speaker||'')} · ${esc(a.kinds.map(k=>INJ_KIND[k]||k).join(', '))}</small><span class="q">«${esc(a.text)}»</span></li>`).join('')}</ul>`;
 }
 function renderMood(){
@@ -2421,6 +2466,71 @@ $('#v-stats').addEventListener('click',e=>{
   const op=e.target.closest('[data-op]');if(op){renderOperator(op.dataset.op);return}
   const cv=e.target.closest('[data-conv]');if(cv&&D[cv.dataset.conv])go('#/card/'+encodeURIComponent(cv.dataset.conv));
 });
+
+</script>
+<script>
+/* Живая оценка: события с сервера (SSE) заполняют карточку и окно оценки, пока модель ещё пишет.
+   Сервер присылает снимки: по каждому критерию ответ и текст, написанный к этому моменту. */
+/* ================= ЖИВАЯ ОЦЕНКА ================= */
+let liveES=null,liveCid=null,liveSnap=null,liveRaf=0;
+
+function liveStart(cid){
+  if(!CQA_API.enabled||!window.EventSource||(liveES&&liveCid===cid))return;
+  liveStop();
+  liveCid=cid;
+  const es=new EventSource(CQA_API.url('/api/conversations/'+encodeURIComponent(cid)+'/live'));
+  liveES=es;
+  es.onmessage=e=>{
+    let ev;try{ev=JSON.parse(e.data)}catch(_){return}
+    if(ev.type==='partial'){liveSnap=ev;liveSchedule()}
+    else if(ev.type==='done'||ev.type==='idle')liveStop(false);   /* итоговую карточку перерисует обычный поток */
+  };
+  es.onerror=()=>liveStop(false);   /* без бесконечных переподключений: останется обычное ожидание */
+}
+function liveStop(clear=true){
+  if(liveES)liveES.close();
+  liveES=null;liveCid=null;
+  if(clear){liveSnap=null;cancelAnimationFrame(liveRaf)}
+}
+/* перерисовка не чаще одного раза за кадр */
+function liveSchedule(){cancelAnimationFrame(liveRaf);liveRaf=requestAnimationFrame(liveRender)}
+function liveRender(){liveRows();liveModal()}
+
+const liveCrit=key=>{const id=BE.keyId&&BE.keyId[key];return id?CRIT.find(c=>c.id===id):null};
+const liveAns=(c,a)=>{try{return label(c,ansToFront(c,a))}catch(_){return String(a)}};
+
+/* строки критериев в карточке: пока идёт оценка там «скелетоны», вместо них пишется ответ и текст модели */
+function liveRows(){
+  if(!liveSnap||!liveCid||liveCid!==cur||$('#v-card').hidden)return;
+  const keys=Object.keys(liveSnap.criteria);
+  keys.forEach((k,i)=>{
+    const c=liveCrit(k),s=liveSnap.criteria[k];if(!c||!s)return;
+    const row=$(`.cr.loading[data-id="${c.id}"]`);if(!row)return;
+    const chip=row.querySelector('.v');
+    if(s.answer&&chip){const v=ansToFront(c,s.answer);chip.className='v '+kind(c,v);chip.textContent=label(c,v)}
+    const body=row.querySelector('.cr-b');
+    if(body&&s.text){
+      const last=!s.done&&i===keys.length-1;
+      body.innerHTML=`<p class="live-t">${esc(s.text)}${last?'<i class="caret"></i>':''}</p>`;
+    }
+  });
+}
+
+/* окно «Оценка диалога»: лента критериев по мере написания */
+function liveModal(){
+  const box=$('#runLive');
+  if(!box||box.hidden||!liveSnap)return;
+  const keys=Object.keys(liveSnap.criteria);
+  const stick=box.scrollTop+box.clientHeight>=box.scrollHeight-24;
+  box.innerHTML=(liveSnap.request?`<div class="lv-req"><small>Запрос клиента</small>${esc(liveSnap.request)}</div>`:'')
+    +keys.map((k,i)=>{
+      const c=liveCrit(k),s=liveSnap.criteria[k],last=!s.done&&i===keys.length-1;
+      const v=s.answer&&c?ansToFront(c,s.answer):null;
+      return `<div class="lv-i"><div class="lv-h"><span>${esc(c?c.name:k)}</span>${v!==null?`<span class="v ${kind(c,v)}">${esc(label(c,v))}</span>`:''}</div>
+        ${s.text?`<p class="live-t">${esc(s.text)}${last?'<i class="caret"></i>':''}</p>`:''}</div>`;
+    }).join('');
+  if(stick)box.scrollTop=box.scrollHeight;
+}
 
 </script>
 <script>
