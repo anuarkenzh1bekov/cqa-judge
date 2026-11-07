@@ -17,3 +17,4 @@ Thumbs.db
 venv/
 .pytest_cache/
 data/
+backend/reports/*.json

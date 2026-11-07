@@ -69,11 +69,11 @@ async def _run_jev(criteria, conv):
 
 
 async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = True, use_sem: bool = True) -> dict:
-    t_start = time.perf_counter()
     transcript = conv["transcript"]
     n = len(transcript)
 
     async with (sem() if use_sem else contextlib.nullcontext()):
+        t_start = time.perf_counter()  # model time only, not time spent queued for a slot
         g_task = gemini.generate_json(
             prompts.build_eval_prompt(criteria, conv, with_feedback),
             prompts.build_eval_schema(criteria, with_feedback),

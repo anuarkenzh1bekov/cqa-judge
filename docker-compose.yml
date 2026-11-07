@@ -1,0 +1,16 @@
+services:
+  cqa:
+    build: .
+    image: cqa-judge:latest
+    ports:
+      - "8000:8000"
+    # Keys and DATASET_API_URL are read at runtime from .env (never baked into the image).
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite:////data/cqa.db
+    volumes:
+      - cqa-data:/data
+    restart: unless-stopped
+
+volumes:
+  cqa-data:
