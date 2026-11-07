@@ -19,6 +19,8 @@ async def lifespan(_app: FastAPI):
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         services.seed_default_checklist(db)
+        if settings.seed_dataset:
+            services.seed_conversations(db, settings.seed_dataset)
     yield
 
 

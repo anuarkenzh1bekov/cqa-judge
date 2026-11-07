@@ -28,6 +28,19 @@ def seed_default_checklist(db: Session):
         db.commit()
 
 
+def seed_conversations(db: Session, group: str = "DEV") -> int:
+    """Empty database -> load the saved dataset copy (dialogs only, no scores: evaluation still runs live)."""
+    if db.scalar(select(Conversation.id).limit(1)) is not None:
+        return 0
+    path = DATASETS_DIR / f"{group}.json"
+    if not path.is_file():
+        return 0
+    data = json.loads(path.read_text(encoding="utf-8"))
+    ids = upsert_conversations(db, data["records"] if isinstance(data, dict) else data, group)
+    log.info("seeded %d conversations from %s", len(ids), path)
+    return len(ids)
+
+
 def active_checklist(db: Session) -> Checklist:
     cl = db.scalar(select(Checklist).where(Checklist.is_active).order_by(Checklist.id.desc()))
     if cl is None:

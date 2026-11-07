@@ -312,3 +312,10 @@ tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .run{max-height:50vh;overflow:auto}
 .rvt.ok{color:var(--yes)}
 .rvd{margin-left:auto;color:var(--muted)}
+.stp{display:flex;gap:10px;align-items:center;margin-top:6px}
+.stp b{min-width:28px;text-align:right;color:var(--muted);font-weight:600}
+.ed-sub{margin:24px 0 10px;font-size:13px;font-weight:500;color:var(--muted)}
+.ec.flag .num{color:var(--no)}
+.boot{display:flex;align-items:center;justify-content:center;gap:12px;padding:120px 0;color:var(--muted)}
+.boot i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:sp .7s linear infinite}
+@media(prefers-reduced-motion:reduce){.boot i{animation:none}}

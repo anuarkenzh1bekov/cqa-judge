@@ -19,6 +19,19 @@ Open http://localhost:8000. The SQLite database lives in the `cqa-data` volume a
 at startup and are not baked into the image. Stop with `docker compose down` (data is kept), wipe the data with
 `docker compose down -v`.
 
+On first start with an empty database, the 65 DEV conversations are loaded from `datasets/DEV.json` (dialogs only, no
+scores: evaluate them from the interface, "Оценить новые" or a conversation's "Оценить"). Set `SEED_DATASET=` in `.env`
+to disable this.
+
+To move an already evaluated local database into the container (all scores, appeals, checklist versions):
+
+```bash
+docker compose stop
+docker run --rm -v cqa-judge_cqa-data:/data -v "$PWD/backend:/src:ro" alpine \
+  sh -c 'cp -f /src/cqa.db /data/cqa.db && rm -f /data/cqa.db-wal /data/cqa.db-shm && chown 1000:1000 /data/cqa.db'
+docker compose up -d
+```
+
 ## Run without Docker
 
 Requires Python 3.10+.
@@ -86,8 +99,16 @@ To measure accuracy, label the sample by hand:
 
 ```bash
 python scripts/eval_sample.py --make-gold-template eval/gold.json --n 15   # template with empty answers
-python scripts/eval_sample.py --gold eval/gold.json                         # per-criterion accuracy and total MAE
+python scripts/eval_sample.py --gold ../eval/gold.json                      # per-criterion accuracy and total MAE
 ```
+
+`eval/gold.json` holds hand labels for 14 DEV conversations (7 RU, 3 KZ, 3 EN, 1 call), made by reading each
+transcript against the checklist PDF **without looking at the system's answers**. They are an independent second
+opinion, not the organizers' ground truth; every label has a note explaining it. Result
+(`backend/reports/eval_DEV_20261107_160116.md`): **94% per-criterion agreement, total-score MAE 4.38**. The remaining
+disagreements are systematic: the system gives 20 for consultation when a secondary question was left without a next
+step (the PDF says 15), and sometimes N/A for needs discovery on account-specific requests. Tightening the guidance for
+these two criteria was tried and made agreement worse (92%), so it was reverted.
 
 ## Configuration (`.env`)
 
@@ -97,14 +118,20 @@ python scripts/eval_sample.py --gold eval/gold.json                         # pe
 | `TYPESAFE_API_KEY`, `JEV_MODEL`, `JEV_ENABLED` | Jev by TypeSafe AI (`jev-latest`) |
 | `JEV_ADJUDICATE_THRESHOLD` | Jev probability above which a disagreement is sent for a re-check (0.8) |
 | `DATASET_API_URL` | the organizers' GET link **without** `group_id` (it contains a signature, do not commit it) |
-| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | price per 1M tokens for cost estimates; check against Google's price list |
+| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | price per 1M tokens for cost estimates (defaults: Gemini 3.8 Flash paid tier, $0.75 in / $3.75 out, through 2026) |
 | `MAX_CONCURRENCY` | parallel evaluations in a batch (4) |
 | `DATABASE_URL` | defaults to SQLite `backend/cqa.db` |
 
 ## Cost of one evaluation
 
-One Gemini call (~3–4k input tokens, ~1.5k output plus reasoning), another one if the models disagree;
-plus a Jev call (~6k input tokens, $0.042 / 1M). On the DEV set the average is about $0.01 per conversation (at the prices in `.env`).
+Models: **Gemini 3.8 Flash** (`gemini-3.8-flash`, paid Standard tier: $0.75 / 1M input, $3.75 / 1M output including
+thinking tokens, valid through 2026-12-31; doubles from 2027-01-01) and **Jev** (`jev-1.14.0`, $0.042 / 1M input, output free).
+
+One evaluation = one Gemini call (~3–4k input tokens, ~1.5k output + ~1.5–3k thinking), a second Gemini call only if the
+models disagree confidently, plus one Jev call (~6k input tokens). Measured on 74 DEV evaluations: **≈ $0.016 per
+conversation on average** (min $0.008, max $0.032); Jev adds about $0.0003 of that. The 10 control transcripts cost about
+$0.16. Prices are configurable in `.env`; the actual cost of each evaluation is shown in the conversation view and on the
+"Аналитика" (Analytics) screen.
 The actual cost of each evaluation is shown in the conversation view and on the "Аналитика" (Analytics) screen.
 
 ## Structure

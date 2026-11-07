@@ -13,6 +13,8 @@ RUN pip install -r backend/requirements.txt
 
 COPY backend/ backend/
 COPY web/ web/
+# Saved dataset copy: seeds an empty DB on startup and serves as fallback when the organizers' API is down.
+COPY datasets/ datasets/
 
 # Non-root user; /data holds the SQLite database (mount a volume there).
 RUN useradd --create-home --uid 1000 cqa && mkdir -p /data && chown -R cqa /data /app

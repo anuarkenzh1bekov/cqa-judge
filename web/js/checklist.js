@@ -10,19 +10,35 @@ function renderEditor(){
       <div class="fld full"><label>Формулировка</label><textarea class="field" data-f="q">${esc(c.q)}</textarea></div>
       <div class="fld"><label>Тип ответа</label><select class="field" data-f="type"><option value="yn" ${c.type==='yn'?'selected':''}>Да / Нет</option><option value="scale" ${c.type==='scale'?'selected':''}>Шкала</option></select></div>
       <div class="fld"><label>Вес</label><input class="field" type="number" min="0" max="100" data-f="w" value="${c.w}"></div>
-      ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>`:''}
+      ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>
+      <div class="fld full"><label>Что означает каждая ступень${CQA_API.enabled?' — модель выбирает ступень по этим описаниям':''}</label>
+        ${[...c.steps].sort((a,b)=>b-a).map(v=>`<div class="stp"><b>${v}</b><input class="field" data-f="sdesc" data-v="${v}" value="${esc((c.scaleDesc||{})[v]||'')}" placeholder="Когда ставить ${v}"></div>`).join('')}</div>`:''}
       <div class="fld"><label class="chk"><input type="checkbox" data-f="na" ${c.na?'checked':''}>Разрешить N/A</label></div>
       ${c.na?`<div class="fld"><label>Условие N/A</label><input class="field" type="text" data-f="nac" value="${esc(c.nac)}"></div>`:'<div></div>'}
       ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
-    </div></div>`).join('');
+    </div></div>`).join('')+flagsEditor();
   if(CQA_API.enabled){
     const sel=$('#applyTo');
-    if(sel&&!sel.dataset.filled){
+    /* refill when the set of datasets changes (e.g. the control set was imported); default is "save only",
+       so a click during a demo never starts re-evaluating a whole set by accident */
+    const key=BE.groups.join('|');
+    if(sel&&sel.dataset.groups!==key){
+      const keep=sel.value;
       sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к набору ${esc(g)}</option>`).join('');
-      sel.value=BE.groups[BE.groups.length-1]||'';sel.dataset.filled='1';
+      sel.value=BE.groups.includes(keep)?keep:'';sel.dataset.groups=key;
     }
   }
   refreshSide();
+}
+function flagsEditor(){
+  if(!CQA_API.enabled)return '';
+  return `<h3 class="ed-sub">Грубые ошибки — без баллов, отмечаются отдельно</h3>`+BE.flags.map((f,j)=>`<div class="panel ec flag" data-flag="${j}">
+    <div class="ec-top"><span class="num">!</span><input class="name" type="text" data-ff="name" value="${esc(f.name)}" aria-label="Название флага">
+      <button class="tx danger" data-fdel>Удалить</button></div>
+    <div class="fields">
+      <div class="fld full"><label>Когда ставить «Да» (что считается нарушением)</label><textarea class="field" data-ff="description">${esc(f.description||'')}</textarea></div>
+      <div class="fld full"><label>Пояснения для модели</label><textarea class="field" data-ff="guidance" placeholder="Необязательно">${esc(f.guidance||'')}</textarea></div>
+    </div></div>`).join('')+`<button class="btn" data-fadd>Добавить флаг грубой ошибки</button>`;
 }
 function refreshSide(){
   const sum=CRIT.reduce((a,c)=>a+(+c.w||0),0);
@@ -33,13 +49,16 @@ function refreshSide(){
   const tail=CQA_API.enabled?' Сохранение создаёт новую версию чек-листа; старые оценки остаются со своей версией.'
     :' Остальные результаты берутся из кэша.';
   $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}.${tail}`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>'
-    +(CQA_API.enabled&&BE.flags.length?`<br><small>Грубые ошибки (${BE.flags.map(f=>esc(f.name)).join(', ')}) проверяются всегда и отмечаются отдельно.</small>`:'')
+    +(CQA_API.enabled?`<br><small>Флагов грубых ошибок: ${BE.flags.length}. Они не дают баллов и отмечаются отдельно.</small>`:'')
     +(sum!==100?`<br><small>Сумма весов ${sum} — итог всё равно нормируется к 100.</small>`:'');
 }
 $('#ed').addEventListener('input',e=>{
+  const ff=e.target.dataset.ff;
+  if(ff){BE.flags[+e.target.closest('[data-flag]').dataset.flag][ff]=e.target.value;dirty=true;refreshSide();return}
   const f=e.target.dataset.f;if(!f)return;
   const i=+e.target.closest('.ec').dataset.i,c=CRIT[i];
   if(f==='w')c.w=Math.max(0,+e.target.value||0);
+  else if(f==='sdesc'){c.scaleDesc=c.scaleDesc||{};c.scaleDesc[e.target.dataset.v]=e.target.value}
   else if(f==='na'){c.na=e.target.checked;dirty=true;renderEditor();return}
   else if(f==='type'){c.type=e.target.value;if(c.type==='scale'&&!c.steps)c.steps=[0,5,10];dirty=true;renderEditor();return}
   else if(f==='steps'){
@@ -50,7 +69,15 @@ $('#ed').addEventListener('input',e=>{
   e.target.closest('.ec').classList.toggle('changed',sigOf(c)!==savedSigs[c.id]);
   refreshSide();
 });
+$('#ed').addEventListener('change',e=>{if(e.target.dataset.f==='steps')renderEditor()});
 $('#ed').addEventListener('click',e=>{
+  if(e.target.closest('[data-fadd]')){
+    BE.flags.push({key:'flag_'+Date.now().toString(36),section:'Грубые нарушения',name:'Новый флаг',description:'',
+      type:'flag',weight:0,na_allowed:false,na_condition:null,scale:null,guidance:null});
+    dirty=true;renderEditor();$$('.ec.flag').at(-1).scrollIntoView({block:'center'});return;
+  }
+  const fl=e.target.closest('[data-flag]');
+  if(fl){if(e.target.closest('[data-fdel]')){BE.flags.splice(+fl.dataset.flag,1);dirty=true;renderEditor()}return}
   const card=e.target.closest('.ec');if(!card)return;const i=+card.dataset.i;
   const mv=e.target.closest('[data-mv]');
   if(mv){const j=i+ +mv.dataset.mv;if(j<0||j>=CRIT.length)return;[CRIT[i],CRIT[j]]=[CRIT[j],CRIT[i]];dirty=true;renderEditor()}
@@ -62,8 +89,12 @@ $('#addCrit').onclick=()=>{
 };
 $('#applyBtn').onclick=async()=>{
   if(CQA_API.enabled){
-    const bad=CRIT.find(c=>!String(c.name).trim()||(!String(c.q||'').trim()&&!String(c.name).trim()));
+    const bad=CRIT.find(c=>!String(c.name).trim());
     if(bad){toast('У критерия нет названия');return}
+    const noDesc=CRIT.find(c=>c.type==='scale'&&c.steps.some(v=>!String((c.scaleDesc||{})[v]||'').trim()));
+    if(noDesc){toast(`«${noDesc.name}»: опишите каждую ступень шкалы — по описаниям модель выбирает балл`);return}
+    const badFlag=BE.flags.find(f=>!String(f.name).trim()||!String(f.description||'').trim());
+    if(badFlag){toast('У флага грубой ошибки нужны название и описание нарушения');return}
     const grp=$('#applyTo')?$('#applyTo').value:'';
     $('#applyBtn').disabled=true;
     try{
