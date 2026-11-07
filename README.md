@@ -1,121 +1,122 @@
 # CQA Judge — Conversation Quality Analytics
 
-Прототип для хакатона Freedom Broker: оценка работы оператора по настраиваемому чек-листу (RU / KZ / EN, чаты и звонки),
-обоснования с переходом к реплике и к месту в записи, апелляции с пересмотром, рекомендации оператору и аналитика.
+Prototype for the Freedom Broker hackathon: scoring an operator's work against a configurable checklist (RU / KZ / EN, chats and calls),
+with explanations that link to the exact message and to the moment in the recording, appeals with review, operator feedback and analytics.
+The interface is in Russian; Russian labels are shown in quotes with their English meaning.
 
-## Запуск в Docker
+## Run with Docker
 
 ```bash
-cp .env.example .env   # заполнить ключи и DATASET_API_URL
+cp .env.example .env   # fill in the keys and DATASET_API_URL
 docker compose up -d --build
 ```
 
-Откройте http://localhost:8000. База SQLite хранится в томе `cqa-data` и переживает перезапуск; ключи читаются из `.env`
-при запуске и в образ не попадают. Остановить: `docker compose down` (данные сохранятся), стереть данные:
+Open http://localhost:8000. The SQLite database lives in the `cqa-data` volume and survives restarts; keys are read from `.env`
+at startup and are not baked into the image. Stop with `docker compose down` (data is kept), wipe the data with
 `docker compose down -v`.
 
-## Запуск без Docker
+## Run without Docker
 
-Требуется Python 3.10+.
+Requires Python 3.10+.
 
 ```bash
 cd backend
 pip install -r requirements.txt
-cp ../.env.example ../.env   # заполнить ключи и DATASET_API_URL
+cp ../.env.example ../.env   # fill in the keys and DATASET_API_URL
 python -m uvicorn app.main:app --port 8000
 ```
 
-Откройте http://localhost:8000 — бэкенд сам раздаёт интерфейс из `web/`.
+Open http://localhost:8000: the backend serves the interface from `web/` itself.
 
-1. «Диалоги» → «Оценить новые» → `group_id` (например `DEV`) → набор загрузится из API организаторов и оценится.
-2. Карточка диалога: балл, грубые ошибки, рекомендации оператору, по каждому критерию — ответ, баллы, объяснение,
-   ссылки на реплики, мнения Gemini и Jev. У звонков — плеер, клик по реплике перематывает запись.
-3. «Оспорить» → апелляция. Переключатель «Проверяющий» или экран «Апелляции» → решение (можно попросить ИИ
-   перепроверить) → итог пересчитывается, исходная оценка сохраняется.
-4. «Чек-лист» → изменить / заменить критерий → «Сохранить и применить» к набору. Сохраняется новая версия.
-5. «Аналитика» → средние баллы по языкам, каналам, операторам и критериям, согласие моделей, стоимость.
+1. "Диалоги" (Conversations) → "Оценить новые" (Evaluate new) → `group_id` (for example `DEV`) → the set is loaded from the organizers' API and evaluated.
+2. Conversation view: score, gross errors, operator feedback, and for every criterion the answer, points, explanation,
+   links to messages and the opinions of Gemini and Jev. For calls there is a player, and clicking a message seeks the recording.
+3. "Оспорить" (Dispute) → an appeal. The "Проверяющий" (Reviewer) switch or the "Апелляции" (Appeals) screen → a decision (you can ask the AI
+   to re-check) → the total is recalculated and the original score is kept.
+4. "Чек-лист" (Checklist) → change or replace a criterion → "Сохранить и применить" (Save and apply) to the set. A new version is saved.
+5. "Аналитика" (Analytics) → average scores by language, channel, operator and criterion, model agreement, cost.
 
-Swagger: http://localhost:8000/docs · Описание API: [API.md](API.md) · Демо без бэкенда: http://localhost:8000/?demo=1
+Swagger: http://localhost:8000/docs · API description: [API.md](API.md) · Demo without a backend: http://localhost:8000/?demo=1
 
-## Как работает оценка
+## How the evaluation works
 
 ```
-диалог ─┬─► Gemini  (факты о диалоге, ответ по каждому критерию, объяснение, реплики-доказательства, рекомендации)
-        └─► Jev     (независимый ответ по каждому критерию + откалиброванная вероятность)
-                 │
-                 ▼  объединение по критерию
-   совпали ─► ответ Gemini        соседние ступени шкалы ─► ответ Gemini
-   разошлись, Jev уверен (≥0.8) ─► Gemini перепроверяет критерий, пометка «спорный»
-   разошлись, Jev не уверен     ─► ответ Gemini, пометка «проверить»
-                 │
-                 ▼  код (не модель)
-   проверка цитат по транскрипту → правила N/A → баллы по весу → перераспределение N/A → итог (2 знака) → грубые ошибки
+conversation ─┬─► Gemini  (facts about the conversation, an answer per criterion, explanation, evidence messages, feedback)
+              └─► Jev     (an independent answer per criterion + a calibrated probability)
+                       │
+                       ▼  merge per criterion
+   agree ─► Gemini's answer          adjacent scale steps ─► Gemini's answer
+   disagree, Jev confident (≥0.8)    ─► Gemini re-checks the criterion, flagged "disputed"
+   disagree, Jev not confident       ─► Gemini's answer, flagged "needs review"
+                       │
+                       ▼  code (not a model)
+   quote check against the transcript → N/A rules → points by weight → N/A redistribution → total (2 decimals) → gross errors
 ```
 
-- Промпты и схемы ответа строятся из конфигурации чек-листа: новый или заменённый критерий работает без правки кода.
-- Каждая оценка реально вызывает модели (без кэша по `conversation_id`) и хранит снимок чек-листа, по которому сделана.
-- Jev — необязательный модуль: без ключа или при ошибке оценка идёт только на Gemini.
+- Prompts and response schemas are generated from the checklist config: a new or replaced criterion works without code changes.
+- Every evaluation really calls the models (no cache by `conversation_id`) and stores a snapshot of the checklist it was made with.
+- Jev is optional: without a key, or on error, the evaluation runs on Gemini only.
 
-## Тесты
+## Tests
 
 ```bash
 cd backend
 python -m pytest -q
 ```
 
-25 офлайн-тестов (без сети и ключей, модели подменены заглушками): расчёт баллов и N/A, объединение ответов Gemini и
-Jev (совпадение, перепроверка, пометка «проверить», отказ Jev), проверка ссылок на реплики, полный путь через API
-(загрузка → оценка → апелляция → решение → пересчёт → статистика), замена критерия и валидация чек-листа.
+25 offline tests (no network or keys, the models are replaced with stubs): scoring and N/A, merging Gemini and Jev answers
+(agreement, re-check, the "needs review" flag, Jev failure), validation of message links, the full path through the API
+(upload → evaluation → appeal → decision → recalculation → statistics), criterion replacement and checklist validation.
 
-### Прогон на случайной выборке (реальные модели)
+### Run on a random sample (real models)
 
 ```bash
 cd backend
-python scripts/eval_sample.py --n 12 --runs 2            # случайная выборка, стратифицированная по языку и каналу
-python scripts/eval_sample.py --n 12 --runs 2 --seed 7   # воспроизводимая выборка
+python scripts/eval_sample.py --n 12 --runs 2            # random sample, stratified by language and channel
+python scripts/eval_sample.py --n 12 --runs 2 --seed 7   # reproducible sample
 ```
 
-Отчёт сохраняется в `backend/reports/`. Эталона для DEV нет, поэтому отчёт показывает корректность (допустимые ответы,
-реальные ссылки на реплики), согласованность с правилами N/A, стабильность (тот же диалог дважды) и согласие моделей.
-Чтобы измерить точность, разметьте выборку вручную:
+The report is saved to `backend/reports/`. DEV has no ground truth, so the report shows correctness (valid answers,
+real message links), consistency with the N/A rules, stability (the same conversation twice) and model agreement.
+To measure accuracy, label the sample by hand:
 
 ```bash
-python scripts/eval_sample.py --make-gold-template eval/gold.json --n 15   # шаблон с пустыми ответами
-python scripts/eval_sample.py --gold eval/gold.json                         # точность по критериям и MAE итога
+python scripts/eval_sample.py --make-gold-template eval/gold.json --n 15   # template with empty answers
+python scripts/eval_sample.py --gold eval/gold.json                         # per-criterion accuracy and total MAE
 ```
 
-## Конфигурация (`.env`)
+## Configuration (`.env`)
 
-| Переменная | Назначение |
+| Variable | Purpose |
 |---|---|
-| `GOOGLE_API_KEY`, `GEMINI_MODEL` | Gemini (по умолчанию `gemini-3.8-flash`) |
-| `TYPESAFE_API_KEY`, `JEV_MODEL`, `JEV_ENABLED` | Jev от TypeSafe AI (`jev-latest`) |
-| `JEV_ADJUDICATE_THRESHOLD` | вероятность Jev, при которой расхождение отправляется на перепроверку (0.8) |
-| `DATASET_API_URL` | ссылка GET организаторов **без** `group_id` (содержит подпись — не коммитить) |
-| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | цена за 1M токенов для расчёта стоимости — сверить с прайсом Google |
-| `MAX_CONCURRENCY` | параллельных оценок в пакете (4) |
-| `DATABASE_URL` | по умолчанию SQLite `backend/cqa.db` |
+| `GOOGLE_API_KEY`, `GEMINI_MODEL` | Gemini (default `gemini-3.8-flash`) |
+| `TYPESAFE_API_KEY`, `JEV_MODEL`, `JEV_ENABLED` | Jev by TypeSafe AI (`jev-latest`) |
+| `JEV_ADJUDICATE_THRESHOLD` | Jev probability above which a disagreement is sent for a re-check (0.8) |
+| `DATASET_API_URL` | the organizers' GET link **without** `group_id` (it contains a signature, do not commit it) |
+| `GEMINI_PRICE_IN_PER_M`, `GEMINI_PRICE_OUT_PER_M` | price per 1M tokens for cost estimates; check against Google's price list |
+| `MAX_CONCURRENCY` | parallel evaluations in a batch (4) |
+| `DATABASE_URL` | defaults to SQLite `backend/cqa.db` |
 
-## Стоимость одной оценки
+## Cost of one evaluation
 
-Один вызов Gemini (~3–4 тыс. входных токенов, ~1.5 тыс. выходных + рассуждения), при расхождении моделей — ещё один;
-плюс вызов Jev (~6 тыс. входных токенов, $0.042 / 1M). На наборе DEV в среднем ≈ $0.01 за диалог (по ценам из `.env`).
-Фактическая стоимость каждой оценки видна в карточке и на экране «Аналитика».
+One Gemini call (~3–4k input tokens, ~1.5k output plus reasoning), another one if the models disagree;
+plus a Jev call (~6k input tokens, $0.042 / 1M). On the DEV set the average is about $0.01 per conversation (at the prices in `.env`).
+The actual cost of each evaluation is shown in the conversation view and on the "Аналитика" (Analytics) screen.
 
-## Структура
+## Structure
 
-| Путь | Что это |
+| Path | What it is |
 |---|---|
-| `backend/app/checklist.py` | схема чек-листа + стартовый чек-лист из PDF |
-| `backend/app/scoring.py` | детерминированный расчёт баллов (тесты: `cd backend && python -m pytest -q`) |
-| `backend/app/prompts.py` | промпты и JSON-схемы, генерируются из чек-листа |
-| `backend/app/llm/` | клиенты Gemini и Jev |
-| `backend/app/pipeline.py` | оценка: Gemini ∥ Jev → объединение → проверка цитат → баллы |
+| `backend/app/checklist.py` | checklist schema + the starter checklist from the PDF |
+| `backend/app/scoring.py` | deterministic scoring (tests: `cd backend && python -m pytest -q`) |
+| `backend/app/prompts.py` | prompts and JSON schemas, generated from the checklist |
+| `backend/app/llm/` | Gemini and Jev clients |
+| `backend/app/pipeline.py` | evaluation: Gemini ∥ Jev → merge → quote check → points |
 | `backend/app/routers/` | API: conversations, checklists, evaluations, appeals, stats |
-| `backend/tests/` | офлайн-тесты (`python -m pytest -q`) |
-| `backend/scripts/eval_sample.py` | прогон на случайной выборке с отчётом |
-| `Dockerfile`, `docker-compose.yml` | образ и запуск одной командой |
-| `web/` | интерфейс на HTML, CSS и JavaScript без сборки; `web/js/backend.js` — связь с API |
-| `web/dist/cqa-webresource.html` | весь интерфейс одним файлом для Dynamics 365 (`python web/build.py`) |
+| `backend/tests/` | offline tests (`python -m pytest -q`) |
+| `backend/scripts/eval_sample.py` | random-sample run with a report |
+| `Dockerfile`, `docker-compose.yml` | image and one-command startup |
+| `web/` | interface in plain HTML, CSS and JavaScript, no build step; `web/js/backend.js` talks to the API |
+| `web/dist/cqa-webresource.html` | the whole interface in one file for Dynamics 365 (`python web/build.py`) |
 
-Параметры интерфейса (`?api=`, `?embed=1`, `?theme=`, `?demo=1`) и Dynamics 365: [web/README.md](web/README.md).
+Interface parameters (`?api=`, `?embed=1`, `?theme=`, `?demo=1`) and Dynamics 365: [web/README.md](web/README.md).
