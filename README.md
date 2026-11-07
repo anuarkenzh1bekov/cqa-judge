@@ -3,7 +3,18 @@
 Прототип для хакатона Freedom Broker: оценка работы оператора по настраиваемому чек-листу (RU / KZ / EN, чаты и звонки),
 обоснования с переходом к реплике и к месту в записи, апелляции с пересмотром, рекомендации оператору и аналитика.
 
-## Запуск
+## Запуск в Docker
+
+```bash
+cp .env.example .env   # заполнить ключи и DATASET_API_URL
+docker compose up -d --build
+```
+
+Откройте http://localhost:8000. База SQLite хранится в томе `cqa-data` и переживает перезапуск; ключи читаются из `.env`
+при запуске и в образ не попадают. Остановить: `docker compose down` (данные сохранятся), стереть данные:
+`docker compose down -v`.
+
+## Запуск без Docker
 
 Требуется Python 3.10+.
 
@@ -45,6 +56,34 @@ Swagger: http://localhost:8000/docs · Описание API: [API.md](API.md) ·
 - Каждая оценка реально вызывает модели (без кэша по `conversation_id`) и хранит снимок чек-листа, по которому сделана.
 - Jev — необязательный модуль: без ключа или при ошибке оценка идёт только на Gemini.
 
+## Тесты
+
+```bash
+cd backend
+python -m pytest -q
+```
+
+25 офлайн-тестов (без сети и ключей, модели подменены заглушками): расчёт баллов и N/A, объединение ответов Gemini и
+Jev (совпадение, перепроверка, пометка «проверить», отказ Jev), проверка ссылок на реплики, полный путь через API
+(загрузка → оценка → апелляция → решение → пересчёт → статистика), замена критерия и валидация чек-листа.
+
+### Прогон на случайной выборке (реальные модели)
+
+```bash
+cd backend
+python scripts/eval_sample.py --n 12 --runs 2            # случайная выборка, стратифицированная по языку и каналу
+python scripts/eval_sample.py --n 12 --runs 2 --seed 7   # воспроизводимая выборка
+```
+
+Отчёт сохраняется в `backend/reports/`. Эталона для DEV нет, поэтому отчёт показывает корректность (допустимые ответы,
+реальные ссылки на реплики), согласованность с правилами N/A, стабильность (тот же диалог дважды) и согласие моделей.
+Чтобы измерить точность, разметьте выборку вручную:
+
+```bash
+python scripts/eval_sample.py --make-gold-template eval/gold.json --n 15   # шаблон с пустыми ответами
+python scripts/eval_sample.py --gold eval/gold.json                         # точность по критериям и MAE итога
+```
+
 ## Конфигурация (`.env`)
 
 | Переменная | Назначение |
@@ -73,6 +112,9 @@ Swagger: http://localhost:8000/docs · Описание API: [API.md](API.md) ·
 | `backend/app/llm/` | клиенты Gemini и Jev |
 | `backend/app/pipeline.py` | оценка: Gemini ∥ Jev → объединение → проверка цитат → баллы |
 | `backend/app/routers/` | API: conversations, checklists, evaluations, appeals, stats |
+| `backend/tests/` | офлайн-тесты (`python -m pytest -q`) |
+| `backend/scripts/eval_sample.py` | прогон на случайной выборке с отчётом |
+| `Dockerfile`, `docker-compose.yml` | образ и запуск одной командой |
 | `web/` | интерфейс на HTML, CSS и JavaScript без сборки; `web/js/backend.js` — связь с API |
 | `web/dist/cqa-webresource.html` | весь интерфейс одним файлом для Dynamics 365 (`python web/build.py`) |
 

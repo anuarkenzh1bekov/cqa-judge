@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.claude
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/*.db
+**/*.db-*
+backend/reports
+*.pdf
+web/dist
