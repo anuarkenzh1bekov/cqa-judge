@@ -13,6 +13,25 @@ document.addEventListener('click',async e=>{
     seekTo(+g.dataset.goMsg);
   }
   const sk=e.target.closest('[data-seek]');if(sk&&$('#aud'))seekTo(+sk.dataset.seek);
+  const gc=e.target.closest('[data-goto-crit]');
+  if(gc){
+    const row=$(`.cr[data-id="${gc.dataset.gotoCrit}"]`);
+    if(row){
+      row.scrollIntoView({block:'center',behavior:reduceMotion()?'auto':'smooth'});
+      motion(row,[{backgroundColor:'var(--mark)'},{backgroundColor:'transparent'}],1100);
+    }
+  }
+  const gr=e.target.closest('[data-go-range]');
+  if(gr){
+    const [a,b]=gr.dataset.goRange.split('-').map(Number);
+    $$('.m.mark').forEach(m=>m.classList.remove('mark'));
+    for(let n=a;n<=b;n++){
+      const m=$('#m'+n);
+      if(m){m.classList.add('mark');motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300)}
+    }
+    const first=$('#m'+a);
+    if(first){first.scrollIntoView({block:'center'});seekTo(a)}
+  }
   const ap=e.target.closest('[data-ap]');if(ap)openAppeal(+ap.dataset.ap);
   const ai=e.target.closest('[data-ai]');
   if(ai){
@@ -95,9 +114,8 @@ $('#evGo').onclick=async()=>{
       if(recs.length)ids=ids.concat((await CQA_API.upload(recs)).conversation_ids);
       if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
       $('#evDlg').close();
-      const s=await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});
-      await beRefreshAfterBatch();
-      toast(`Готово: ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:''));
+      /* итог показывает само окно: «Готово N из N», открытие каждого, повтор неудавшихся */
+      await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});
     }catch(err){toast('Ошибка: '+err.message)}
     finally{$('#evGo').disabled=false}
     return;

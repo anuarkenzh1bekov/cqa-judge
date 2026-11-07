@@ -71,14 +71,14 @@ function renderScoreHtml(t){
   }else{
     $('#score').innerHTML=`<div class="sc-top"><span class="n">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
      <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${CQA_API.enabled?'':'проверено '}${linkify(g.checked)}</span>
-     ${g.ev&&g.ev.length?`<span class="ev">${g.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('')}</span>`:''}</div>${btn}`;
+     ${g.ev&&g.ev.length?`<span class="ev">${g.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('')}</span>`:''}</div>${reviewRow()}${btn}`;
   }
   const b=$('#evalNow');
   if(b)b.onclick=async()=>{
     if(d.running){toast('Оценка уже выполняется');return}
     try{
       await beRunBatch('Оценка диалога '+d.id,{conversation_ids:[d.id]});
-      await beRefreshAfterBatch();toast('Оценка готова');
+      await beRefreshAfterBatch();
     }catch(e){toast('Ошибка: '+e.message)}
   };
 }
@@ -129,20 +129,17 @@ function critRow(c,i,t){
     }
     const r=resOf(cur,c),v=value(cur,c),ap=appeals[cur][c.id];
     const p=points(c,v),eff=v==='na'||!t.den?null:c.w/t.den*100;
-    const evs=r.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('');
-    const rng=!evs&&r.range?`<div class="ev">Проверенный участок: <button class="lk" data-go-msg="${r.range[0]+1}">#${r.range[0]+1}</button>–<button class="lk" data-go-msg="${r.range[1]+1}">#${r.range[1]+1}</button></div>`:'';
+    const evHtml=evidenceHtml(cur,c,r,v);
     let state='';
     if(ap&&!ap.decision)state=`<div class="st">Апелляция на проверке: ${esc(ap.text)}</div>`;
-    if(ap&&ap.decision)state=ap.decision.act==='confirm'
-      ?`<div class="st done">Оценка подтверждена. ${esc(ap.decision.reason)}</div>`
-      :`<div class="st done"><s>${label(c,r.v)}</s> → <b>${label(c,ap.decision.v)}</b>. ${esc(ap.decision.reason)}</div>`;
+    if(ap&&ap.decision)state=`<div class="st done">${outcomeLine(cur,c)}</div>`;
     const dec=reviewer&&ap&&!ap.decision?decideForm(cur,c,ap):'';
     const canAppeal=!ap||ap.decision;
     return `<div class="cr k-${kind(c,v)}" data-id="${c.id}">
       <div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v ${kind(c,v)}">${label(c,v)}</span><span class="cr-p">${p===null?'—':fmt(Math.round(p*100)/100)} / ${c.w}</span></div>
       ${eff!==null&&Math.abs(eff-c.w)>.05?`<div class="cr-w">вес ${c.w} → ${fmt(Math.round(eff*100)/100)} с учётом N/A</div>`:''}
       <div class="cr-b"><p class="why">${linkify(r.why)}</p>
-        ${evs?`<div class="ev">Реплики: ${evs}${r.q?`<span class="q">${esc(r.q)}</span>`:''}</div>`:rng}
+        ${evHtml}
         ${modelsLine(c,r)}
         <div class="cr-f">${r.conf<.65?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
         ${state}${dec}</div></div>`;
@@ -179,3 +176,54 @@ $('#dlgYes').onclick=async()=>{
   appeals[cur][apId]={text:t};persist();$('#dlg').close();renderCrit();syncCount();
   toast('Апелляция отправлена');
 };
+
+/* ---------- «с чего начать»: критерии, которым модель сама не уверена ---------- */
+const ROLE={client:'Клиент',operator:'Оператор',bot:'Бот',system:'Система'};
+const reviewList=d=>CRIT.filter(c=>!pending(d,c)&&resOf(d,c).conf<.65);
+function reviewRow(){
+  const rv=reviewList(cur);
+  if(!rv.length)return '';
+  return `<div class="rv"><span class="rvt">Требуют проверки: ${rv.length}</span>`
+    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')+'</div>';
+}
+
+/* ---------- доказательства: время, роль и цитата видны без клика ---------- */
+function quoteOf(d,n,max=90){
+  const m=D[d].msgs[n-1];if(!m)return '';
+  const t=String(m[2]).replace(/\s+/g,' ').trim();
+  return t.length>max?t.slice(0,max-1).trimEnd()+'…':t;
+}
+function evItem(d,n){
+  const m=D[d].msgs[n-1];if(!m)return '';
+  return `<button class="evb" data-go-msg="${n}"><span class="evt">${mm(secOf(d,n))} · ${esc(ROLE[m[0]]||m[0])}</span><span class="evq">«${esc(quoteOf(d,n))}»</span></button>`;
+}
+/* действие пропущено или выполнено не полностью */
+const missed=(c,v)=>v==='no'||(c.type==='scale'&&v!=='na'&&v<Math.max(...c.steps));
+function evidenceHtml(d,c,r,v){
+  const ev=(r.ev||[]).filter(n=>D[d].msgs[n-1]);
+  let out='';
+  if(ev.length)out+=`<div class="ev"><div class="evh">Основание</div>${ev.map(n=>evItem(d,n)).join('')}</div>`;
+  const explicit=r.range?[r.range[0]+1,r.range[1]+1]:null;
+  const derived=missed(c,v)&&ev.length>1?[Math.min(...ev),Math.max(...ev)]:null;
+  const rg=explicit||derived;
+  if(rg&&(explicit||missed(c,v))){
+    const a=Math.min(...rg),b=Math.max(...rg);
+    if(D[d].msgs[a-1]&&D[d].msgs[b-1])
+      out+=`<div class="ev"><button class="evb" data-go-range="${a}-${b}"><span class="evt">Проверенный участок: ${a===b?`реплика ${a}`:`реплики ${a}–${b}`}</span><span class="evq">${mm(secOf(d,a))}–${mm(secOf(d,b))}</span></button></div>`;
+  }
+  if(r.q&&!/^«/.test(r.q))out+=`<div class="ev"><span class="q">${esc(r.q)}</span></div>`;
+  return out;
+}
+
+/* ---------- исход апелляции одной строкой ---------- */
+function changeText(c,from,to){
+  if(c.type==='scale'&&from!=='na'&&to!=='na')return `${from} → ${to} из ${Math.max(...c.steps)}`;
+  return `${label(c,from)} → ${label(c,to)}`;
+}
+function outcomeLine(d,c){
+  const dec=appeals[d][c.id].decision,r=resOf(d,c);
+  const imp=decisionImpact(d,c);
+  const tot=imp.before===imp.after?`Итог: ${fmt(imp.after)}`:`Итог: ${fmt(imp.before)} → ${fmt(imp.after)}`;
+  const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, подтверждена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
+  return `<b>${head}</b> · ${tot}<span class="why2">Причина: ${esc(dec.reason)}</span>`;
+}

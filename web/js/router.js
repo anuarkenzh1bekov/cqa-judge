@@ -2,9 +2,10 @@
 /* ================= РОУТИНГ ================= */
 let H=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
 function go(h){H=h;try{history.replaceState(null,'',h)}catch(_){}route()}
-let routeSeq=0;
+let routeSeq=0,curView=null;
 async function route(){
   const seq=++routeSeq;
+  if(curView==='list'){listUI.scroll=scrollY;listUI.has=true}   /* уходим из списка: запоминаем место */
   const [,view='list',raw]=H.split('/');
   const arg=raw?decodeURIComponent(raw):raw;
   if(view==='card'&&D[arg])cur=arg;
@@ -25,7 +26,8 @@ async function route(){
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
   syncCount();
-  scrollTo(0,0);
+  if(view==='list'&&listUI.has){scrollTo(0,listUI.scroll);restoreListFocus()}else scrollTo(0,0);
+  curView=view;
   motion($('#v-'+view),[{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],180);
 }
 /* для очереди апелляций нужны карточки всех диалогов, где есть апелляции */

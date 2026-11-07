@@ -3,6 +3,18 @@
 const KINDS={all:()=>true,low:r=>r.needsReview,appeal:r=>r.a>0,gross:r=>r.g};
 let rowsCache=[];
 let fGroup='';
+/* где человек остановился в списке: возвращаем его сюда после просмотра карточки */
+const listUI={sel:null,scroll:0,qSel:[0,0],has:false};
+function rememberList(key){
+  const q=$('#q');
+  listUI.sel=key;listUI.scroll=scrollY;listUI.qSel=[q.selectionStart,q.selectionEnd];listUI.has=true;
+}
+function restoreListFocus(){
+  const q=$('#q');
+  try{q.setSelectionRange(listUI.qSel[0],listUI.qSel[1])}catch(_){}
+  const tr=listUI.sel&&[...$$('#rows tr')].find(r=>r.dataset.key===listUI.sel);
+  if(tr)tr.focus({preventScroll:true});
+}
 function listRows(){
   return Object.entries(D).map(([key,dialog])=>{
     const s=dialog.summary;
@@ -41,7 +53,7 @@ function renderRows(){
   const all=v.filter(r=>r.s!==null&&r.s!==undefined),avg=all.reduce((s,r)=>s+r.s,0)/all.length;
   $('#avg').textContent=`${v.length} диалогов · средний балл ${fmt(all.length ? Math.round(avg*100)/100 : null)}`;
   $('#sortScore').textContent='Балл'+(sortDir===1?' ↑':sortDir===-1?' ↓':'');
-  $('#rows').innerHTML=v.map(r=>`<tr data-key="${esc(r.key)}"><td class="did">${esc(r.id)}</td><td>${r.lang}</td><td>${r.ch}</td><td>${esc(r.op)}</td>
+  $('#rows').innerHTML=v.map(r=>`<tr tabindex="0" class="${r.key===listUI.sel?'sel':''}" data-key="${esc(r.key)}"><td class="did">${esc(r.id)}</td><td>${r.lang}</td><td>${r.ch}</td><td>${esc(r.op)}</td>
     <td class="r ${r.s!==null&&r.s<60?'low-score':''}">${fmt(r.s)}</td>
     <td>${r.g?'<span class="fl g">Грубая ошибка</span>':''}${r.a?'<span class="fl">Апелляция</span>':''}${r.needsReview?'<span class="fl">Требует проверки</span>':''}${statusTag(r)}</td></tr>`).join('');
   $('#none').hidden=v.length>0;
@@ -54,8 +66,10 @@ $('#filters').onclick=e=>{
   if(l){const x=l.dataset.lang;fLang.has(x)?fLang.delete(x):fLang.add(x);renderListChrome();renderRows()}
   if(g){fGroup=g.dataset.group;renderListChrome();renderRows()}
 };
-$('#rows').onclick=e=>{
-  const tr=e.target.closest('tr');if(!tr)return;
-  go('#/card/'+encodeURIComponent(tr.dataset.key));
+function openRow(tr){rememberList(tr.dataset.key);go('#/card/'+encodeURIComponent(tr.dataset.key))}
+$('#rows').onclick=e=>{const tr=e.target.closest('tr');if(tr)openRow(tr)};
+$('#rows').onkeydown=e=>{
+  const tr=e.target.closest('tr');
+  if(tr&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openRow(tr)}
 };
 $('#sortScore').onclick=()=>{sortDir=sortDir===1?-1:1;renderRows()};

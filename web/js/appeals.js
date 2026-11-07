@@ -19,12 +19,12 @@ function renderAppeals(){
   $('#apDetail').innerHTML=`<div class="panel ap-d">
     <div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div>
     <h2>${esc(c.name)}</h2>
-    <div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>${a.decision?'Решение':'Итог сейчас'}</small><b>${label(c,a.decision?a.decision.v:r.v)}</b></div></div>
+    ${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:`<div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>Итог сейчас</small><b>${fmt(total(d).score)}</b></div></div>`}
     <div class="st">${esc(a.text)}</div>
     <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
     ${CQA_API.enabled?modelsLine(c,r):''}
     <div class="frag">${frag}</div>
-    ${a.decision?`<div class="hist"><div class="st done">${a.decision.act==='confirm'?'Оценка подтверждена':'Оценка изменена'}. ${esc(a.decision.reason)}</div><div>Итог диалога: ${fmt(total(d,true).score)} → <b>${fmt(total(d).score)}</b></div></div>`:decideForm(d,c,a)}
+    ${a.decision?'':decideForm(d,c,a)}
     <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>
   </div>`;
 }

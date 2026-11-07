@@ -131,31 +131,78 @@ async function beSaveChecklist(){
   await beLoadChecklist();
   return cl;
 }
-/* пакетная оценка с настоящим прогрессом */
-async function beRunBatch(title,body){
-  const b=await CQA_API.batch(body);
-  return new Promise(resolve=>{
-    $('#runTitle').textContent=title;
-    $('#runSub').textContent=`Диалогов: ${b.total}. Модели: ${BE.health?BE.health.gemini_model:'Gemini'}${BE.health&&BE.health.jev_enabled?' + '+BE.health.jev_model:''}`;
-    $('#runList').innerHTML='';$('#runClose').disabled=true;$('#runDlg').showModal();
-    const ok='<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 4.2 3.2 6.2 7 1.8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
-    const tick=async()=>{
-      let s;try{s=await CQA_API.batchStatus(b.batch_id)}catch(e){setTimeout(tick,3000);return}
-      $('#runSub').textContent=`Готово ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:'')+(s.running?` · оценивается ${s.running}`:'');
-      $('#runList').innerHTML=s.evaluations.map(e=>{
-        const cls=e.status==='done'?'ok':e.status==='running'?'go':e.status==='error'?'err':'';
-        const tail=e.status==='done'?` — ${fmt(e.final_total)}${e.gross_error?' · грубая ошибка':''}`:e.status==='error'?' — ошибка':'';
-        return `<div class="${cls}" title="${esc(e.error||'')}"><i>${e.status==='done'?ok:''}</i>${esc(e.conversation_id)}${tail}</div>`;
-      }).join('');
-      if(s.finished){$('#runClose').disabled=false;resolve(s);return}
-      setTimeout(tick,2500);
-    };
-    $('#runClose').onclick=()=>$('#runDlg').close();
-    tick();
+/* Пакетная оценка: настоящий прогресс, сводка «Готово N из N», открытие каждого результата
+   и повтор только неудавшихся диалогов. */
+const beSleep=ms=>new Promise(r=>setTimeout(r,ms));
+const beShortErr=s=>{s=String(s||'ошибка');return s.length>60?s.slice(0,59)+'…':s};
+function beRunBatch(title,body){
+  const ids=(body.conversation_ids||[]).slice();
+  const checklist_id=body.checklist_id||null;
+  const rows=new Map(ids.map(id=>[id,{status:'pending'}]));
+  const busy=new Set();   // пакеты, которые сейчас выполняются
+  $('#runTitle').textContent=title;
+  const close=$('#runClose');close.disabled=true;
+  const failed=()=>[...rows].filter(([,r])=>r.status==='error').map(([id])=>id);
+  function render(){
+    const all=[...rows.values()],n=s=>all.filter(r=>r.status===s).length;
+    const work=n('pending')+n('running'),bad=failed();
+    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work}`:'')
+      +(bad.length&&!work?` · ${bad.length===1?'не обработан':'не обработаны'}: ${bad.map(esc).join(', ')}`:'');
+    $('#runList').innerHTML=[...rows].map(([id,r])=>{
+      const cls=r.status==='done'?'ok':r.status==='running'?'go':r.status==='error'?'err':'';
+      let tail='';
+      if(r.status==='done')tail=`<span class="rtail">${fmt(r.total)}${r.gross?' · грубая ошибка':''}</span><button class="tx" data-open="${esc(id)}">Открыть</button>`;
+      if(r.status==='error')tail=`<span class="ermsg" title="${esc(r.error||'')}">${esc(beShortErr(r.error))}</span><button class="tx" data-retry="${esc(id)}"${busy.size?' disabled':''}>Повторить</button>`;
+      return `<div class="${cls}"><i>${r.status==='done'?CHECK_SVG:r.status==='error'?'!':''}</i><span class="rid">${esc(id)}</span>${tail}</div>`;
+    }).join('')+(bad.length>1&&!work?`<div class="runall"><button class="tx" data-retry-all>Повторить все неудачные (${bad.length})</button></div>`:'');
+    close.disabled=busy.size>0;
+  }
+  async function track(batchId){
+    busy.add(batchId);render();
+    let fails=0;
+    for(;;){
+      let s;
+      try{s=await CQA_API.batchStatus(batchId);fails=0}
+      catch(e){
+        if(++fails>=15){
+          rows.forEach((r,id)=>{if(r.status==='pending'||r.status==='running')rows.set(id,{status:'error',error:'нет связи с сервером'})});
+          break;
+        }
+        await beSleep(3000);continue;
+      }
+      s.evaluations.forEach(e=>rows.set(e.conversation_id,{
+        status:e.status==='done'?'done':e.status==='error'?'error':e.status==='running'?'running':'pending',
+        total:e.final_total,gross:e.gross_error,error:e.error}));
+      render();
+      if(s.finished)break;
+      await beSleep(2500);
+    }
+    busy.delete(batchId);
+    try{await beLoadAll();if(!$('#v-list').hidden)renderList()}catch(_){}
+    render();
+  }
+  async function start(list){
+    list.forEach(id=>rows.set(id,{status:'pending'}));render();
+    let b;
+    try{b=await CQA_API.batch({conversation_ids:list,checklist_id})}
+    catch(e){list.forEach(id=>rows.set(id,{status:'error',error:e.message}));render();return}
+    await track(b.batch_id);
+  }
+  $('#runList').onclick=e=>{
+    const o=e.target.closest('[data-open]'),r=e.target.closest('[data-retry]'),ra=e.target.closest('[data-retry-all]');
+    if(o){$('#runDlg').close();go('#/card/'+encodeURIComponent(o.dataset.open))}
+    if(r&&!busy.size)start([r.dataset.retry]);
+    if(ra&&!busy.size)start(failed());
+  };
+  close.onclick=()=>$('#runDlg').close();
+  $('#runDlg').showModal();render();
+  return start(ids).then(()=>{
+    const all=[...rows.values()];
+    return {done:all.filter(r=>r.status==='done').length,total:rows.size,error:all.filter(r=>r.status==='error').length};
   });
 }
+/* после оценки одного диалога из карточки: перечитать его и перерисовать экран */
 async function beRefreshAfterBatch(){
-  await beLoadAll();
   if(cur&&D[cur])await beLoadDialog(cur,true);
   route();
 }

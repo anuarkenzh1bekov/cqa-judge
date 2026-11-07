@@ -290,6 +290,31 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 .box .wl .t{min-width:120px}
 .lk.inl{color:var(--warn);font-weight:600;text-decoration:none;margin:0}
 
+/* «с чего начать проверку» */
+.rv{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:12px 24px;border-top:1px solid var(--line);font-size:13px}
+.rvt{color:var(--warn);font-weight:600}
+.rv .lk{color:var(--ink-2)}
+/* доказательства: время, роль, цитата */
+.ev .evh{font-size:12px;color:var(--muted);margin-bottom:2px}
+.evb{display:block;width:100%;text-align:left;padding:6px 10px;margin-top:4px;border-radius:6px;background:var(--raised)}
+.evb:hover{background:var(--line)}
+.evt{display:block;font-size:12px;color:var(--muted)}
+.evq{display:block;color:var(--ink-2);font-size:13px}
+/* исход апелляции */
+.why2{display:block;margin-top:2px;color:var(--ink-2);font-weight:400}
+/* окно оценки: результат по каждому диалогу */
+.run .rid{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run .rtail{color:var(--muted);font-variant-numeric:tabular-nums}
+.run .ermsg{color:var(--no);font-size:12px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.runall{padding-top:8px}
+#runSub b{color:var(--ink);font-weight:600}
+/* список: строка, на которой остановились */
+tbody tr.sel{box-shadow:inset 3px 0 var(--accent);background:var(--raised)}
+tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* длинный пакет (например, весь набор) прокручивается внутри окна */
+.run{max-height:50vh;overflow:auto}
+
 </style>
 </head>
 <body>
@@ -730,31 +755,78 @@ async function beSaveChecklist(){
   await beLoadChecklist();
   return cl;
 }
-/* пакетная оценка с настоящим прогрессом */
-async function beRunBatch(title,body){
-  const b=await CQA_API.batch(body);
-  return new Promise(resolve=>{
-    $('#runTitle').textContent=title;
-    $('#runSub').textContent=`Диалогов: ${b.total}. Модели: ${BE.health?BE.health.gemini_model:'Gemini'}${BE.health&&BE.health.jev_enabled?' + '+BE.health.jev_model:''}`;
-    $('#runList').innerHTML='';$('#runClose').disabled=true;$('#runDlg').showModal();
-    const ok='<svg width="8" height="8" viewBox="0 0 8 8"><path d="M1 4.2 3.2 6.2 7 1.8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
-    const tick=async()=>{
-      let s;try{s=await CQA_API.batchStatus(b.batch_id)}catch(e){setTimeout(tick,3000);return}
-      $('#runSub').textContent=`Готово ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:'')+(s.running?` · оценивается ${s.running}`:'');
-      $('#runList').innerHTML=s.evaluations.map(e=>{
-        const cls=e.status==='done'?'ok':e.status==='running'?'go':e.status==='error'?'err':'';
-        const tail=e.status==='done'?` — ${fmt(e.final_total)}${e.gross_error?' · грубая ошибка':''}`:e.status==='error'?' — ошибка':'';
-        return `<div class="${cls}" title="${esc(e.error||'')}"><i>${e.status==='done'?ok:''}</i>${esc(e.conversation_id)}${tail}</div>`;
-      }).join('');
-      if(s.finished){$('#runClose').disabled=false;resolve(s);return}
-      setTimeout(tick,2500);
-    };
-    $('#runClose').onclick=()=>$('#runDlg').close();
-    tick();
+/* Пакетная оценка: настоящий прогресс, сводка «Готово N из N», открытие каждого результата
+   и повтор только неудавшихся диалогов. */
+const beSleep=ms=>new Promise(r=>setTimeout(r,ms));
+const beShortErr=s=>{s=String(s||'ошибка');return s.length>60?s.slice(0,59)+'…':s};
+function beRunBatch(title,body){
+  const ids=(body.conversation_ids||[]).slice();
+  const checklist_id=body.checklist_id||null;
+  const rows=new Map(ids.map(id=>[id,{status:'pending'}]));
+  const busy=new Set();   // пакеты, которые сейчас выполняются
+  $('#runTitle').textContent=title;
+  const close=$('#runClose');close.disabled=true;
+  const failed=()=>[...rows].filter(([,r])=>r.status==='error').map(([id])=>id);
+  function render(){
+    const all=[...rows.values()],n=s=>all.filter(r=>r.status===s).length;
+    const work=n('pending')+n('running'),bad=failed();
+    $('#runSub').innerHTML=`<b>Готово ${n('done')} из ${rows.size}</b>`+(work?` · в работе ${work}`:'')
+      +(bad.length&&!work?` · ${bad.length===1?'не обработан':'не обработаны'}: ${bad.map(esc).join(', ')}`:'');
+    $('#runList').innerHTML=[...rows].map(([id,r])=>{
+      const cls=r.status==='done'?'ok':r.status==='running'?'go':r.status==='error'?'err':'';
+      let tail='';
+      if(r.status==='done')tail=`<span class="rtail">${fmt(r.total)}${r.gross?' · грубая ошибка':''}</span><button class="tx" data-open="${esc(id)}">Открыть</button>`;
+      if(r.status==='error')tail=`<span class="ermsg" title="${esc(r.error||'')}">${esc(beShortErr(r.error))}</span><button class="tx" data-retry="${esc(id)}"${busy.size?' disabled':''}>Повторить</button>`;
+      return `<div class="${cls}"><i>${r.status==='done'?CHECK_SVG:r.status==='error'?'!':''}</i><span class="rid">${esc(id)}</span>${tail}</div>`;
+    }).join('')+(bad.length>1&&!work?`<div class="runall"><button class="tx" data-retry-all>Повторить все неудачные (${bad.length})</button></div>`:'');
+    close.disabled=busy.size>0;
+  }
+  async function track(batchId){
+    busy.add(batchId);render();
+    let fails=0;
+    for(;;){
+      let s;
+      try{s=await CQA_API.batchStatus(batchId);fails=0}
+      catch(e){
+        if(++fails>=15){
+          rows.forEach((r,id)=>{if(r.status==='pending'||r.status==='running')rows.set(id,{status:'error',error:'нет связи с сервером'})});
+          break;
+        }
+        await beSleep(3000);continue;
+      }
+      s.evaluations.forEach(e=>rows.set(e.conversation_id,{
+        status:e.status==='done'?'done':e.status==='error'?'error':e.status==='running'?'running':'pending',
+        total:e.final_total,gross:e.gross_error,error:e.error}));
+      render();
+      if(s.finished)break;
+      await beSleep(2500);
+    }
+    busy.delete(batchId);
+    try{await beLoadAll();if(!$('#v-list').hidden)renderList()}catch(_){}
+    render();
+  }
+  async function start(list){
+    list.forEach(id=>rows.set(id,{status:'pending'}));render();
+    let b;
+    try{b=await CQA_API.batch({conversation_ids:list,checklist_id})}
+    catch(e){list.forEach(id=>rows.set(id,{status:'error',error:e.message}));render();return}
+    await track(b.batch_id);
+  }
+  $('#runList').onclick=e=>{
+    const o=e.target.closest('[data-open]'),r=e.target.closest('[data-retry]'),ra=e.target.closest('[data-retry-all]');
+    if(o){$('#runDlg').close();go('#/card/'+encodeURIComponent(o.dataset.open))}
+    if(r&&!busy.size)start([r.dataset.retry]);
+    if(ra&&!busy.size)start(failed());
+  };
+  close.onclick=()=>$('#runDlg').close();
+  $('#runDlg').showModal();render();
+  return start(ids).then(()=>{
+    const all=[...rows.values()];
+    return {done:all.filter(r=>r.status==='done').length,total:rows.size,error:all.filter(r=>r.status==='error').length};
   });
 }
+/* после оценки одного диалога из карточки: перечитать его и перерисовать экран */
 async function beRefreshAfterBatch(){
-  await beLoadAll();
   if(cur&&D[cur])await beLoadDialog(cur,true);
   route();
 }
@@ -765,13 +837,13 @@ async function beRefreshAfterBatch(){
 /* ================= РАСЧЁТ БАЛЛОВ ================= */
 const resOf=(d,c)=>{const r=D[d].res[c.id];return r&&r.sig===sigOf(c)?r:null};
 const pending=(d,c)=>!resOf(d,c);
-function value(d,c){const a=appeals[d][c.id];return a&&a.decision?a.decision.v:resOf(d,c).v}
+function value(d,c,skipId){const a=appeals[d][c.id];return a&&a.decision&&c.id!==skipId?a.decision.v:resOf(d,c).v}
 function points(c,v){if(v==='na')return null;if(c.type==='yn')return v==='yes'?c.w:0;return Math.min(1,v/Math.max(...c.steps))*c.w}
-function total(d,useOrig){
+function total(d,useOrig,skipId){
   let got=0,den=0;
   CRIT.forEach(c=>{
     if(pending(d,c))return;
-    const v=useOrig?resOf(d,c).v:value(d,c),p=points(c,v);
+    const v=useOrig?resOf(d,c).v:value(d,c,skipId),p=points(c,v);
     if(p===null)return;got+=p;den+=c.w;
   });
   return den?{score:Math.round(got/den*10000)/100,den}:{score:null,den:0};
@@ -789,6 +861,9 @@ function sectionScores(d){
   });
   return out.map(s=>({name:s.name,score:s.den?Math.round(s.got/s.den*10000)/100:null}));
 }
+
+/* Итог до и после решения по одному критерию (остальные решения учтены как есть). */
+function decisionImpact(d,c){return {before:total(d,false,c.id).score,after:total(d).score}}
 
 </script>
 <script>
@@ -849,9 +924,10 @@ function motion(el,frames,ms=180){
 /* ================= РОУТИНГ ================= */
 let H=(location.hash&&location.hash.startsWith('#/'))?location.hash:'#/list';
 function go(h){H=h;try{history.replaceState(null,'',h)}catch(_){}route()}
-let routeSeq=0;
+let routeSeq=0,curView=null;
 async function route(){
   const seq=++routeSeq;
+  if(curView==='list'){listUI.scroll=scrollY;listUI.has=true}   /* уходим из списка: запоминаем место */
   const [,view='list',raw]=H.split('/');
   const arg=raw?decodeURIComponent(raw):raw;
   if(view==='card'&&D[arg])cur=arg;
@@ -872,7 +948,8 @@ async function route(){
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
   syncCount();
-  scrollTo(0,0);
+  if(view==='list'&&listUI.has){scrollTo(0,listUI.scroll);restoreListFocus()}else scrollTo(0,0);
+  curView=view;
   motion($('#v-'+view),[{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],180);
 }
 /* для очереди апелляций нужны карточки всех диалогов, где есть апелляции */
@@ -892,6 +969,18 @@ $('#back').onclick=()=>go('#/list');
 const KINDS={all:()=>true,low:r=>r.needsReview,appeal:r=>r.a>0,gross:r=>r.g};
 let rowsCache=[];
 let fGroup='';
+/* где человек остановился в списке: возвращаем его сюда после просмотра карточки */
+const listUI={sel:null,scroll:0,qSel:[0,0],has:false};
+function rememberList(key){
+  const q=$('#q');
+  listUI.sel=key;listUI.scroll=scrollY;listUI.qSel=[q.selectionStart,q.selectionEnd];listUI.has=true;
+}
+function restoreListFocus(){
+  const q=$('#q');
+  try{q.setSelectionRange(listUI.qSel[0],listUI.qSel[1])}catch(_){}
+  const tr=listUI.sel&&[...$$('#rows tr')].find(r=>r.dataset.key===listUI.sel);
+  if(tr)tr.focus({preventScroll:true});
+}
 function listRows(){
   return Object.entries(D).map(([key,dialog])=>{
     const s=dialog.summary;
@@ -930,7 +1019,7 @@ function renderRows(){
   const all=v.filter(r=>r.s!==null&&r.s!==undefined),avg=all.reduce((s,r)=>s+r.s,0)/all.length;
   $('#avg').textContent=`${v.length} диалогов · средний балл ${fmt(all.length ? Math.round(avg*100)/100 : null)}`;
   $('#sortScore').textContent='Балл'+(sortDir===1?' ↑':sortDir===-1?' ↓':'');
-  $('#rows').innerHTML=v.map(r=>`<tr data-key="${esc(r.key)}"><td class="did">${esc(r.id)}</td><td>${r.lang}</td><td>${r.ch}</td><td>${esc(r.op)}</td>
+  $('#rows').innerHTML=v.map(r=>`<tr tabindex="0" class="${r.key===listUI.sel?'sel':''}" data-key="${esc(r.key)}"><td class="did">${esc(r.id)}</td><td>${r.lang}</td><td>${r.ch}</td><td>${esc(r.op)}</td>
     <td class="r ${r.s!==null&&r.s<60?'low-score':''}">${fmt(r.s)}</td>
     <td>${r.g?'<span class="fl g">Грубая ошибка</span>':''}${r.a?'<span class="fl">Апелляция</span>':''}${r.needsReview?'<span class="fl">Требует проверки</span>':''}${statusTag(r)}</td></tr>`).join('');
   $('#none').hidden=v.length>0;
@@ -943,9 +1032,11 @@ $('#filters').onclick=e=>{
   if(l){const x=l.dataset.lang;fLang.has(x)?fLang.delete(x):fLang.add(x);renderListChrome();renderRows()}
   if(g){fGroup=g.dataset.group;renderListChrome();renderRows()}
 };
-$('#rows').onclick=e=>{
-  const tr=e.target.closest('tr');if(!tr)return;
-  go('#/card/'+encodeURIComponent(tr.dataset.key));
+function openRow(tr){rememberList(tr.dataset.key);go('#/card/'+encodeURIComponent(tr.dataset.key))}
+$('#rows').onclick=e=>{const tr=e.target.closest('tr');if(tr)openRow(tr)};
+$('#rows').onkeydown=e=>{
+  const tr=e.target.closest('tr');
+  if(tr&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openRow(tr)}
 };
 $('#sortScore').onclick=()=>{sortDir=sortDir===1?-1:1;renderRows()};
 
@@ -1024,14 +1115,14 @@ function renderScoreHtml(t){
   }else{
     $('#score').innerHTML=`<div class="sc-top"><span class="n">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
      <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${CQA_API.enabled?'':'проверено '}${linkify(g.checked)}</span>
-     ${g.ev&&g.ev.length?`<span class="ev">${g.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('')}</span>`:''}</div>${btn}`;
+     ${g.ev&&g.ev.length?`<span class="ev">${g.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('')}</span>`:''}</div>${reviewRow()}${btn}`;
   }
   const b=$('#evalNow');
   if(b)b.onclick=async()=>{
     if(d.running){toast('Оценка уже выполняется');return}
     try{
       await beRunBatch('Оценка диалога '+d.id,{conversation_ids:[d.id]});
-      await beRefreshAfterBatch();toast('Оценка готова');
+      await beRefreshAfterBatch();
     }catch(e){toast('Ошибка: '+e.message)}
   };
 }
@@ -1082,20 +1173,17 @@ function critRow(c,i,t){
     }
     const r=resOf(cur,c),v=value(cur,c),ap=appeals[cur][c.id];
     const p=points(c,v),eff=v==='na'||!t.den?null:c.w/t.den*100;
-    const evs=r.ev.map(n=>`<button class="lk" data-go-msg="${n}">#${n}</button>`).join('');
-    const rng=!evs&&r.range?`<div class="ev">Проверенный участок: <button class="lk" data-go-msg="${r.range[0]+1}">#${r.range[0]+1}</button>–<button class="lk" data-go-msg="${r.range[1]+1}">#${r.range[1]+1}</button></div>`:'';
+    const evHtml=evidenceHtml(cur,c,r,v);
     let state='';
     if(ap&&!ap.decision)state=`<div class="st">Апелляция на проверке: ${esc(ap.text)}</div>`;
-    if(ap&&ap.decision)state=ap.decision.act==='confirm'
-      ?`<div class="st done">Оценка подтверждена. ${esc(ap.decision.reason)}</div>`
-      :`<div class="st done"><s>${label(c,r.v)}</s> → <b>${label(c,ap.decision.v)}</b>. ${esc(ap.decision.reason)}</div>`;
+    if(ap&&ap.decision)state=`<div class="st done">${outcomeLine(cur,c)}</div>`;
     const dec=reviewer&&ap&&!ap.decision?decideForm(cur,c,ap):'';
     const canAppeal=!ap||ap.decision;
     return `<div class="cr k-${kind(c,v)}" data-id="${c.id}">
       <div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v ${kind(c,v)}">${label(c,v)}</span><span class="cr-p">${p===null?'—':fmt(Math.round(p*100)/100)} / ${c.w}</span></div>
       ${eff!==null&&Math.abs(eff-c.w)>.05?`<div class="cr-w">вес ${c.w} → ${fmt(Math.round(eff*100)/100)} с учётом N/A</div>`:''}
       <div class="cr-b"><p class="why">${linkify(r.why)}</p>
-        ${evs?`<div class="ev">Реплики: ${evs}${r.q?`<span class="q">${esc(r.q)}</span>`:''}</div>`:rng}
+        ${evHtml}
         ${modelsLine(c,r)}
         <div class="cr-f">${r.conf<.65?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
         ${state}${dec}</div></div>`;
@@ -1132,6 +1220,57 @@ $('#dlgYes').onclick=async()=>{
   appeals[cur][apId]={text:t};persist();$('#dlg').close();renderCrit();syncCount();
   toast('Апелляция отправлена');
 };
+
+/* ---------- «с чего начать»: критерии, которым модель сама не уверена ---------- */
+const ROLE={client:'Клиент',operator:'Оператор',bot:'Бот',system:'Система'};
+const reviewList=d=>CRIT.filter(c=>!pending(d,c)&&resOf(d,c).conf<.65);
+function reviewRow(){
+  const rv=reviewList(cur);
+  if(!rv.length)return '';
+  return `<div class="rv"><span class="rvt">Требуют проверки: ${rv.length}</span>`
+    +rv.map(c=>`<button class="lk" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')+'</div>';
+}
+
+/* ---------- доказательства: время, роль и цитата видны без клика ---------- */
+function quoteOf(d,n,max=90){
+  const m=D[d].msgs[n-1];if(!m)return '';
+  const t=String(m[2]).replace(/\s+/g,' ').trim();
+  return t.length>max?t.slice(0,max-1).trimEnd()+'…':t;
+}
+function evItem(d,n){
+  const m=D[d].msgs[n-1];if(!m)return '';
+  return `<button class="evb" data-go-msg="${n}"><span class="evt">${mm(secOf(d,n))} · ${esc(ROLE[m[0]]||m[0])}</span><span class="evq">«${esc(quoteOf(d,n))}»</span></button>`;
+}
+/* действие пропущено или выполнено не полностью */
+const missed=(c,v)=>v==='no'||(c.type==='scale'&&v!=='na'&&v<Math.max(...c.steps));
+function evidenceHtml(d,c,r,v){
+  const ev=(r.ev||[]).filter(n=>D[d].msgs[n-1]);
+  let out='';
+  if(ev.length)out+=`<div class="ev"><div class="evh">Основание</div>${ev.map(n=>evItem(d,n)).join('')}</div>`;
+  const explicit=r.range?[r.range[0]+1,r.range[1]+1]:null;
+  const derived=missed(c,v)&&ev.length>1?[Math.min(...ev),Math.max(...ev)]:null;
+  const rg=explicit||derived;
+  if(rg&&(explicit||missed(c,v))){
+    const a=Math.min(...rg),b=Math.max(...rg);
+    if(D[d].msgs[a-1]&&D[d].msgs[b-1])
+      out+=`<div class="ev"><button class="evb" data-go-range="${a}-${b}"><span class="evt">Проверенный участок: ${a===b?`реплика ${a}`:`реплики ${a}–${b}`}</span><span class="evq">${mm(secOf(d,a))}–${mm(secOf(d,b))}</span></button></div>`;
+  }
+  if(r.q&&!/^«/.test(r.q))out+=`<div class="ev"><span class="q">${esc(r.q)}</span></div>`;
+  return out;
+}
+
+/* ---------- исход апелляции одной строкой ---------- */
+function changeText(c,from,to){
+  if(c.type==='scale'&&from!=='na'&&to!=='na')return `${from} → ${to} из ${Math.max(...c.steps)}`;
+  return `${label(c,from)} → ${label(c,to)}`;
+}
+function outcomeLine(d,c){
+  const dec=appeals[d][c.id].decision,r=resOf(d,c);
+  const imp=decisionImpact(d,c);
+  const tot=imp.before===imp.after?`Итог: ${fmt(imp.after)}`:`Итог: ${fmt(imp.before)} → ${fmt(imp.after)}`;
+  const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, подтверждена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
+  return `<b>${head}</b> · ${tot}<span class="why2">Причина: ${esc(dec.reason)}</span>`;
+}
 
 </script>
 <script>
@@ -1262,12 +1401,12 @@ function renderAppeals(){
   $('#apDetail').innerHTML=`<div class="panel ap-d">
     <div class="meta"><span>${esc(D[d].id)}</span><span>${D[d].lang}</span><span>${esc(D[d].operator)}</span></div>
     <h2>${esc(c.name)}</h2>
-    <div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>${a.decision?'Решение':'Итог сейчас'}</small><b>${label(c,a.decision?a.decision.v:r.v)}</b></div></div>
+    ${a.decision?`<div class="st done">${outcomeLine(d,c)}</div>`:`<div class="cmp"><div><small>Оценка модели</small><b>${label(c,r.v)}</b></div><div><small>Итог сейчас</small><b>${fmt(total(d).score)}</b></div></div>`}
     <div class="st">${esc(a.text)}</div>
     <p class="why" style="margin-top:12px">${linkify(r.why)}</p>
     ${CQA_API.enabled?modelsLine(c,r):''}
     <div class="frag">${frag}</div>
-    ${a.decision?`<div class="hist"><div class="st done">${a.decision.act==='confirm'?'Оценка подтверждена':'Оценка изменена'}. ${esc(a.decision.reason)}</div><div>Итог диалога: ${fmt(total(d,true).score)} → <b>${fmt(total(d).score)}</b></div></div>`:decideForm(d,c,a)}
+    ${a.decision?'':decideForm(d,c,a)}
     <div style="margin-top:16px"><button class="tx" data-open="${esc(d)}">Открыть диалог</button></div>
   </div>`;
 }
@@ -1360,6 +1499,25 @@ document.addEventListener('click',async e=>{
     seekTo(+g.dataset.goMsg);
   }
   const sk=e.target.closest('[data-seek]');if(sk&&$('#aud'))seekTo(+sk.dataset.seek);
+  const gc=e.target.closest('[data-goto-crit]');
+  if(gc){
+    const row=$(`.cr[data-id="${gc.dataset.gotoCrit}"]`);
+    if(row){
+      row.scrollIntoView({block:'center',behavior:reduceMotion()?'auto':'smooth'});
+      motion(row,[{backgroundColor:'var(--mark)'},{backgroundColor:'transparent'}],1100);
+    }
+  }
+  const gr=e.target.closest('[data-go-range]');
+  if(gr){
+    const [a,b]=gr.dataset.goRange.split('-').map(Number);
+    $$('.m.mark').forEach(m=>m.classList.remove('mark'));
+    for(let n=a;n<=b;n++){
+      const m=$('#m'+n);
+      if(m){m.classList.add('mark');motion(m.querySelector('.b')||m,[{transform:'scale(1.025)'},{transform:'none'}],300)}
+    }
+    const first=$('#m'+a);
+    if(first){first.scrollIntoView({block:'center'});seekTo(a)}
+  }
   const ap=e.target.closest('[data-ap]');if(ap)openAppeal(+ap.dataset.ap);
   const ai=e.target.closest('[data-ai]');
   if(ai){
@@ -1442,9 +1600,8 @@ $('#evGo').onclick=async()=>{
       if(recs.length)ids=ids.concat((await CQA_API.upload(recs)).conversation_ids);
       if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
       $('#evDlg').close();
-      const s=await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});
-      await beRefreshAfterBatch();
-      toast(`Готово: ${s.done} из ${s.total}`+(s.error?`, ошибок ${s.error}`:''));
+      /* итог показывает само окно: «Готово N из N», открытие каждого, повтор неудавшихся */
+      await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});
     }catch(err){toast('Ошибка: '+err.message)}
     finally{$('#evGo').disabled=false}
     return;

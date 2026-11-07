@@ -282,3 +282,28 @@ dialog[open]::backdrop{animation:bd-in .16s ease-out}
 .op-card h2{font-size:18px;margin:2px 0 8px}
 .box .wl .t{min-width:120px}
 .lk.inl{color:var(--warn);font-weight:600;text-decoration:none;margin:0}
+
+/* «с чего начать проверку» */
+.rv{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:12px 24px;border-top:1px solid var(--line);font-size:13px}
+.rvt{color:var(--warn);font-weight:600}
+.rv .lk{color:var(--ink-2)}
+/* доказательства: время, роль, цитата */
+.ev .evh{font-size:12px;color:var(--muted);margin-bottom:2px}
+.evb{display:block;width:100%;text-align:left;padding:6px 10px;margin-top:4px;border-radius:6px;background:var(--raised)}
+.evb:hover{background:var(--line)}
+.evt{display:block;font-size:12px;color:var(--muted)}
+.evq{display:block;color:var(--ink-2);font-size:13px}
+/* исход апелляции */
+.why2{display:block;margin-top:2px;color:var(--ink-2);font-weight:400}
+/* окно оценки: результат по каждому диалогу */
+.run .rid{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run .rtail{color:var(--muted);font-variant-numeric:tabular-nums}
+.run .ermsg{color:var(--no);font-size:12px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.runall{padding-top:8px}
+#runSub b{color:var(--ink);font-weight:600}
+/* список: строка, на которой остановились */
+tbody tr.sel{box-shadow:inset 3px 0 var(--accent);background:var(--raised)}
+tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* длинный пакет (например, весь набор) прокручивается внутри окна */
+.run{max-height:50vh;overflow:auto}
