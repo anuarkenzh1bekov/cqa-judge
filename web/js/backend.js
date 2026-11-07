@@ -35,7 +35,7 @@ const ansToFront=(c,a)=>c.type==='scale'&&a!=='na'?Number(a):a;
 async function beLoadChecklist(){
   const cl=await CQA_API.activeChecklist();
   BE.checklist=cl;
-  BE.flags=cl.criteria.filter(c=>c.type==='flag');
+  BE.flags=JSON.parse(JSON.stringify(cl.criteria.filter(c=>c.type==='flag')));  // editable copy
   CRIT.splice(0,CRIT.length,...cl.criteria.filter(c=>c.type!=='flag').map(critToFront));
   CRIT.forEach(c=>savedSigs[c.id]=sigOf(c));
   ver=cl.id;
@@ -77,6 +77,7 @@ async function beLoadDialog(cid,force){
   d.loaded=true;
 }
 function applyEvaluation(d,ev){
+  d.gross={bad:false,checked:'—'};  // flags below accumulate into this; start clean on every apply
   d.evalId=ev.id;d.summary=ev;d.operator=ev.operator_name||'—';
   d.feedback=ev.feedback;d.facts=ev.facts;d.models=ev.models;d.cost=ev.cost_usd;d.checklistName=ev.checklist_name;
   const snap=Object.fromEntries(ev.checklist.criteria.map(c=>[c.key,c]));
@@ -84,7 +85,13 @@ function applyEvaluation(d,ev){
     const sc=snap[r.key];if(!sc)return;
     if(r.type==='flag'){
       const rng=r.checked_range?` (#${r.checked_range[0]+1}–#${r.checked_range[1]+1})`:'';
-      d.gross={bad:ev.final_score.gross_error,checked:r.explanation+rng,ev:r.evidence.map(e=>e.index+1)};
+      const hit=ev.final_score.gross_error_criteria.includes(r.key);
+      const prev=d.gross&&d.gross.parts?d.gross:{parts:[],ev:[]};
+      // several flags: show the ones that fired; if none fired, show all explanations
+      prev.parts.push({hit,text:(ev.results.filter(x=>x.type==='flag').length>1?r.name+': ':'')+r.explanation+rng});
+      if(hit||!prev.ev.length)prev.ev=prev.ev.concat(r.evidence.map(e=>e.index+1));
+      const shown=prev.parts.some(q=>q.hit)?prev.parts.filter(q=>q.hit):prev.parts;
+      d.gross={bad:ev.final_score.gross_error,checked:shown.map(q=>q.text).join(' '),ev:[...new Set(prev.ev)],parts:prev.parts};
       return;
     }
     const fc=critToFront(sc);

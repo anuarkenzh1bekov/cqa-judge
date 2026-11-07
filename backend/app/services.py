@@ -1,5 +1,6 @@
 """Shared logic between routers: running evaluations, recomputing final scores, serialization."""
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from . import pipeline, scoring
 from .checklist import DEFAULT_CHECKLIST, ChecklistIn, Criterion
-from .config import settings
+from .config import ROOT, settings
 from .db import SessionLocal
 from .models import Appeal, Checklist, Conversation, Evaluation
 
@@ -27,6 +28,19 @@ def seed_default_checklist(db: Session):
         db.commit()
 
 
+def seed_conversations(db: Session, group: str = "DEV") -> int:
+    """Empty database -> load the saved dataset copy (dialogs only, no scores: evaluation still runs live)."""
+    if db.scalar(select(Conversation.id).limit(1)) is not None:
+        return 0
+    path = DATASETS_DIR / f"{group}.json"
+    if not path.is_file():
+        return 0
+    data = json.loads(path.read_text(encoding="utf-8"))
+    ids = upsert_conversations(db, data["records"] if isinstance(data, dict) else data, group)
+    log.info("seeded %d conversations from %s", len(ids), path)
+    return len(ids)
+
+
 def active_checklist(db: Session) -> Checklist:
     cl = db.scalar(select(Checklist).where(Checklist.is_active).order_by(Checklist.id.desc()))
     if cl is None:
@@ -41,7 +55,27 @@ def criteria_of(snapshot_or_list) -> list[Criterion]:
 
 # ---------- dataset ----------
 
+DATASETS_DIR = ROOT / "datasets"
+
+
 async def fetch_dataset(group_id: str) -> list[dict]:
+    """Organizers' API first; if it is unavailable, fall back to the saved copy datasets/<group>.json."""
+    return (await fetch_dataset_with_source(group_id))[0]
+
+
+async def fetch_dataset_with_source(group_id: str) -> tuple[list[dict], str]:
+    try:
+        return await fetch_dataset_api(group_id), "api"
+    except Exception as e:  # noqa: BLE001
+        path = DATASETS_DIR / f"{group_id}.json"
+        if not path.is_file() or not path.resolve().is_relative_to(DATASETS_DIR.resolve()):
+            raise
+        log.warning("dataset API failed (%s), using %s", e, path)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data["records"] if isinstance(data, dict) else data, "file"
+
+
+async def fetch_dataset_api(group_id: str) -> list[dict]:
     if not settings.dataset_api_url:
         raise RuntimeError("DATASET_API_URL is not set")
     sep = "&" if "?" in settings.dataset_api_url else "?"
@@ -62,7 +96,7 @@ def upsert_conversations(db: Session, records: list[dict], group: str | None) ->
         conv.dataset_group = group or conv.dataset_group
         conv.channel = rec.get("channel") or "agent chat"
         conv.language = (rec.get("language") or "RU").upper()
-        conv.audio_url = rec.get("audio_url")
+        conv.audio_url = rec.get("audio_url") or (conv.audio_url if rec.get("has_audio") else None)
         conv.transcript = rec["transcript"]
         db.add(conv)
         ids.append(cid)

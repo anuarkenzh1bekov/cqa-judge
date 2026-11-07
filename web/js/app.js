@@ -147,9 +147,15 @@ if(CQA_CONFIG.embed)document.body.classList.add('embed');
 syncTheme();
 (async()=>{
   let err=null;
+  /* пока грузятся данные с сервера, вместо пустого экрана — индикатор загрузки */
+  const boot=document.createElement('div');
+  boot.className='boot';boot.setAttribute('role','status');
+  boot.innerHTML='<i></i><span>Загружаем диалоги и оценки…</span>';
+  $('.wrap').appendChild(boot);
   if(CQA_API.enabled){try{await beLoadAll()}catch(e){err=e}}
   else{const n=$('#navStats');if(n)n.hidden=true}
   await route();
+  boot.remove();
   if(err){
     toast('Бэкенд недоступен: '+err.message);
     $('#none').hidden=false;

@@ -324,6 +324,13 @@ input[type=file]{color:var(--muted);cursor:pointer}
 input[type=file]::file-selector-button{margin-right:12px;padding:5px 12px;border-radius:6px;border:1px solid var(--line-2);background:transparent;color:var(--ink);font:inherit;cursor:pointer}
 input[type=file]::file-selector-button:hover{background:var(--raised)}
 dialog .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.stp{display:flex;gap:10px;align-items:center;margin-top:6px}
+.stp b{min-width:28px;text-align:right;color:var(--muted);font-weight:600}
+.ed-sub{margin:24px 0 10px;font-size:13px;font-weight:500;color:var(--muted)}
+.ec.flag .num{color:var(--no)}
+.boot{display:flex;align-items:center;justify-content:center;gap:12px;padding:120px 0;color:var(--muted)}
+.boot i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:sp .7s linear infinite}
+@media(prefers-reduced-motion:reduce){.boot i{animation:none}}
 
 </style>
 </head>
@@ -671,7 +678,7 @@ const ansToFront=(c,a)=>c.type==='scale'&&a!=='na'?Number(a):a;
 async function beLoadChecklist(){
   const cl=await CQA_API.activeChecklist();
   BE.checklist=cl;
-  BE.flags=cl.criteria.filter(c=>c.type==='flag');
+  BE.flags=JSON.parse(JSON.stringify(cl.criteria.filter(c=>c.type==='flag')));  // editable copy
   CRIT.splice(0,CRIT.length,...cl.criteria.filter(c=>c.type!=='flag').map(critToFront));
   CRIT.forEach(c=>savedSigs[c.id]=sigOf(c));
   ver=cl.id;
@@ -713,6 +720,7 @@ async function beLoadDialog(cid,force){
   d.loaded=true;
 }
 function applyEvaluation(d,ev){
+  d.gross={bad:false,checked:'—'};  // flags below accumulate into this; start clean on every apply
   d.evalId=ev.id;d.summary=ev;d.operator=ev.operator_name||'—';
   d.feedback=ev.feedback;d.facts=ev.facts;d.models=ev.models;d.cost=ev.cost_usd;d.checklistName=ev.checklist_name;
   const snap=Object.fromEntries(ev.checklist.criteria.map(c=>[c.key,c]));
@@ -720,7 +728,13 @@ function applyEvaluation(d,ev){
     const sc=snap[r.key];if(!sc)return;
     if(r.type==='flag'){
       const rng=r.checked_range?` (#${r.checked_range[0]+1}–#${r.checked_range[1]+1})`:'';
-      d.gross={bad:ev.final_score.gross_error,checked:r.explanation+rng,ev:r.evidence.map(e=>e.index+1)};
+      const hit=ev.final_score.gross_error_criteria.includes(r.key);
+      const prev=d.gross&&d.gross.parts?d.gross:{parts:[],ev:[]};
+      // several flags: show the ones that fired; if none fired, show all explanations
+      prev.parts.push({hit,text:(ev.results.filter(x=>x.type==='flag').length>1?r.name+': ':'')+r.explanation+rng});
+      if(hit||!prev.ev.length)prev.ev=prev.ev.concat(r.evidence.map(e=>e.index+1));
+      const shown=prev.parts.some(q=>q.hit)?prev.parts.filter(q=>q.hit):prev.parts;
+      d.gross={bad:ev.final_score.gross_error,checked:shown.map(q=>q.text).join(' '),ev:[...new Set(prev.ev)],parts:prev.parts};
       return;
     }
     const fc=critToFront(sc);
@@ -1332,19 +1346,35 @@ function renderEditor(){
       <div class="fld full"><label>Формулировка</label><textarea class="field" data-f="q">${esc(c.q)}</textarea></div>
       <div class="fld"><label>Тип ответа</label><select class="field" data-f="type"><option value="yn" ${c.type==='yn'?'selected':''}>Да / Нет</option><option value="scale" ${c.type==='scale'?'selected':''}>Шкала</option></select></div>
       <div class="fld"><label>Вес</label><input class="field" type="number" min="0" max="100" data-f="w" value="${c.w}"></div>
-      ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>`:''}
+      ${c.type==='scale'?`<div class="fld full"><label>Ступени</label><input class="field" type="text" data-f="steps" value="${c.steps.join(', ')}" placeholder="0, 5, 10, 15, 20"></div>
+      <div class="fld full"><label>Что означает каждая ступень${CQA_API.enabled?' — модель выбирает ступень по этим описаниям':''}</label>
+        ${[...c.steps].sort((a,b)=>b-a).map(v=>`<div class="stp"><b>${v}</b><input class="field" data-f="sdesc" data-v="${v}" value="${esc((c.scaleDesc||{})[v]||'')}" placeholder="Когда ставить ${v}"></div>`).join('')}</div>`:''}
       <div class="fld"><label class="chk"><input type="checkbox" data-f="na" ${c.na?'checked':''}>Разрешить N/A</label></div>
       ${c.na?`<div class="fld"><label>Условие N/A</label><input class="field" type="text" data-f="nac" value="${esc(c.nac)}"></div>`:'<div></div>'}
       ${CQA_API.enabled?`<div class="fld full"><label>Пояснения для модели (пограничные случаи, примеры)</label><textarea class="field" data-f="guidance" placeholder="Необязательно">${esc(c.guidance||'')}</textarea></div>`:''}
-    </div></div>`).join('');
+    </div></div>`).join('')+flagsEditor();
   if(CQA_API.enabled){
     const sel=$('#applyTo');
-    if(sel&&!sel.dataset.filled){
+    /* refill when the set of datasets changes (e.g. the control set was imported); default is "save only",
+       so a click during a demo never starts re-evaluating a whole set by accident */
+    const key=BE.groups.join('|');
+    if(sel&&sel.dataset.groups!==key){
+      const keep=sel.value;
       sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к набору ${esc(g)}</option>`).join('');
-      sel.value=BE.groups[BE.groups.length-1]||'';sel.dataset.filled='1';
+      sel.value=BE.groups.includes(keep)?keep:'';sel.dataset.groups=key;
     }
   }
   refreshSide();
+}
+function flagsEditor(){
+  if(!CQA_API.enabled)return '';
+  return `<h3 class="ed-sub">Грубые ошибки — без баллов, отмечаются отдельно</h3>`+BE.flags.map((f,j)=>`<div class="panel ec flag" data-flag="${j}">
+    <div class="ec-top"><span class="num">!</span><input class="name" type="text" data-ff="name" value="${esc(f.name)}" aria-label="Название флага">
+      <button class="tx danger" data-fdel>Удалить</button></div>
+    <div class="fields">
+      <div class="fld full"><label>Когда ставить «Да» (что считается нарушением)</label><textarea class="field" data-ff="description">${esc(f.description||'')}</textarea></div>
+      <div class="fld full"><label>Пояснения для модели</label><textarea class="field" data-ff="guidance" placeholder="Необязательно">${esc(f.guidance||'')}</textarea></div>
+    </div></div>`).join('')+`<button class="btn" data-fadd>Добавить флаг грубой ошибки</button>`;
 }
 function refreshSide(){
   const sum=CRIT.reduce((a,c)=>a+(+c.w||0),0);
@@ -1355,13 +1385,16 @@ function refreshSide(){
   const tail=CQA_API.enabled?' Сохранение создаёт новую версию чек-листа; старые оценки остаются со своей версией.'
     :' Остальные результаты берутся из кэша.';
   $('#verNote').innerHTML=dirty?`<span class="dirty">Есть изменения</span>${changed?`, критериев: ${changed}.${tail}`:'.'}`:'<span class="clean">Сохранён, изменений нет.</span>'
-    +(CQA_API.enabled&&BE.flags.length?`<br><small>Грубые ошибки (${BE.flags.map(f=>esc(f.name)).join(', ')}) проверяются всегда и отмечаются отдельно.</small>`:'')
+    +(CQA_API.enabled?`<br><small>Флагов грубых ошибок: ${BE.flags.length}. Они не дают баллов и отмечаются отдельно.</small>`:'')
     +(sum!==100?`<br><small>Сумма весов ${sum} — итог всё равно нормируется к 100.</small>`:'');
 }
 $('#ed').addEventListener('input',e=>{
+  const ff=e.target.dataset.ff;
+  if(ff){BE.flags[+e.target.closest('[data-flag]').dataset.flag][ff]=e.target.value;dirty=true;refreshSide();return}
   const f=e.target.dataset.f;if(!f)return;
   const i=+e.target.closest('.ec').dataset.i,c=CRIT[i];
   if(f==='w')c.w=Math.max(0,+e.target.value||0);
+  else if(f==='sdesc'){c.scaleDesc=c.scaleDesc||{};c.scaleDesc[e.target.dataset.v]=e.target.value}
   else if(f==='na'){c.na=e.target.checked;dirty=true;renderEditor();return}
   else if(f==='type'){c.type=e.target.value;if(c.type==='scale'&&!c.steps)c.steps=[0,5,10];dirty=true;renderEditor();return}
   else if(f==='steps'){
@@ -1372,7 +1405,15 @@ $('#ed').addEventListener('input',e=>{
   e.target.closest('.ec').classList.toggle('changed',sigOf(c)!==savedSigs[c.id]);
   refreshSide();
 });
+$('#ed').addEventListener('change',e=>{if(e.target.dataset.f==='steps')renderEditor()});
 $('#ed').addEventListener('click',e=>{
+  if(e.target.closest('[data-fadd]')){
+    BE.flags.push({key:'flag_'+Date.now().toString(36),section:'Грубые нарушения',name:'Новый флаг',description:'',
+      type:'flag',weight:0,na_allowed:false,na_condition:null,scale:null,guidance:null});
+    dirty=true;renderEditor();$$('.ec.flag').at(-1).scrollIntoView({block:'center'});return;
+  }
+  const fl=e.target.closest('[data-flag]');
+  if(fl){if(e.target.closest('[data-fdel]')){BE.flags.splice(+fl.dataset.flag,1);dirty=true;renderEditor()}return}
   const card=e.target.closest('.ec');if(!card)return;const i=+card.dataset.i;
   const mv=e.target.closest('[data-mv]');
   if(mv){const j=i+ +mv.dataset.mv;if(j<0||j>=CRIT.length)return;[CRIT[i],CRIT[j]]=[CRIT[j],CRIT[i]];dirty=true;renderEditor()}
@@ -1384,8 +1425,12 @@ $('#addCrit').onclick=()=>{
 };
 $('#applyBtn').onclick=async()=>{
   if(CQA_API.enabled){
-    const bad=CRIT.find(c=>!String(c.name).trim()||(!String(c.q||'').trim()&&!String(c.name).trim()));
+    const bad=CRIT.find(c=>!String(c.name).trim());
     if(bad){toast('У критерия нет названия');return}
+    const noDesc=CRIT.find(c=>c.type==='scale'&&c.steps.some(v=>!String((c.scaleDesc||{})[v]||'').trim()));
+    if(noDesc){toast(`«${noDesc.name}»: опишите каждую ступень шкалы — по описаниям модель выбирает балл`);return}
+    const badFlag=BE.flags.find(f=>!String(f.name).trim()||!String(f.description||'').trim());
+    if(badFlag){toast('У флага грубой ошибки нужны название и описание нарушения');return}
     const grp=$('#applyTo')?$('#applyTo').value:'';
     $('#applyBtn').disabled=true;
     try{
@@ -1679,9 +1724,15 @@ if(CQA_CONFIG.embed)document.body.classList.add('embed');
 syncTheme();
 (async()=>{
   let err=null;
+  /* пока грузятся данные с сервера, вместо пустого экрана — индикатор загрузки */
+  const boot=document.createElement('div');
+  boot.className='boot';boot.setAttribute('role','status');
+  boot.innerHTML='<i></i><span>Загружаем диалоги и оценки…</span>';
+  $('.wrap').appendChild(boot);
   if(CQA_API.enabled){try{await beLoadAll()}catch(e){err=e}}
   else{const n=$('#navStats');if(n)n.hidden=true}
   await route();
+  boot.remove();
   if(err){
     toast('Бэкенд недоступен: '+err.message);
     $('#none').hidden=false;

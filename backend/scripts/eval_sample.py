@@ -234,6 +234,8 @@ def main():
     criteria = ChecklistIn(**DEFAULT_CHECKLIST).criteria
     gold = json.loads(Path(args.gold).read_text(encoding="utf-8")) if args.gold else None
     if gold:
+        gold = {k: v for k, v in gold.items() if not k.startswith("_")}
+    if gold:
         sample = [r for r in records if r["conversation_id"] in gold]
     else:
         sample = stratified_sample(records, args.n, args.seed)

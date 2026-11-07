@@ -1,0 +1,199 @@
+{
+ "p1-ru-002": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "yes",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "yes",
+   "c08_gross": "no"
+  },
+  "total": 100.0,
+  "note": "Эталонно: уточнил, где сравнивал; предупредил об идентификации; итог + предложение помощи + прощание."
+ },
+ "p1-ru-003": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "yes",
+   "c03_identification": "na",
+   "c04_consultation": "10",
+   "c05_empathy": "yes",
+   "c06_management": "7",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 75.63,
+  "note": "Вопрос о комиссии так и не закрыт (#14→#15 ответ не по вопросу). c02 спорно: известные детали (международный рынок, покупка) не использованы."
+ },
+ "p1-ru-007": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "10",
+   "c05_empathy": "yes",
+   "c06_management": "7",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 70.0,
+  "note": "Не ответил, можно ли сразу подавать вывод (#12→#13 «Путь я указал»)."
+ },
+ "p1-ru-011": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 92.31,
+  "note": "Всё хорошо, кроме завершения: только «Пожалуйста. Хорошего дня!»."
+ },
+ "p1-ru-016": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "no",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "4",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 63.75,
+  "note": "Не уточнил устройство, совет «переустановите приложение» мимо; клиенту пришлось переспрашивать. c05 спорно: «Ну, тогда сайт.»"
+ },
+ "p1-ru-020": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "15",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 84.62,
+  "note": "Второстепенный вопрос про открытую позицию — без следующего шага."
+ },
+ "p1-ru-023": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "no",
+   "c08_gross": "yes"
+  },
+  "total": 92.31,
+  "note": "Частная платная консультация за личный номер (#12) — грубая ошибка."
+ },
+ "p1-kz-004": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 92.31,
+  "note": "Ответил на оба вопроса; завершение — только «Сау болыңыз!»."
+ },
+ "p1-kz-008": {
+  "answers": {
+   "c01_contact": "no",
+   "c02_needs": "no",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "7",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 56.88,
+  "note": "«Сәлем» без имени; переспросил уже известный сайт; не попрощался."
+ },
+ "p1-kz-015": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "no",
+   "c03_identification": "no",
+   "c04_consultation": "5",
+   "c05_empathy": "yes",
+   "c06_management": "7",
+   "c07_closing": "yes",
+   "c08_gross": "no"
+  },
+  "total": 45.5,
+  "note": "Раскрыл ограничение по счёту без идентификации и сказал, что она не нужна; причину не назвал. c08 спорно (раскрытие данных без проверки)."
+ },
+ "p1-en-005": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "20",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 92.31,
+  "note": "Всё верно; завершение — только «You're welcome. Goodbye!» (итог есть в #12 — спорно)."
+ },
+ "p1-en-007": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "na",
+   "c03_identification": "na",
+   "c04_consultation": "10",
+   "c05_empathy": "yes",
+   "c06_management": "7",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 70.0,
+  "note": "Как p1-ru-007: вопрос о повторном выводе проигнорирован."
+ },
+ "p1-en-014": {
+  "answers": {
+   "c01_contact": "yes",
+   "c02_needs": "no",
+   "c03_identification": "no",
+   "c04_consultation": "5",
+   "c05_empathy": "yes",
+   "c06_management": "4",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 36.0,
+  "note": "Раскрыл ограничение без идентификации, «We can skip that»; вопросы клиента проигнорированы; «Goodbye.»"
+ },
+ "p4-ru-002": {
+  "answers": {
+   "c01_contact": "no",
+   "c02_needs": "yes",
+   "c03_identification": "yes",
+   "c04_consultation": "15",
+   "c05_empathy": "yes",
+   "c06_management": "10",
+   "c07_closing": "no",
+   "c08_gross": "no"
+  },
+  "total": 80.0,
+  "note": "Звонок: представился без приветствия; запросил ИИН/ФИО/адрес; предупредил об ожидании; не озвучил комиссию, которую подсказал трейдер."
+ },
+ "_about": "Ручная разметка по правилам CQA_Chat_Quality_Checklist.pdf, сделана без просмотра ответов системы. Это независимое второе мнение, а не эталон организаторов. Завершение (c07) размечено по строгому прочтению правила: голое прощание без итога/предложения помощи = Нет."
+}

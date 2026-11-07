@@ -10,9 +10,10 @@ class Settings(BaseSettings):
 
     google_api_key: str = ""
     gemini_model: str = "gemini-3.8-flash"
-    # USD per 1M tokens; used only for the cost estimate shown in the UI. Verify against Google's price list.
-    gemini_price_in_per_m: float = 0.30
-    gemini_price_out_per_m: float = 2.50
+    # USD per 1M tokens, Gemini 3.8 Flash paid Standard tier (ai.google.dev pricing, valid through 2026-12-31;
+    # doubles to 1.50 / 7.50 from 2027-01-01). Output price includes thinking tokens.
+    gemini_price_in_per_m: float = 0.75
+    gemini_price_out_per_m: float = 3.75
 
     typesafe_api_key: str = ""
     jev_model: str = "jev-latest"
@@ -23,6 +24,9 @@ class Settings(BaseSettings):
 
     dataset_api_url: str = ""
     database_url: str = f"sqlite:///{(ROOT / 'backend' / 'cqa.db').as_posix()}"
+
+    # On startup with an empty DB, load datasets/<SEED_DATASET>.json (dialogs only). Empty string disables it.
+    seed_dataset: str = "DEV"
 
     max_concurrency: int = 4
     cors_origins: str = "*"

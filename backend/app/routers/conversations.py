@@ -42,11 +42,11 @@ class UploadIn(BaseModel):
 async def import_dataset(body: ImportIn, db: Session = Depends(get_db)):
     """Fetch a dataset from the organizers' API by group_id (server-side, so no CORS) and store it."""
     try:
-        records = await services.fetch_dataset(body.group_id)
+        records, source = await services.fetch_dataset_with_source(body.group_id)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"Dataset fetch failed: {e}") from e
     ids = services.upsert_conversations(db, records, body.group_id)
-    return {"group_id": body.group_id, "imported": len(ids), "conversation_ids": ids}
+    return {"group_id": body.group_id, "imported": len(ids), "conversation_ids": ids, "source": source}
 
 
 @router.post("/conversations")

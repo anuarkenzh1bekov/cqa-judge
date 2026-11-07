@@ -7,6 +7,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}/test.db"
 os.environ["JEV_ENABLED"] = "true"
 os.environ["TYPESAFE_API_KEY"] = "test"
 os.environ["GOOGLE_API_KEY"] = "test"
+os.environ["SEED_DATASET"] = ""  # keep the test DB small; seeding is tested explicitly
 
 import pytest  # noqa: E402
 
