@@ -1154,16 +1154,14 @@ function renderScoreHtml(t){
   /* исходный итог нужен только для сравнения после решения проверяющего */
   const decided=Object.values(appeals[cur]).some(a=>a.decision);
   const o=decided?total(cur,true):t,d=D[cur];
-  const act=CRIT.filter(c=>!pending(cur,c)),nas=act.filter(c=>value(cur,c)==='na');
+  const act=CRIT.filter(c=>!pending(cur,c));
   const diff=t.score!==null&&o.score!==null?Math.round((t.score-o.score)*100)/100:0;
   const notes=[];
   if(diff)notes.push(`<span class="up">${diff>0?'+':''}${fmt(diff)} после решения</span>, было ${fmt(o.score)}`);
-  if(nas.length)notes.push(`N/A: вес ${nas.reduce((a,c)=>a+c.w,0)} перераспределён`);
   if(act.length&&act.length<CRIT.length)notes.push(`ожидают оценки: ${CRIT.length-act.length}`);
-  if(CQA_API.enabled&&d.models)notes.push(`<span class="mdl">${esc(d.models.gemini||'')}${d.models.jev?' + '+esc(d.models.jev):''}${d.cost!=null?` · $${d.cost.toFixed(4)}`:''}</span>`);
   const g=d.gross;
   const btn=CQA_API.enabled?`<div class="sc-act"><button class="btn ${d.evalId?'':'primary'}" id="evalNow">${d.running?'Оценивается…':d.evalId?'Переоценить':'Оценить диалог'}</button>`
-    +(d.evalId?`<a class="tx" href="${CQA_API.url('/api/evaluations/'+d.evalId+'/export')}" target="_blank" rel="noopener">Экспорт для CRM</a>`:'')+'</div>':'';
+    +'</div>':'';
   if(CQA_API.enabled&&!d.evalId){
     $('#score').innerHTML=`<div class="sc-top"><span class="n">—</span><span class="of">из 100</span><div class="sc-side">${d.running?'Оценка выполняется, обновите через минуту':'Диалог ещё не оценён'}</div></div>${btn}`;
   }else{
