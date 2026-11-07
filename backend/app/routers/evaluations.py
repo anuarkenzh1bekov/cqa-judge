@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .. import services
 from ..db import get_db
-from ..models import Checklist, Conversation, Evaluation
+from ..models import Checklist, Conversation, Evaluation, EvaluationReview, now
 
 router = APIRouter(prefix="/api", tags=["evaluations"])
 
@@ -104,6 +104,43 @@ def get_evaluation(eid: int, db: Session = Depends(get_db)):
     if not ev:
         raise HTTPException(404, "evaluation not found")
     return services.eval_full(ev)
+
+
+class ReviewIn(BaseModel):
+    comments: dict[str, str] | None = None  # {criterion_key: text}; empty text removes the comment
+    published: bool | None = None
+    reviewer: str | None = "Проверяющий"
+
+
+@router.put("/evaluations/{eid}/review")
+def put_review(eid: int, body: ReviewIn, db: Session = Depends(get_db)):
+    """Reviewer: write comments on the AI scores and publish them to the operator (appeals open after that)."""
+    ev = db.get(Evaluation, eid)
+    if not ev or ev.status != "done":
+        raise HTTPException(404, "finished evaluation not found")
+    rv = ev.review
+    if not rv:
+        rv = EvaluationReview(evaluation_id=eid, comments={}, published=False)
+        db.add(rv)
+    if body.comments is not None:
+        known = {r["key"] for r in ev.results or []}
+        merged = dict(rv.comments or {})
+        for k, text in body.comments.items():
+            if k not in known:
+                raise HTTPException(404, f"criterion {k} not in this evaluation")
+            text = text.strip()
+            if text:
+                merged[k] = text
+            else:
+                merged.pop(k, None)
+        rv.comments = merged
+    if body.published is not None and body.published != rv.published:
+        rv.published = body.published
+        rv.published_at = now() if body.published else None
+    rv.reviewer = body.reviewer
+    db.commit()
+    return {"comments": dict(rv.comments or {}), "published": bool(rv.published), "reviewer": rv.reviewer,
+            "published_at": rv.published_at}
 
 
 @router.get("/evaluations/{eid}/export")

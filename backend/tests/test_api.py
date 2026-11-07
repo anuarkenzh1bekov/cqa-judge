@@ -27,6 +27,11 @@ def test_full_flow(client, fake):
     assert ev["status"] == "done" and ev["initial_total"] == ev["final_total"] < 100
     assert ev["conversation"]["transcript"][3]["index"] == 3
 
+    # appeals open only after the reviewer publishes the evaluation
+    assert client.post(f"/api/evaluations/{ev['id']}/appeals",
+                       json={"criterion_key": "c07_closing", "comment": "x"}).status_code == 409
+    client.put(f"/api/evaluations/{ev['id']}/review", json={"published": True})
+
     # appeal + duplicate guard
     ap = client.post(f"/api/evaluations/{ev['id']}/appeals",
                      json={"criterion_key": "c07_closing", "comment": "попрощался и предложил помощь"}).json()

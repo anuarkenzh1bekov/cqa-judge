@@ -51,7 +51,14 @@ Open http://localhost:8000: the backend serves the interface from `web/` itself.
 3. "Оспорить" (Dispute) → an appeal. The "Проверяющий" (Reviewer) switch or the "Апелляции" (Appeals) screen → a decision (you can ask the AI
    to re-check) → the total is recalculated and the original score is kept.
 4. "Чек-лист" (Checklist) → change or replace a criterion → "Сохранить и применить" (Save and apply) to the set. A new version is saved.
-5. "Аналитика" (Analytics) → average scores by language, channel, operator and criterion, model agreement, cost.
+5. "Аналитика" (Analytics) → average scores by language, channel, operator and criterion, model agreement, cost, how many
+   conversations the AI is confident about, calibration against reviewers, and an Excel / CSV report for managers.
+6. "Сравнить версии" (Compare versions, on the checklist screen) → the same conversations scored by two checklist versions.
+7. In a conversation: "Следующий" (Next, key `N`) opens the next conversation in the list.
+
+**The judge learns from reviewers.** When a reviewer changes an answer through an appeal, the correction (with the reason)
+goes into the prompt of that criterion for later evaluations (`CALIBRATION_EXAMPLES` latest per criterion, the conversation
+being evaluated is excluded). The analytics screen shows where reviewers agree with the AI and how it changes.
 
 Swagger: http://localhost:8000/docs · API description: [API.md](API.md) · Demo without a backend: http://localhost:8000/?demo=1
 

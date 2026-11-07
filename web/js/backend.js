@@ -78,6 +78,7 @@ async function beLoadDialog(cid,force){
 }
 function applyEvaluation(d,ev){
   d.gross={bad:false,checked:'—'};  // flags below accumulate into this; start clean on every apply
+  d.review=ev.review||{comments:{},published:false};
   d.evalId=ev.id;d.summary=ev;d.operator=ev.operator_name||'—';
   d.feedback=ev.feedback;d.facts=ev.facts;d.models=ev.models;d.cost=ev.cost_usd;d.checklistName=ev.checklist_name;
   const snap=Object.fromEntries(ev.checklist.criteria.map(c=>[c.key,c]));

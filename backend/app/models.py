@@ -58,6 +58,18 @@ class Evaluation(Base):
 
     conversation: Mapped[Conversation] = relationship()
     appeals: Mapped[list["Appeal"]] = relationship(back_populates="evaluation", order_by="Appeal.id")
+    review: Mapped["EvaluationReview | None"] = relationship(uselist=False)
+
+
+class EvaluationReview(Base):
+    """Reviewer's comments on the AI scores. The operator sees them, and may appeal, only after publishing."""
+    __tablename__ = "evaluation_reviews"
+    evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluations.id"), primary_key=True)
+    comments: Mapped[dict] = mapped_column(JSON, default=dict)  # {criterion_key: text}
+    published: Mapped[bool] = mapped_column(Boolean, default=False)
+    reviewer: Mapped[str | None] = mapped_column(String)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
 class Appeal(Base):

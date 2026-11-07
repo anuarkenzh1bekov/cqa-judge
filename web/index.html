@@ -48,7 +48,7 @@
 
   <!-- КАРТОЧКА -->
   <section id="v-card" hidden>
-    <div class="page-h"><button class="tx" id="back">← Диалоги</button><h1 id="cardTitle"></h1><span class="meta" id="meta"></span><span class="grow"></span><select class="field" id="pick" aria-label="Диалог"></select></div>
+    <div class="page-h"><button class="tx" id="back">← Диалоги</button><h1 id="cardTitle"></h1><span class="meta" id="meta"></span><span class="grow"></span><button class="btn" id="nextDlg" title="Следующий диалог (клавиша N)"></button><select class="field" id="pick" aria-label="Диалог"></select></div>
     <main class="grid">
       <section class="panel tr">
         <div class="tr-h">Транскрипт<span class="asr" id="asrTag" hidden title="Текст получен автоматическим распознаванием речи, в нём возможны неточности">Распознан автоматически</span></div>
@@ -64,7 +64,7 @@
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="cmpBtn" hidden title="Прогнать две версии на одних и тех же диалогах и посмотреть, что изменилось">Сравнить версии</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -76,7 +76,7 @@
 
   <!-- АНАЛИТИКА -->
   <section id="v-stats" hidden>
-    <div class="page-h"><h1>Аналитика</h1><span class="meta">последняя оценка каждого диалога, баллы после апелляций</span></div>
+    <div class="page-h"><h1>Аналитика</h1><span class="meta">последняя оценка каждого диалога, баллы после апелляций</span><span class="grow"></span><a class="btn" id="expXlsx" hidden download>Отчёт в Excel</a><a class="btn" id="expCsv" hidden download>CSV</a></div>
     <div id="statsBody"></div>
   </section>
 
@@ -115,6 +115,13 @@
   <p class="evinfo" id="aiInfo"></p>
   <div class="f"><button class="btn" id="aiNo">Отмена</button><button class="btn primary" id="aiGo" disabled>Предложить критерий</button></div>
 </dialog>
+<dialog id="cmpDlg" class="wide">
+  <h3>Сравнение версий чек-листа</h3>
+  <p>Одни и те же диалоги оцениваются двумя версиями. Видно, кто и на сколько баллов сдвинулся, прежде чем применять новую версию ко всему набору.</p>
+  <div class="cmp-sel"><label class="fi">Было<select class="field" id="cmpA"></select></label><label class="fi">Стало<select class="field" id="cmpB"></select></label><button class="btn primary" id="cmpGo">Сравнить</button></div>
+  <div id="cmpOut"></div>
+  <div class="f"><button class="btn" id="cmpClose">Закрыть</button></div>
+</dialog>
 <dialog id="runDlg">
   <h3 id="runTitle"></h3>
   <p id="runSub"></p>
@@ -134,6 +141,7 @@
 <script src="js/list.js"></script>
 <script src="js/card.js"></script>
 <script src="js/checklist.js"></script>
+<script src="js/compare.js"></script>
 <script src="js/appeals.js"></script>
 <script src="js/stats.js"></script>
 <script src="js/app.js"></script>

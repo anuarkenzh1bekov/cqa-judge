@@ -118,18 +118,49 @@ def create_evaluation(db: Session, conversation_id: str, checklist: Checklist, b
     return ev
 
 
+ANSWER_LABEL = {"yes": "Да", "no": "Нет", "na": "N/A"}
+
+
+def calibration_examples(db: Session, criteria: list[Criterion], exclude_conversation: str | None = None) -> dict[str, list[str]]:
+    """Corrections that reviewers made through appeals (decision 'changed'), newest first, per criterion.
+    They are fed into the prompt so the judge learns how people read the rules. The conversation being
+    evaluated is excluded: its own corrections would just leak the answer."""
+    if not settings.calibration_enabled or settings.calibration_examples <= 0:
+        return {}
+    keys = {c.key for c in criteria}
+    q = (select(Appeal).join(Evaluation).where(Appeal.status == "changed", Appeal.criterion_key.in_(keys))
+         .order_by(Appeal.decided_at.desc(), Appeal.id.desc()))
+    out: dict[str, list[str]] = {}
+    for ap in db.scalars(q):
+        items = out.setdefault(ap.criterion_key, [])
+        if len(items) >= settings.calibration_examples or not (ap.reason or "").strip():
+            continue
+        if exclude_conversation and ap.evaluation.conversation_id == exclude_conversation:
+            continue
+        lab = lambda a: ANSWER_LABEL.get(a, a)  # noqa: E731
+        row = next((r for r in ap.evaluation.results or [] if r["key"] == ap.criterion_key), None)
+        quote = ""
+        if row and row.get("evidence"):
+            quote = " Реплика: «" + " ".join(str(row["evidence"][0]["text"]).split())[:140] + "»."
+        items.append(f"ИИ ответил «{lab(ap.original_answer)}», проверяющий исправил на «{lab(ap.new_answer)}». "
+                     f"Причина: {ap.reason.strip()[:240]}.{quote}")
+    return {k: v for k, v in out.items() if v}
+
+
 async def run_evaluation(eval_id: int, with_feedback: bool = True) -> None:
     """Always calls the models - no caching by conversation_id (results must come from real analysis)."""
     with SessionLocal() as db:
         ev = db.get(Evaluation, eval_id)
         conv = conv_dict(ev.conversation)
         criteria = criteria_of(ev.checklist_snapshot)
+        examples = calibration_examples(db, criteria, exclude_conversation=ev.conversation_id)
     try:
         async with pipeline.sem():  # status becomes "running" only once a concurrency slot is free
             with SessionLocal() as db:
                 db.get(Evaluation, eval_id).status = "running"
                 db.commit()
-            out = await pipeline.evaluate(conv, criteria, with_feedback=with_feedback, use_sem=False)
+            out = await pipeline.evaluate(conv, criteria, with_feedback=with_feedback, use_sem=False,
+                                          examples=examples)
     except Exception as e:  # noqa: BLE001
         log.exception("evaluation %s failed", eval_id)
         with SessionLocal() as db:
@@ -141,7 +172,8 @@ async def run_evaluation(eval_id: int, with_feedback: bool = True) -> None:
         ev = db.get(Evaluation, eval_id)
         ev.facts, ev.results, ev.feedback = out["facts"], out["results"], out["feedback"]
         ev.initial_score = ev.final_score = out["score"]
-        ev.operator_name, ev.models, ev.usage = out["operator_name"], out["models"], out["usage"]
+        ev.operator_name, ev.models = out["operator_name"], out["models"]
+        ev.usage = {**out["usage"], "calibration_examples": out.get("calibration_examples", 0)}
         ev.cost_usd, ev.duration_ms = out["cost_usd"], out["duration_ms"]
         ev.status, ev.error, ev.finished_at = "done", None, datetime.now(timezone.utc)
         db.commit()
@@ -169,6 +201,15 @@ def recompute_final(ev: Evaluation) -> None:
 
 # ---------- serialization ----------
 
+def confidence_of(ev: Evaluation) -> dict:
+    """How sure the AI is about this evaluation: criteria flagged for a human look (models disagree, low confidence,
+    no evidence). Flags are those raised at evaluation time, before any human review."""
+    rows = [r for r in (ev.results or []) if r.get("type") != "flag"]
+    flagged = sum(1 for r in rows if r.get("needs_review"))
+    level = "high" if flagged == 0 else "medium" if flagged <= 2 else "low"
+    return {"level": level, "flagged": flagged, "total": len(rows)}
+
+
 def eval_summary(ev: Evaluation) -> dict:
     fs, isc = ev.final_score or {}, ev.initial_score or {}
     return {
@@ -177,6 +218,7 @@ def eval_summary(ev: Evaluation) -> dict:
         "error": ev.error, "initial_total": isc.get("total"), "final_total": fs.get("total"),
         "gross_error": fs.get("gross_error"), "operator_name": ev.operator_name,
         "needs_review": sum(1 for r in (ev.results or []) if r.get("needs_review")),
+        "confidence": confidence_of(ev) if ev.results else None,
         "open_appeals": sum(1 for a in ev.appeals if a.status == "open"),
         "cost_usd": ev.cost_usd, "duration_ms": ev.duration_ms,
         "created_at": ev.created_at, "finished_at": ev.finished_at,
@@ -207,6 +249,12 @@ def appeal_dict(ap: Appeal, with_context: bool = False) -> dict:
     return d
 
 
+def review_dict(ev: Evaluation) -> dict:
+    r = ev.review
+    return {"comments": dict(r.comments or {}) if r else {}, "published": bool(r and r.published),
+            "reviewer": r.reviewer if r else None, "published_at": r.published_at if r else None}
+
+
 def eval_full(ev: Evaluation) -> dict:
     d = eval_summary(ev)
     fs = ev.final_score or {}
@@ -226,6 +274,7 @@ def eval_full(ev: Evaluation) -> dict:
         "facts": ev.facts, "results": results, "initial_score": ev.initial_score, "final_score": ev.final_score,
         "feedback": ev.feedback, "models": ev.models, "usage": ev.usage,
         "appeals": [appeal_dict(a) for a in ev.appeals],
+        "review": review_dict(ev),
         "checklist": ev.checklist_snapshot,
     })
     return d

@@ -34,5 +34,6 @@ function decisionImpact(d,c){return {before:total(d,false,c.id).score,after:tota
 function isReview(d,c){
   if(pending(d,c))return false;
   const a=appeals[d][c.id];
-  return resOf(d,c).conf<.65&&!(a&&a.decision);
+  /* проверена, если по ней есть решение по апелляции или комментарий проверяющего */
+  return resOf(d,c).conf<.65&&!(a&&a.decision)&&!((rvOf(d).comments||{})[rvKey(c)]);
 }

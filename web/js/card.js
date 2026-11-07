@@ -54,6 +54,26 @@ function initPlayer(){
   play.onclick=()=>a.paused?a.play().catch(()=>{}):a.pause();
   ['play','pause','ended'].forEach(e=>a.addEventListener(e,state));
   ['timeupdate','loadedmetadata','durationchange','seeked'].forEach(e=>a.addEventListener(e,sync));
+  /* как в Spotify: чат идёт за записью, текущая реплика подсвечена */
+  const chat=$('#chat'),times=D[cur].msgs.map((_,i)=>secOf(cur,i+1));
+  let liveN=0,freeUntil=0;
+  const free=()=>{freeUntil=Date.now()+4000};   /* пользователь листает сам: 4 с не перехватываем прокрутку */
+  ['wheel','touchmove'].forEach(e=>chat.addEventListener(e,free,{passive:true}));
+  const follow=()=>{
+    const t=a.currentTime||0;let n=0;
+    for(let i=0;i<times.length;i++){if(times[i]<=t+0.3)n=i+1;else break}
+    if(n===liveN)return;
+    const old=$('#m'+liveN);if(old)old.classList.remove('live');
+    liveN=n;
+    const el=n&&$('#m'+n);if(!el)return;
+    el.classList.add('live');
+    if(Date.now()<freeUntil||el.offsetParent===null)return;
+    if(chat.scrollHeight>chat.clientHeight+2){
+      const r=el.getBoundingClientRect(),c=chat.getBoundingClientRect();
+      chat.scrollTo({top:chat.scrollTop+(r.top-c.top)-chat.clientHeight/2+r.height/2,behavior:reduceMotion()?'auto':'smooth'});
+    }
+  };
+  ['timeupdate','seeked'].forEach(e=>a.addEventListener(e,follow));
   seek.oninput=()=>{if(isFinite(a.duration))a.currentTime=seek.value/1000*a.duration;sync()};
   const rates=[1,1.25,1.5,2,0.75];
   spd.onclick=()=>{const i=(rates.indexOf(a.playbackRate)+1)%rates.length;a.playbackRate=rates[i];spd.textContent=rates[i]+'×'};
@@ -156,6 +176,7 @@ function grossLine(g){
   return parts.length?parts.join(' · '):linkify(grossText(g.checked));
 }
 function renderScoreHtml(t){
+  syncNext();
   /* исходный итог нужен только для сравнения после решения проверяющего */
   const decided=Object.values(appeals[cur]).some(a=>a.decision);
   const o=decided?total(cur,true):t,d=D[cur];
@@ -165,16 +186,21 @@ function renderScoreHtml(t){
   if(diff)notes.push(`<span class="up">${diff>0?'+':''}${fmt(diff)} после решения</span>, было ${fmt(o.score)}`);
   if(act.length&&act.length<CRIT.length)notes.push(`ожидают оценки: ${CRIT.length-act.length}`);
   const g=d.gross;
-  const btn=CQA_API.enabled?`<div class="sc-act"><button class="btn ${d.evalId?'':'primary'}" id="evalNow">${d.running?'<span class="spin"></span>Оценивается':d.evalId?'Переоценить':'Оценить диалог'}</button>`
-    +'</div>':'';
+  const btn=CQA_API.enabled?`<button class="btn sc-btn ${d.evalId?'':'primary'}" id="evalNow">${d.running?'<span class="spin"></span>Оценивается':d.evalId?'Переоценить':'Оценить диалог'}</button>`:'';
   if(CQA_API.enabled&&!d.evalId){
     $('#score').innerHTML=d.running
-      ?`<div class="sc-prog" aria-hidden="true"></div><div class="sc-top"><span class="load" aria-hidden="true"><i></i><i></i><i></i></span><div class="sc-side wait"><b>Подождите, идёт оценка</b>Читаем диалог и проверяем критерии</div></div>${btn}`
-      :`<div class="sc-top"><span class="n">—</span><span class="of">из 100</span><div class="sc-side">Диалог ещё не оценён</div></div>${btn}`;
+      ?`<div class="sc-prog" aria-hidden="true"></div><div class="sc-top"><span class="load" aria-hidden="true"><i></i><i></i><i></i></span><div class="sc-side wait"><b>Подождите, идёт оценка</b>Читаем диалог и проверяем критерии</div>${btn}</div>`
+      :`<div class="sc-top"><span class="n">—</span><span class="of">из 100</span><div class="sc-side">Диалог ещё не оценён</div>${btn}</div>`;
   }else{
-    $('#score').innerHTML=`<div class="sc-top"><span class="n ${scoreLvl(t.score)}">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div></div>
-     <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${grossLine(g)}</span></div>${reviewRow()}${btn}`;
+    $('#score').innerHTML=`<div class="sc-top"><span class="n ${scoreLvl(t.score)}">${fmt(t.score)}</span><span class="of">из 100</span><div class="sc-side">${notes.join('<br>')}</div>${btn}</div>
+     <div class="gross ${g.bad?'bad':''}"><span class="gt">Грубые ошибки: ${g.bad?'выявлены':'не выявлены'}</span><span class="m2">${grossLine(g)}</span></div>${reviewRow()}${reviewBar(cur)}`;
   }
+  const pb=$('#pubBtn');
+  if(pb)pb.onclick=async()=>{
+    pb.disabled=true;
+    try{await saveReview(cur,{published:!rvOf(cur).published});renderScoreHtml(total(cur));renderCrit();toast(rvOf(cur).published?'Опубликовано: оператор видит оценку':'Публикация снята')}
+    catch(e){toast('Ошибка: '+e.message);pb.disabled=false}
+  };
   const b=$('#evalNow');
   if(b)b.onclick=async()=>{
     if(d.running){toast('Оценка уже выполняется');return}
@@ -216,6 +242,27 @@ function renderCrit(t=total(cur)){
     return head+critRow(c,i,t);
   }).join('');
 }
+/* Проверка оценки: проверяющий комментирует оценки ИИ и публикует их; оператор видит комментарии и может
+   оспорить оценку только после публикации. */
+const rvOf=d=>D[d].review||(D[d].review={comments:{},published:false});
+const rvKey=c=>CQA_API.enabled?BE.keyOf(c.id):c.id;
+async function saveReview(d,patch){
+  const rv=rvOf(d);
+  if(CQA_API.enabled){
+    const r=await CQA_API.saveReview(D[d].evalId,patch);
+    D[d].review={comments:r.comments||{},published:!!r.published};
+  }else{
+    if(patch.comments)Object.entries(patch.comments).forEach(([k,v])=>{if(String(v).trim())rv.comments[k]=String(v).trim();else delete rv.comments[k]});
+    if(patch.published!==undefined)rv.published=patch.published;
+    persist();
+  }
+}
+function reviewBar(d){
+  const rv=rvOf(d),n=Object.keys(rv.comments||{}).length;
+  if(reviewer)return `<div class="pub"><span class="pt">${rv.published?'Опубликовано: оператор видит комментарии и может оспорить оценку':'Черновик: оператор пока не видит оценку проверяющего'}${n?` · комментариев: ${n}`:''}</span><button class="btn ${rv.published?'':'primary'}" id="pubBtn">${rv.published?'Снять с публикации':'Опубликовать оператору'}</button></div>`;
+  return rv.published?`<div class="pub ok"><span class="pt">Оценка проверена${n?` · комментариев проверяющего: ${n}`:''}</span></div>`
+    :`<div class="pub"><span class="pt">Ожидает проверки. Оспорить оценку можно после проверки</span></div>`;
+}
 function critRow(c,i,t){
     if(pending(cur,c)){
       if(CQA_API.enabled&&!D[cur].evalId&&D[cur].running)
@@ -230,14 +277,18 @@ function critRow(c,i,t){
     if(ap&&!ap.decision)state=`<div class="st">Апелляция на проверке: ${esc(ap.text)}</div>`;
     if(ap&&ap.decision)state=`<div class="st done">${outcomeLine(cur,c)}</div>`;
     const dec=reviewer&&ap&&!ap.decision?decideForm(cur,c,ap):'';
-    const canAppeal=!ap||ap.decision;
+    const rv=rvOf(cur),rkey=rvKey(c),rtext=(rv.comments||{})[rkey]||'';
+    const canAppeal=(!ap||ap.decision)&&rv.published&&!reviewer;
+    const rcomment=reviewer
+      ?`<div class="rcf"><label>Комментарий проверяющего</label><textarea class="field" data-rc="${c.id}" rows="2" placeholder="Необязательно: с чем согласны или что неточно в оценке ИИ">${esc(rtext)}</textarea></div>`
+      :(rv.published&&rtext?`<div class="rcv"><b>Комментарий проверяющего</b><p>${esc(rtext)}</p></div>`:'');
     return `<div class="cr k-${kind(c,v)}" data-id="${c.id}">
       <div class="cr-h"><span class="cr-n">${i+1}</span><span class="cr-t">${esc(c.name)}</span><span class="v ${kind(c,v)}">${label(c,v)}</span><span class="cr-p">${p===null?'—':fmt(Math.round(p*100)/100)} / ${c.w}</span></div>
       ${eff!==null&&Math.abs(eff-c.w)>.05?`<div class="cr-w">вес ${c.w} → ${fmt(Math.round(eff*100)/100)} с учётом N/A</div>`:''}
       <div class="cr-b"><p class="why">${linkify(r.why)}</p>
         ${evHtml}
         <div class="cr-f">${isReview(cur,c)?`<span class="conf low">Сверьте оценку с диалогом</span>`:''}${canAppeal?`<button class="tx" data-ap="${c.id}">Оспорить</button>`:''}</div>
-        ${state}${dec}</div></div>`;
+        ${rcomment}${state}${dec}</div></div>`;
 }
 async function saveDecision(d,id,sel,reason,act){
   if(CQA_API.enabled){await beDecide(d,id,sel,reason,act);return}
@@ -252,8 +303,15 @@ syncPick();
 $('#pick').onchange=e=>go('#/card/'+encodeURIComponent(e.target.value));
 $('#rev').onclick=function(){
   reviewer=!reviewer;this.setAttribute('aria-pressed',reviewer);
-  if(!$('#v-card').hidden)renderCrit();
+  if(!$('#v-card').hidden){renderScoreHtml(total(cur));renderCrit()}
 };
+/* комментарий проверяющего сохраняется, когда поле теряет фокус */
+$('#crit').addEventListener('change',async e=>{
+  const ta=e.target.closest('[data-rc]');if(!ta)return;
+  const c=CRIT.find(x=>x.id===+ta.dataset.rc);
+  try{await saveReview(cur,{comments:{[rvKey(c)]:ta.value}});toast('Комментарий сохранён')}
+  catch(err){toast('Ошибка: '+err.message)}
+});
 let apId=null;
 function openAppeal(id){
   apId=id;const c=CRIT.find(x=>x.id===id);
@@ -280,10 +338,10 @@ const ROLE={client:'Клиент',operator:'Оператор',bot:'Бот',syste
 function reviewRow(){
   /* спорные: модель не уверена; из них ждут решения те, по которым человек его ещё не принял */
   const flagged=CRIT.filter(c=>!pending(cur,c)&&resOf(cur,c).conf<.65);
-  if(!flagged.length)return '';
+  if(!flagged.length)return CRIT.some(c=>!pending(cur,c))?'<div class="rv"><span class="rvt ok" title="Обе модели согласны, либо ИИ уверен в ответе по каждому критерию">ИИ уверен во всех критериях</span></div>':'';
   const rv=flagged.filter(c=>isReview(cur,c)),done=flagged.length-rv.length;
   if(!rv.length)return `<div class="rv"><span class="rvt ok">Все спорные критерии проверены: ${done}</span></div>`;
-  return `<div class="rv"><div class="rvh"><span class="rvt">Требуют проверки: ${rv.length}</span>${done?`<span class="rvd">проверено: ${done}</span>`:''}</div>`
+  return `<div class="rv"><div class="rvh"><span class="rvt" title="Модели разошлись в оценке или не уверены в ней: стоит проверить вручную">ИИ не уверен в ${rv.length} ${rv.length===1?'критерии':'критериях'}</span>${done?`<span class="rvd">проверено: ${done}</span>`:''}</div>`
     +`<div class="rvc">${rv.map(c=>`<button class="chip" data-goto-crit="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>`;
 }
 
@@ -328,3 +386,19 @@ function outcomeLine(d,c){
   const head=dec.act==='confirm'?`${esc(c.name)}: ${esc(label(c,r.v))}, подтверждена`:`${esc(c.name)}: ${esc(changeText(c,r.v,dec.v))}`;
   return `<b>${head}</b> · ${tot}<span class="why2">Причина: ${esc(dec.reason)}</span>`;
 }
+
+/* ---------- «Следующий»: следующий диалог по порядку списка, по кругу ---------- */
+function syncNext(){
+  const b=$('#nextDlg');if(!b)return;
+  const ks=Object.keys(D),i=ks.indexOf(cur);
+  b.hidden=ks.length<2;
+  b.dataset.to=ks.length>1?ks[(i+1)%ks.length]:'';
+  b.textContent='Следующий →';
+}
+$('#nextDlg').onclick=function(){if(this.dataset.to)go('#/card/'+encodeURIComponent(this.dataset.to))};
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||!['n','т'].includes(e.key.toLowerCase())||$('#v-card').hidden)return;
+  const a=document.activeElement;
+  if(a&&(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||a.isContentEditable)||document.querySelector('dialog[open]'))return;
+  const b=$('#nextDlg');if(b&&!b.hidden&&b.dataset.to){e.preventDefault();b.click()}
+});

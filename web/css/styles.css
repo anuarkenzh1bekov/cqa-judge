@@ -441,3 +441,43 @@ dialog .hint{margin:4px 0 0;font-size:12px;color:var(--muted)}
 .btn .spin{margin-right:8px}
 @media(prefers-reduced-motion:reduce){.spin,.sc-prog::after,.load i,.sk{animation:none}.sc-prog::after{width:100%;opacity:.4}}
 .v:has(.spin)::before{display:none}
+
+/* проверка оценки: комментарий проверяющего и публикация */
+.pub{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-top:1px solid var(--line);font-size:13px}
+.pub .pt{color:var(--muted)}
+.pub.ok .pt{color:var(--yes)}
+.rcf{margin-top:12px}
+.rcf label{display:block;margin-bottom:4px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.rcf textarea{width:100%;min-height:48px;resize:vertical}
+.rcv{margin-top:12px;padding:8px 12px;border-radius:0 6px 6px 0;background:var(--raised);box-shadow:inset 2px 0 0 var(--accent)}
+.rcv b{display:block;font-size:12px;color:var(--ink-2)}
+.rcv p{margin:2px 0 0;color:var(--ink);font-size:13px;line-height:1.55}
+
+/* кнопка оценки справа от итога */
+.score .sc-top .sc-btn{flex:none;align-self:center;margin-left:16px}
+.score .sc-side.wait~.sc-btn{margin-left:auto}
+
+/* ---- калибровка, сравнение версий ---- */
+a.btn{display:inline-block;text-decoration:none;color:inherit;cursor:pointer}
+a.btn[hidden]{display:none}
+.cal{margin-bottom:16px}
+.cal .kpis{margin:12px 0}
+.cal table{width:100%}
+.cal-tr{display:flex;align-items:center;gap:16px;margin:0 0 12px;color:var(--accent)}
+.cal-tr .mut{color:var(--muted)}
+.cal-m{margin-top:12px;font-size:12px}
+.trend{display:block}
+dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
+.cmp-sel{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:16px}
+.cmp-sel .fi{display:grid;gap:4px;font-size:12px;color:var(--muted);flex:1;min-width:200px}
+.cmp-diff{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cmp-run{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin-bottom:12px;border-radius:6px;box-shadow:inset 0 0 0 1px var(--line-2);font-size:13px}
+#cmpOut table{width:100%;font-size:13px}
+#cmpOut tbody tr[data-cmp-conv]{cursor:pointer}
+#cmpOut tbody tr[data-cmp-conv]:hover{background:var(--raised)}
+#cmpOut .tr-h{margin:16px 0 6px}
+
+/* реплика, которая сейчас звучит в записи */
+.m.live .b{background:var(--mark);box-shadow:0 0 0 1.5px var(--accent)}
+.m.system.live{color:var(--ink);box-shadow:0 0 0 1.5px var(--accent);border-radius:6px}
+.m .b{transition:background-color .2s,box-shadow .2s}

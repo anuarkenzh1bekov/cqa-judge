@@ -45,6 +45,8 @@ def create_appeal(eid: int, body: AppealIn, db: Session = Depends(get_db)):
     if not ev or ev.status != "done":
         raise HTTPException(404, "finished evaluation not found")
     _crit(ev, body.criterion_key)
+    if not (ev.review and ev.review.published):
+        raise HTTPException(409, "the evaluation has not been reviewed yet: appeals open after the reviewer publishes it")
     if any(a.criterion_key == body.criterion_key and a.status == "open" for a in ev.appeals):
         raise HTTPException(409, "there is already an open appeal for this criterion")
     current = services.final_answers(ev)[body.criterion_key]

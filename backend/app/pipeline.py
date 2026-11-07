@@ -68,14 +68,15 @@ async def _run_jev(criteria, conv):
         return None, None, str(e)
 
 
-async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = True, use_sem: bool = True) -> dict:
+async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = True, use_sem: bool = True,
+                   examples: dict[str, list[str]] | None = None) -> dict:
     transcript = conv["transcript"]
     n = len(transcript)
 
     async with (sem() if use_sem else contextlib.nullcontext()):
         t_start = time.perf_counter()  # model time only, not time spent queued for a slot
         g_task = gemini.generate_json(
-            prompts.build_eval_prompt(criteria, conv, with_feedback),
+            prompts.build_eval_prompt(criteria, conv, with_feedback, examples),
             prompts.build_eval_schema(criteria, with_feedback),
             system=prompts.SYSTEM_PROMPT,
             validate=_make_validator(criteria, n),
@@ -175,6 +176,7 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
         "operator_name": (g["facts"].get("operator_name") or None),
         "models": {"gemini": settings.gemini_model, "jev": (j_usage or {}).get("model") if j_usage else None},
         "usage": usage,
+        "calibration_examples": sum(len(v) for k, v in (examples or {}).items() if k in {c.key for c in criteria}),
         "cost_usd": round(cost, 6),
         "duration_ms": int((time.perf_counter() - t_start) * 1000),
     }

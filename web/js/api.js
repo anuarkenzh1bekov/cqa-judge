@@ -23,6 +23,7 @@ const CQA_API={
   checklists(){return this.get('/api/checklists')},
   defaultChecklist(){return this.get('/api/checklists/default-template')},
   conversationSummary(id){return this.get('/api/conversations/'+encodeURIComponent(id)+'/summary')},
+  saveReview(evalId,body){return this.put('/api/evaluations/'+evalId+'/review',body)},
   suggestCriterion(body){return this.post('/api/checklists/suggest-criterion',body)},
   createChecklist(body){return this.post('/api/checklists?activate=true',body)},
   importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
@@ -34,6 +35,9 @@ const CQA_API={
   aiReview(apId){return this.post(`/api/appeals/${apId}/ai-review`)},
   decide(apId,body){return this.post(`/api/appeals/${apId}/decision`,body)},
   stats(){return this.get('/api/stats')},
+  calibration(){return this.get('/api/calibration')},
+  compare(a,b){return this.get(`/api/checklist-compare?a=${a}&b=${b}`)},
+  exportUrl(format){return this.url('/api/export?format='+format)},
   operator(name){return this.get('/api/operators/'+encodeURIComponent(name))},
   audioUrl(cid){return this.url('/api/conversations/'+encodeURIComponent(cid)+'/audio')}
 };

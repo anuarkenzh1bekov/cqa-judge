@@ -37,7 +37,7 @@ const statusTag=r=>r.status==='running'||r.status==='pending'?'<span class="fl">
 function renderList(){rowsCache=listRows();renderListChrome();renderRows()}
 /* фильтры и счётчики; поле поиска не пересоздаётся */
 function renderListChrome(){
-  const seg=[['all','Все'],['low','Требуют проверки'],['appeal','Апелляции'],['gross','Грубые ошибки']];
+  const seg=[['all','Все'],['low','ИИ не уверен'],['appeal','Апелляции'],['gross','Грубые ошибки']];
   $('#fKinds').innerHTML=seg.map(([k,t])=>`<button class="seg ${fKind===k?'on':''}" data-kind="${k}">${t}<small>${rowsCache.filter(KINDS[k]).length}</small></button>`).join('');
   $('#fLangs').innerHTML=['RU','KZ','EN'].map(l=>`<button class="seg ${fLang.has(l)?'on':''}" data-lang="${l}">${l}</button>`).join('');
   $('#fGroups').innerHTML=CQA_API.enabled&&BE.groups.length>1?'<span class="sep"></span>'+[['','Все наборы'],...BE.groups.map(g=>[g,g])]

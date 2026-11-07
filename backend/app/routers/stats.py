@@ -81,6 +81,8 @@ def stats(checklist_id: int | None = None, group: str | None = None, db: Session
             "avg_initial_total": _avg(e.initial_score["total"] for e in evs),
             "gross_error_conversations": sum(e.final_score["gross_error"] for e in evs),
             "criteria_needing_review": sum(1 for e in evs for r in e.results if r.get("needs_review")),
+            "confident_conversations": sum(1 for e in evs if not services.confidence_of(e)["flagged"]),
+            "needs_human_conversations": sum(1 for e in evs if services.confidence_of(e)["flagged"]),
             "total_cost_usd": round(sum(e.cost_usd or 0 for e in evs), 4),
             "avg_cost_usd": round(mean([e.cost_usd or 0 for e in evs]), 5) if evs else None,
             "avg_duration_ms": int(mean([e.duration_ms or 0 for e in evs])) if evs else None,

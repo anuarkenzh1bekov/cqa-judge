@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # On startup with an empty DB, load datasets/<SEED_DATASET>.json (dialogs only). Empty string disables it.
     seed_dataset: str = "DEV"
 
+    # Corrections that reviewers made through appeals are fed back into the prompt (per criterion, newest first).
+    calibration_enabled: bool = True
+    calibration_examples: int = 3
+
     max_concurrency: int = 4
     cors_origins: str = "*"
 

@@ -85,14 +85,33 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_eval_prompt(criteria: list[Criterion], conv: dict, with_feedback: bool = True) -> str:
+NL = chr(10)
+
+
+def format_calibration(criteria: list[Criterion], examples: dict[str, list[str]] | None) -> str:
+    """Corrections made by human reviewers on earlier evaluations of the same criteria (appeal decisions)."""
+    blocks = []
+    for c in criteria:
+        items = (examples or {}).get(c.key) or []
+        if items:
+            lines = NL.join(f"  • {t}" for t in items)
+            blocks.append(f"{c.key} — {c.name}:{NL}{lines}")
+    if not blocks:
+        return ""
+    head = ("ПОПРАВКИ ПРОВЕРЯЮЩИХ (ранее люди исправили оценки ИИ по этим критериям; учитывай, как они трактуют "
+            "правило, но решай по тексту текущего диалога, а не копируй ответ):")
+    return NL + head + NL + NL.join(blocks) + NL
+
+
+def build_eval_prompt(criteria: list[Criterion], conv: dict, with_feedback: bool = True,
+                      examples: dict[str, list[str]] | None = None) -> str:
     crit_text = "\n\n".join(describe_criterion(c) for c in criteria)
     fb = ("\nПосле оценки заполни feedback: что оператор сделал хорошо и что улучшить. Feedback строится ТОЛЬКО на "
           "выставленных оценках и репликах, конкретно и практично, по-русски.") if with_feedback else ""
     return f"""{GLOBAL_RULES}
 ЧЕК-ЛИСТ
 {crit_text}
-
+{format_calibration(criteria, examples)}
 ДИАЛОГ
 ID: {conv['id']} | Канал: {conv['channel']} | Язык: {conv['language']}
 {format_transcript(conv['transcript'])}

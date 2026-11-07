@@ -119,7 +119,8 @@ const STATE_KEY='cqa-state-2';
 function persist(){
   if(CQA_API.enabled)return; /* с бэкендом всё хранится на сервере */
   try{localStorage.setItem(STATE_KEY,JSON.stringify({ver,nextId,CRIT,
-    res:Object.fromEntries(Object.entries(D).map(([k,d])=>[k,d.res])),appeals}))}catch(_){}
+    res:Object.fromEntries(Object.entries(D).map(([k,d])=>[k,d.res])),appeals,
+    rev:Object.fromEntries(Object.entries(D).filter(([,d])=>d.review).map(([k,d])=>[k,d.review]))}))}catch(_){}
 }
 function loadSaved(){
   try{
@@ -127,6 +128,7 @@ function loadSaved(){
     ver=s.ver;nextId=s.nextId;CRIT.splice(0,CRIT.length,...s.CRIT);
     Object.keys(s.res).forEach(k=>{if(D[k])D[k].res=s.res[k]});
     Object.keys(s.appeals).forEach(k=>{if(appeals[k])appeals[k]=s.appeals[k]});
+    Object.keys(s.rev||{}).forEach(k=>{if(D[k])D[k].review=s.rev[k]});
     CRIT.forEach(c=>savedSigs[c.id]=sigOf(c));
   }catch(_){}
 }
