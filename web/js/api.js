@@ -1,12 +1,37 @@
-/* Обращение к бэкенду. Пока адрес не задан, сеть не используется. */
+/* Обращение к бэкенду (FastAPI). Описание эндпоинтов — API.md в корне репозитория. */
 const CQA_API={
   get enabled(){return !!CQA_CONFIG.apiBase},
-  async evaluate(record,checklist){
-    if(!this.enabled)throw new Error('бэкенд не подключён');
-    const r=await fetch(CQA_CONFIG.apiBase.replace(/\/$/,'')+'/evaluate',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({record,checklist})});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    return r.json();
-  }
+  url(p){return CQA_CONFIG.apiBase+p},
+  async req(method,p,body){
+    const r=await fetch(this.url(p),{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+    let j=null;try{j=await r.json()}catch(_){}
+    if(!r.ok){
+      const d=j&&j.detail;
+      const msg=Array.isArray(d)?d.map(x=>(x.loc||[]).slice(1).join('.')+': '+x.msg).join('; '):(d||('HTTP '+r.status));
+      throw new Error(msg);
+    }
+    return j;
+  },
+  get(p){return this.req('GET',p)},
+  post(p,b){return this.req('POST',p,b||{})},
+  put(p,b){return this.req('PUT',p,b)},
+
+  health(){return this.get('/api/health')},
+  conversations(){return this.get('/api/conversations')},
+  evaluation(id){return this.get('/api/evaluations/'+id)},
+  activeChecklist(){return this.get('/api/checklists/active')},
+  checklists(){return this.get('/api/checklists')},
+  defaultChecklist(){return this.get('/api/checklists/default-template')},
+  createChecklist(body){return this.post('/api/checklists?activate=true',body)},
+  importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
+  upload(records){return this.post('/api/conversations',{records,group:'UPLOAD'})},
+  batch(body){return this.post('/api/evaluations/batch',body)},
+  batchStatus(id){return this.get('/api/batches/'+id)},
+  appeal(evalId,criterion_key,comment){return this.post(`/api/evaluations/${evalId}/appeals`,{criterion_key,comment,author:'Оператор'})},
+  appeals(){return this.get('/api/appeals')},
+  aiReview(apId){return this.post(`/api/appeals/${apId}/ai-review`)},
+  decide(apId,body){return this.post(`/api/appeals/${apId}/decision`,body)},
+  stats(){return this.get('/api/stats')},
+  operator(name){return this.get('/api/operators/'+encodeURIComponent(name))},
+  audioUrl(cid){return this.url('/api/conversations/'+encodeURIComponent(cid)+'/audio')}
 };

@@ -9,3 +9,11 @@ __pycache__/
 node_modules/
 .DS_Store
 Thumbs.db
+.env
+*.pyc
+*.db
+*.db-*
+.venv/
+venv/
+.pytest_cache/
+data/

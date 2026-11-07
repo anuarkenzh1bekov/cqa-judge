@@ -117,6 +117,7 @@ const appeals={ru:{},kz:{},call:{},en:{4:{text:'Комиссии биржи не
 /* ---- сохранение между перезагрузками (чек-лист, результаты, апелляции) ---- */
 const STATE_KEY='cqa-state-2';
 function persist(){
+  if(CQA_API.enabled)return; /* с бэкендом всё хранится на сервере */
   try{localStorage.setItem(STATE_KEY,JSON.stringify({ver,nextId,CRIT,
     res:Object.fromEntries(Object.entries(D).map(([k,d])=>[k,d.res])),appeals}))}catch(_){}
 }
@@ -130,4 +131,8 @@ function loadSaved(){
   }catch(_){}
 }
 function resetSaved(){try{localStorage.removeItem(STATE_KEY)}catch(_){}location.reload()}
-loadSaved();
+if(CQA_API.enabled){
+  /* рабочий режим: демо-данные не используются, всё загружает js/backend.js */
+  CRIT.length=0;Object.keys(D).forEach(k=>delete D[k]);Object.keys(appeals).forEach(k=>delete appeals[k]);
+  nextId=1;cur='';
+}else loadSaved();
