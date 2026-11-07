@@ -96,8 +96,8 @@ $('#runNew').onclick=async()=>{
   if(CQA_API.enabled){
     $('#evChk').innerHTML='<option>Загрузка…</option>';
     CQA_API.checklists().then(list=>{
-      $('#evChk').innerHTML=list.slice().reverse().map(c=>`<option value="${c.id}" ${c.is_active?'selected':''}>${esc(c.name)}${c.is_active?' (активный)':''}</option>`).join('');
-    }).catch(err=>toast('Ошибка: '+err.message));
+      $('#evChk').innerHTML=list.slice().reverse().map(c=>`<option value="${c.id}" ${c.is_active?'selected':''}>${esc(c.name)}${c.is_active?' (активный)':''}</option>`).join('')||'<option value="">Активный чек-лист</option>';
+    }).catch(err=>{$('#evChk').innerHTML='<option value="">Активный чек-лист</option>';toast('Ошибка: '+err.message)});
   }else $('#evChk').innerHTML=`<option>Текущий, v${ver} · ${CRIT.length} критериев</option>`;
   evCheck();$('#evDlg').showModal();
 };

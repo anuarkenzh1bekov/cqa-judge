@@ -151,6 +151,9 @@ async function saveDecision(d,id,sel,reason,act){
   appeals[d][id].decision={v,reason,act};persist();
 }
 if(!CQA_API.enabled)$('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${k}">${d.lang} · ${d.id}</option>`).join('');
+/* пустой выбор диалога выглядит как сломанная коробочка: без вариантов его не показываем */
+function syncPick(){const p=$('#pick');p.hidden=!p.options.length}
+syncPick();
 $('#pick').onchange=e=>go('#/card/'+encodeURIComponent(e.target.value));
 $('#rev').onclick=function(){
   reviewer=!reviewer;this.setAttribute('aria-pressed',reviewer);

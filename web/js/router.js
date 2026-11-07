@@ -21,7 +21,7 @@ async function route(){
   }catch(e){toast('Ошибка загрузки: '+e.message)}
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
   if(view==='list')renderList();
-  if(view==='card'){if(cur)renderCard();else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
+  if(view==='card'){syncPick();if(cur)renderCard();else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
   if(view==='checklist')renderEditor();
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();

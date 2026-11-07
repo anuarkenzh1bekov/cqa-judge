@@ -110,6 +110,7 @@ function normTs(ts){return String(ts).replace(/(\.\d{3})\d+/,'$1')}
 function fillPick(){
   $('#pick').innerHTML=Object.entries(D).map(([k,d])=>`<option value="${esc(k)}">${d.lang} · ${esc(d.id)}</option>`).join('');
   if(cur)$('#pick').value=cur;
+  syncPick();
 }
 
 /* ---------- действия ---------- */
