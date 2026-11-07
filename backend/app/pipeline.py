@@ -5,12 +5,13 @@
       -> merge per criterion (agree / minor / disputed -> Gemini adjudication / review)
       -> evidence validation against the transcript
       -> deterministic scoring (scoring.compute)
+  Client mood (mood.analyze, text + call audio) runs alongside and never affects the score.
 """
 import asyncio
 import contextlib
 import time
 
-from . import prompts, scoring
+from . import mood, prompts, scoring
 from .checklist import Criterion
 from .config import settings
 from .llm import gemini, jev
@@ -80,7 +81,8 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
             system=prompts.SYSTEM_PROMPT,
             validate=_make_validator(criteria, n),
         )
-        (g, g_usage), (j_answers, j_usage, j_err) = await asyncio.gather(g_task, _run_jev(criteria, conv))
+        (g, g_usage), (j_answers, j_usage, j_err), (m_data, m_usage, m_err) = await asyncio.gather(
+            g_task, _run_jev(criteria, conv), mood.analyze(conv))
 
         results, disputes = [], []
         for c in criteria:
@@ -165,10 +167,13 @@ async def evaluate(conv: dict, criteria: list[Criterion], with_feedback: bool = 
             t = item.get("turn")
             item["timestamp"] = transcript[t]["timestamp"] if isinstance(t, int) and 0 <= t < n else None
 
-    usage = {"gemini": _sum_usage(g_usage, adj_usage), "jev": j_usage, "jev_error": j_err}
+    usage = {"gemini": _sum_usage(_sum_usage(g_usage, adj_usage), m_usage), "jev": j_usage, "jev_error": j_err,
+             "mood_error": m_err}
+    facts = dict(g["facts"])
+    facts["client_mood"] = m_data
     cost = gemini.cost_usd(usage["gemini"]) + (jev.cost_usd(j_usage) if j_usage else 0.0)
     return {
-        "facts": g["facts"],
+        "facts": facts,
         "results": results,
         "score": score,
         "feedback": feedback,

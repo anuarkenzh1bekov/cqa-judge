@@ -133,6 +133,16 @@ open_appeals, cost_usd, duration_ms, …`
 }
 ```
 Ссылка на реплику: `evidence[].index` / `feedback.*.turn` → прокрутка к `transcript[index]`.
+
+Настроение клиента — `facts.client_mood` (отдельный вызов, на балл не влияет; `null`, если анализ не удался — причина в `usage.mood_error`):
+```json
+{"start": "anxious", "end": "positive", "trajectory": "improved", "confidence": "high", "summary": "…",
+ "moments": [{"turn": 16, "mood": "anxious", "note": "…", "timestamp": "…"}],
+ "source": "text+audio",
+ "voice": {"client_tone": "anxious", "operator_tone": "neutral", "summary": "…",
+           "moments": [{"time": "05:37", "mood": "anxious", "cue": "нервный смешок, быстрый темп"}]}}
+```
+`mood`: calm · positive · confused · anxious · irritated · angry. `voice` есть только у звонков с доступной записью.
 N/A: `answer == "na"`, `applicable: false`, причина — в `explanation`.
 
 ### `POST /api/evaluations/{id}/rerun` → `{"evaluation_id"}` (фон)
@@ -164,6 +174,13 @@ N/A: `answer == "na"`, `applicable: false`, причина — в `explanation`.
 согласие моделей — отсортировано от самых проблемных), `model_agreement`, `appeals` (кол-во, `change_rate_pct`),
 `lowest` (10 худших), `gross_errors`.
 
+### `POST /api/conversations/transcribe` (multipart: `file`, необязательно `conversation_id`, `group`)
+Запись звонка (mp3/wav/ogg/flac/aac/aiff, до 15 МБ) → Gemini распознаёт речь: роли operator/client/bot, время мм:сс,
+персональные данные скрыты метками. Файл сохраняется (`AUDIO_DIR`, в Docker — том `/data/audio`) и играет в плеере,
+диалог сохраняется как `voice call`. Ответ: `{conversation_id, language, turns, transcript, cost_usd, duration_ms}`.
+Оценка — дальше обычным `POST /api/evaluations`.
+
+### `GET /api/export/stats.xlsx?checklist_id=&group=` — та же аналитика в Excel. Листы: Сводка, Диалоги (ответ по каждому критерию, настроение, стоимость), Обоснования (каждый критерий каждого диалога с репликами-доказательствами), Критерии, Операторы, Грубые ошибки, Апелляции.
 ### `GET /api/operators` — список операторов со средним баллом.
 ### `GET /api/operators/{name}` — профиль: оценки, слабые критерии, собранные рекомендации и самые частые зоны роста.
 

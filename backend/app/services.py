@@ -105,7 +105,8 @@ def upsert_conversations(db: Session, records: list[dict], group: str | None) ->
 
 
 def conv_dict(conv: Conversation) -> dict:
-    return {"id": conv.id, "channel": conv.channel, "language": conv.language, "transcript": conv.transcript}
+    return {"id": conv.id, "channel": conv.channel, "language": conv.language, "transcript": conv.transcript,
+            "audio_url": conv.audio_url}
 
 
 # ---------- evaluation ----------

@@ -2,13 +2,16 @@
 from collections import Counter, defaultdict
 from statistics import mean
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .. import services
+from .. import export_xlsx, services
 from ..db import get_db
-from ..models import Appeal, Conversation, Evaluation
+from ..models import Appeal, Checklist, Conversation, Evaluation
 from ..scoring import round2
 
 router = APIRouter(prefix="/api", tags=["stats"])
@@ -130,3 +133,22 @@ def operator_profile(name: str, checklist_id: int | None = None, db: Session = D
         "improvements": improvements,
         "most_frequent_improvement_areas": by_crit.most_common(),
     }
+
+
+@router.get("/export/stats.xlsx")
+def export_stats(checklist_id: int | None = None, group: str | None = None, db: Session = Depends(get_db)):
+    """Everything from the Analytics screen as an Excel workbook, plus per-dialog and per-criterion detail."""
+    evs = [e for e in _latest(db, checklist_id, group) if e.final_score]
+    # all appeals (as counted on the Analytics screen); the sheet marks those made on an older evaluation
+    q = select(Appeal).join(Evaluation).order_by(Appeal.id)
+    if checklist_id:
+        q = q.where(Evaluation.checklist_id == checklist_id)
+    if group:
+        q = q.join(Conversation, Evaluation.conversation_id == Conversation.id).where(Conversation.dataset_group == group)
+    appeals = db.scalars(q).all()
+    cl = db.get(Checklist, checklist_id) if checklist_id else None
+    filters = f"Набор: {group or 'все'}; чек-лист: {cl.name if cl else 'все версии'}"
+    data = export_xlsx.build(stats(checklist_id, group, db), evs, appeals, filters)
+    name = f"cqa-stats-{group or 'all'}-{datetime.now():%Y%m%d-%H%M}.xlsx"
+    return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})

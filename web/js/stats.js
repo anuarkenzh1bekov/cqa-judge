@@ -12,6 +12,7 @@ function groupTable(title,obj){
 async function renderStats(){
   const box=$('#statsBody');
   if(!CQA_API.enabled){box.innerHTML='<div class="empty">Аналитика доступна при подключённом бэкенде</div>';return}
+  const xb=$('#xlsBtn');xb.href=CQA_API.url('/api/export/stats.xlsx');xb.hidden=false;
   box.innerHTML='<div class="empty">Загрузка…</div>';
   let s;try{s=await CQA_API.stats()}catch(e){box.innerHTML=`<div class="empty">Ошибка: ${esc(e.message)}</div>`;return}
   const o=s.overview,dist=s.score_distribution,maxD=Math.max(1,...Object.values(dist));

@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     # Jev disagreement with probability >= this triggers a Gemini re-check (adjudication).
     jev_adjudicate_threshold: float = 0.8
 
+    # Client mood: a separate Gemini call on the transcript (does not affect the score). For calls with a
+    # recording, the audio itself is also sent so the tone of voice is heard, not guessed from the text.
+    # No separate audio price is listed for 3.8 Flash, so audio tokens are billed at the input price.
+    mood_enabled: bool = True
+    mood_audio: bool = True
+    audio_max_mb: int = 15
+    # Uploaded call recordings (transcription). In Docker: /data/audio on the volume.
+    audio_dir: str = str(ROOT / "backend" / "audio")
+
     dataset_api_url: str = ""
     database_url: str = f"sqlite:///{(ROOT / 'backend' / 'cqa.db').as_posix()}"
 

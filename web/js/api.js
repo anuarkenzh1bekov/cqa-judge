@@ -27,6 +27,14 @@ const CQA_API={
   createChecklist(body){return this.post('/api/checklists?activate=true',body)},
   importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
   upload(records){return this.post('/api/conversations',{records,group:'UPLOAD'})},
+  /* запись звонка → распознавание на бэкенде (Gemini) → обычный диалог «voice call» */
+  async transcribe(file){
+    const fd=new FormData();fd.append('file',file);
+    const r=await fetch(this.url('/api/conversations/transcribe'),{method:'POST',body:fd});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.detail||('HTTP '+r.status));
+    return j;
+  },
   batch(body){return this.post('/api/evaluations/batch',body)},
   batchStatus(id){return this.get('/api/batches/'+id)},
   appeal(evalId,criterion_key,comment){return this.post(`/api/evaluations/${evalId}/appeals`,{criterion_key,comment,author:'Оператор'})},

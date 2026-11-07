@@ -26,8 +26,9 @@ class LLMError(RuntimeError):
 
 
 async def generate_json(prompt: str, schema: dict, system: str | None = None, retries: int = 2,
-                        validate=None) -> tuple[dict, dict]:
-    """Returns (parsed_json, usage). `validate(data)` may raise to trigger a retry."""
+                        validate=None, contents=None) -> tuple[dict, dict]:
+    """Returns (parsed_json, usage). `validate(data)` may raise to trigger a retry.
+    `contents` replaces the text prompt when the request also carries media (e.g. a call recording)."""
     cfg = types.GenerateContentConfig(
         system_instruction=system,
         response_mime_type="application/json",
@@ -42,7 +43,7 @@ async def generate_json(prompt: str, schema: dict, system: str | None = None, re
     last_err = None
     for attempt in range(retries + 1):
         try:
-            resp = await client().aio.models.generate_content(model=settings.gemini_model, contents=prompt, config=cfg)
+            resp = await client().aio.models.generate_content(model=settings.gemini_model, contents=contents or prompt, config=cfg)
             um = resp.usage_metadata
             usage["calls"] += 1
             if um:

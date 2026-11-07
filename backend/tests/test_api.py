@@ -88,3 +88,47 @@ def test_batch(client, fake):
 def test_frontend_served(client):
     r = client.get("/")
     assert r.status_code == 200 and "CQA" in r.text
+
+
+def test_excel_export(client, fake):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+    upload(client, "xls-1")
+    ev = client.post("/api/evaluations", json={"conversation_id": "xls-1"}).json()
+    client.post(f"/api/evaluations/{ev['id']}/appeals", json={"criterion_key": "c07_closing", "comment": "c"})
+    r = client.get("/api/export/stats.xlsx")
+    assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
+    wb = load_workbook(BytesIO(r.content))
+    assert wb.sheetnames == ["Сводка", "Графики", "Диалоги", "Обоснования", "Критерии", "Операторы", "Грубые ошибки", "Апелляции"]
+    rows = list(wb["Диалоги"].values)
+    row = next(x for x in rows if x[0] == "xls-1")
+    assert row[5] == 100.0 and "Завершение" in rows[0]
+    assert any(x[0] == "xls-1" for x in wb["Апелляции"].values)
+    assert sum(1 for x in wb["Обоснования"].values if x[0] == "xls-1") == 8
+    assert len(wb["Графики"]._charts) >= 4
+
+
+def test_transcribe_recording_then_evaluate(client, fake):
+    r = client.post("/api/conversations/transcribe", files={"file": ("call.mp3", b"ID3fake-mp3-bytes", "audio/mpeg")},
+                    data={"conversation_id": "rec 1"})
+    assert r.status_code == 200, r.text
+    t = r.json()
+    assert t["conversation_id"] == "rec-1" and t["language"] == "RU"
+    assert [x["timestamp"] for x in t["transcript"]] == ["00:00", "00:03", "00:09", "01:02"]
+    assert t["transcript"][2]["text"] == "Где посмотреть тариф?"
+    conv = client.get("/api/conversations/rec-1").json()
+    assert conv["channel"] == "voice call" and conv["has_audio"]
+    a = client.get("/api/conversations/rec-1/audio", headers={"Range": "bytes=0-2"})
+    assert a.status_code == 206 and a.content == b"ID3"
+    ev = client.post("/api/evaluations", json={"conversation_id": "rec-1"}).json()
+    assert ev["status"] == "done"
+    assert client.post("/api/conversations/transcribe", files={"file": ("x.txt", b"hi", "text/plain")}).status_code == 415
+    assert client.post("/api/conversations/transcribe", files={"file": ("x.mp3", b"", "audio/mpeg")}).status_code == 422
+
+
+def test_audio_path_cannot_escape_audio_dir(client):
+    from app import audio
+    import pytest
+    with pytest.raises(audio.AudioError):
+        audio.local_path("local:../../test.db")
