@@ -120,6 +120,7 @@ The actual cost of each evaluation is shown in the conversation view and on the 
 | `backend/tests/` | offline tests (`python -m pytest -q`) |
 | `backend/scripts/eval_sample.py` | random-sample run with a report |
 | `Dockerfile`, `docker-compose.yml` | image and one-command startup |
+| `datasets/DEV.json` | copy of the DEV set (65 conversations). Signed links to real call recordings are removed (`has_audio: true`); if the organizers' API is down, import by `group_id` falls back to this file. Refresh: `python backend/scripts/download_dataset.py --group DEV` |
 | `web/` | interface in plain HTML, CSS and JavaScript, no build step; `web/js/backend.js` talks to the API |
 | `web/dist/cqa-webresource.html` | the whole interface in one file for Dynamics 365 (`python web/build.py`) |
 
