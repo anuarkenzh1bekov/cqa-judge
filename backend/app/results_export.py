@@ -97,9 +97,13 @@ def _record(ev: Evaluation) -> dict:
 def build(db: Session, group: str, team_name: str = TEAM_NAME) -> dict:
     cids = db.scalars(select(Conversation.id).where(Conversation.dataset_group == group)
                       .order_by(Conversation.id)).all()
+    # The latest FINISHED evaluation wins: a re-run still in progress (e.g. the UI's background warm-up started
+    # while the file is being built) or a failed re-run must not hide a good result. Only a dialog with no finished
+    # evaluation at all is written as an error.
     latest: dict[str, Evaluation] = {}
     for ev in db.scalars(select(Evaluation).where(Evaluation.conversation_id.in_(cids)).order_by(Evaluation.id)):
-        latest[ev.conversation_id] = ev
+        if ev.status == "done" or latest.get(ev.conversation_id) is None or latest[ev.conversation_id].status != "done":
+            latest[ev.conversation_id] = ev
     results, models = [], []
     for cid in cids:
         ev = latest.get(cid)

@@ -177,3 +177,20 @@ def test_checklist_versions_and_ai_draft(client, fake):
     assert client.post(f"/api/checklists/{pdf['id']}/activate").status_code == 200
     assert client.get("/api/checklists/active").json()["submission_ready"]
     assert client.post("/api/checklists/generate", json={"brief": "x"}).status_code == 422
+
+
+def test_results_use_latest_finished_evaluation(client, fake):
+    """A re-run still running (UI warm-up during the submission hour) must not turn a scored dialog into an error."""
+    from app import results_export
+    from app.db import SessionLocal
+    from app.models import Evaluation
+    r = client.post("/api/conversations", json={"group": "LATE", "records": [
+        {"conversation_id": "late-1", "channel": "agent chat", "language": "RU", "transcript": TRANSCRIPT}]})
+    assert r.status_code == 200
+    ev = client.post("/api/evaluations", json={"conversation_id": "late-1"}).json()
+    with SessionLocal() as db:
+        db.add(Evaluation(conversation_id="late-1", checklist_id=ev["checklist_id"], status="running",
+                          checklist_snapshot=ev["checklist"]))
+        db.commit()
+        doc = results_export.build(db, "LATE")
+    assert doc["results"][0]["status"] == "ok" and doc["results"][0]["score"]["final_score"] == 100.0

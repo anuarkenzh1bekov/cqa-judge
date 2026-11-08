@@ -102,7 +102,15 @@ def main():
             print(f"   повтор для {len(failed)}: {failed}")
             evaluate(api, failed, "   повтор")
 
-    # 3. the file
+    # 3. wait for anything still running on these dialogs (e.g. the UI's background warm-up), then the file
+    t0 = time.time()
+    while True:
+        busy = [cid for cid in ids if any(e["status"] in ("pending", "running") for e in
+                                          api.call("GET", f"/api/conversations/{urllib.request.quote(cid)}")["evaluations"])]
+        if not busy or time.time() - t0 > 10 * 60:
+            break
+        print(f"   ждём завершения оценок: {len(busy)} в работе", flush=True)
+        time.sleep(5)
     q = f"/api/results?group={urllib.request.quote(a.group)}" + (f"&expect={a.expect}" if a.expect else "")
     doc = api.call("GET", q)
     doc.pop("problems", None)  # the server's own check; the strict one runs below
