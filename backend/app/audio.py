@@ -1,7 +1,9 @@
 """Call recordings. The organizers' audio_url is an HTML player page whose <source> holds a short-lived (1 h)
 signed mp3 link, so it is resolved on every use."""
+import hashlib
 import html
 import re
+import uuid
 from pathlib import Path
 
 import httpx
@@ -41,9 +43,34 @@ async def resolve(http: httpx.AsyncClient, url: str) -> str:
     return html.unescape(m.group(1))
 
 
+def _cache_file(url: str) -> Path:
+    return Path(settings.audio_dir) / "cache" / (hashlib.sha256(url.encode()).hexdigest()[:32] + ".mp3")
+
+
+def cached_path(url: str) -> Path | None:
+    """Local copy of a remote recording if it was downloaded before."""
+    p = _cache_file(url)
+    return p if p.is_file() else None
+
+
+async def cache_remote(url: str, max_bytes: int = 100_000_000) -> Path:
+    """Downloads a remote recording once and keeps it in AUDIO_DIR/cache, so playback and seeking are served
+    from disk instead of going to the organizers' server on every Range request."""
+    p = cached_path(url)
+    if p:
+        return p
+    data, _ = await fetch_bytes(url, max_bytes)
+    target = _cache_file(url)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_suffix(f".{uuid.uuid4().hex}.part")
+    tmp.write_bytes(data)
+    tmp.replace(target)  # atomic: a concurrent request never sees a half-written file
+    return target
+
+
 async def fetch_bytes(url: str, max_bytes: int) -> tuple[bytes, str]:
     """Downloads the whole recording (for sending to the model). Returns (bytes, mime type)."""
-    p = local_path(url)
+    p = local_path(url) or cached_path(url)
     if p:
         if p.stat().st_size > max_bytes:
             raise AudioError(f"recording is larger than {max_bytes // 1_000_000} MB")

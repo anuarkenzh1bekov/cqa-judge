@@ -216,6 +216,10 @@ async def conversation_audio(cid: str, request: Request, db: Session = Depends(g
         raise HTTPException(404, str(e)) from e
     if local:  # uploaded recording: FileResponse handles Range (seeking) itself
         return FileResponse(local, media_type=transcribe.MIME.get(local.suffix.lower(), "audio/mpeg"))
+    try:  # remote recording: download once, then serve from disk so seeking is instant
+        return FileResponse(await audio.cache_remote(c.audio_url), media_type="audio/mpeg")
+    except Exception:  # noqa: BLE001 - fall back to streaming through
+        pass
     http = httpx.AsyncClient(timeout=120, follow_redirects=True)
     try:
         src = await audio.resolve(http, c.audio_url)

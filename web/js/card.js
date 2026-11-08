@@ -77,13 +77,13 @@ function initPlayer(){
   ['play','pause','ended'].forEach(e=>a.addEventListener(e,state));
   ['timeupdate','loadedmetadata','durationchange','seeked'].forEach(e=>a.addEventListener(e,sync));
   /* как в Spotify: чат идёт за записью, текущая реплика подсвечена */
-  const chat=$('#chat'),times=D[cur].msgs.map((_,i)=>secOf(cur,i+1));
+  const chat=$('#chat'),times=startTimes(cur);
   let liveN=0,freeUntil=0;
   const free=()=>{freeUntil=Date.now()+4000};   /* пользователь листает сам: 4 с не перехватываем прокрутку */
   ['wheel','touchmove'].forEach(e=>chat.addEventListener(e,free,{passive:true}));
   const follow=()=>{
     const t=a.currentTime||0;let n=0;
-    for(let i=0;i<times.length;i++){if(times[i]<=t+0.3)n=i+1;else break}
+    for(let i=0;i<times.length;i++){if(times[i]<=t+0.15)n=i+1;else break}
     if(n===liveN)return;
     const old=$('#m'+liveN);if(old)old.classList.remove('live');
     liveN=n;
@@ -96,6 +96,9 @@ function initPlayer(){
     }
   };
   ['timeupdate','seeked'].forEach(e=>a.addEventListener(e,follow));
+  /* timeupdate приходит ~4 раза в секунду: пока играет, сверяемся каждый кадр, чтобы подсветка не запаздывала */
+  const tick=()=>{if(a.paused||!a.isConnected)return;follow();requestAnimationFrame(tick)};
+  a.addEventListener('play',()=>requestAnimationFrame(tick));
   seek.oninput=()=>{if(isFinite(a.duration))a.currentTime=seek.value/1000*a.duration;sync()};
   const rates=[1,1.25,1.5,2,0.75];
   spd.onclick=()=>{const i=(rates.indexOf(a.playbackRate)+1)%rates.length;a.playbackRate=rates[i];spd.textContent=rates[i]+'×'};
@@ -162,9 +165,26 @@ const secOf=(d,n)=>{
   if(ts.includes('T'))return Math.max(0,Math.round((Date.parse(ts)-Date.parse(ms[0][1]))/1000));
   const [m,s]=ts.split(':').map(Number);return m*60+s;
 };
+/* Где реплика НАЧИНАЕТСЯ в записи. Время в транскрипте звонка — это момент, когда распознавание закрыло фразу:
+   конец речи плюс ~0,8 с (сверено с паузами в записи). Начало оцениваем по длине текста (~15 символов в секунду),
+   но не раньше конца предыдущей реплики. Служебные сообщения не звучат: их время берём как есть. */
+const SPEECH_CPS=15,ASR_LAG=0.8;
+function startTimes(d){
+  const ms=D[d].msgs;
+  if(!ms.length||!String(ms[0][1]).includes('T'))return ms.map((_,i)=>secOf(d,i+1));
+  const t0=Date.parse(ms[0][1]),ends=ms.map(m=>Math.max(0,(Date.parse(m[1])-t0)/1000));
+  let prev=0;
+  return ms.map((m,i)=>{
+    const end=ends[i];
+    if(m[0]==='system')return end;
+    const st=Math.max(prev,end-ASR_LAG-String(m[2]||'').length/SPEECH_CPS);
+    prev=Math.max(prev,end);
+    return Math.min(st,end);
+  });
+}
 function seekTo(n){
   const a=$('#aud');if(!a||!D[cur].msgs[n-1])return;
-  a.currentTime=secOf(cur,n);a.play().catch(()=>{});
+  a.currentTime=startTimes(cur)[n-1];a.play().catch(()=>{});
 }
 
 function renderScore(t=total(cur)){
