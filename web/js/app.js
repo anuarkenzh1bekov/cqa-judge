@@ -80,22 +80,25 @@ function runProgress(title,sub,rows,done,step=120){
   $('#runClose').onclick=()=>{$('#runDlg').close();done&&done()};
 }
 /* окно «Оценить диалог»: загрузка транскрипта или набора по group_id и выбор чек-листа */
-let evRecords=[];
+let evRecords=[],evGroupName=null;
 function parseRecords(text){
   const j=JSON.parse(text);
-  const arr=Array.isArray(j)?j:(j.data&&j.data.records?j.data.records:[j]);
+  /* ответ API организаторов целиком ({isSuccess, data:{dataset_group_id, records}}) или файл набора: берём его имя */
+  const box=j&&!Array.isArray(j)?(j.data&&j.data.records?j.data:j.records?j:null):null;
+  evGroupName=box&&box.dataset_group_id?String(box.dataset_group_id):null;
+  const arr=Array.isArray(j)?j:(box?box.records:[j]);
   arr.forEach(r=>{if(!r||!Array.isArray(r.transcript))throw new Error('нет поля transcript')});
   return arr;
 }
 function evCheck(){
   const t=$('#evText').value.trim(),info=$('#evInfo'),grp=($('#evGroup')?.value||'').trim();
   const aud=$('#evAudio')&&$('#evAudio').files[0];
-  if(!t){evRecords=[];info.textContent=grp?`Набор «${grp}» будет загружен из API организаторов и оценён`:'';$('#evGo').disabled=!(grp||aud);return}
+  if(!t){evRecords=[];evGroupName=null;info.textContent=grp?`Набор «${grp}» будет загружен из API организаторов и оценён`:'';$('#evGo').disabled=!(grp||aud);return}
   try{
     evRecords=parseRecords(t);
     info.textContent=evRecords.slice(0,3).map(r=>`${r.conversation_id||'без ID'} · ${r.language||'?'} · ${r.transcript.length} реплик`).join('; ')+(evRecords.length>3?` и ещё ${evRecords.length-3}`:'');
     $('#evGo').disabled=false;
-  }catch(e){evRecords=[];info.textContent='Не удалось прочитать: '+e.message;$('#evGo').disabled=true}
+  }catch(e){evRecords=[];evGroupName=null;info.textContent='Не удалось прочитать: '+e.message;$('#evGo').disabled=true}
 }
 $('#runNew').onclick=async()=>{
   $('#evText').value='';$('#evFile').value='';$('#evAudio').value='';audioHint();if($('#evGroup'))$('#evGroup').value='';
@@ -126,7 +129,9 @@ $('#evGo').onclick=async()=>{
     $('#evGo').disabled=true;
     try{
       let ids=[];
-      if(recs.length)ids=ids.concat((await CQA_API.upload(recs)).conversation_ids);
+      /* сначала набор по group_id: если его нет, ничего не сохраняем и ничего не оцениваем */
+      if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
+      if(recs.length)ids=ids.concat((await CQA_API.upload(recs,evGroupName)).conversation_ids);
       const aud=$('#evAudio').files[0];
       if(aud){
         $('#evInfo').textContent='Распознаём запись… обычно 20–60 секунд';
@@ -134,7 +139,6 @@ $('#evGo').onclick=async()=>{
         toast(`Запись распознана: ${t.turns} реплик, язык ${t.language}, ${(t.duration_ms/1000).toFixed(0)} с, $${t.cost_usd.toFixed(3)}`);
         ids.push(t.conversation_id);
       }
-      if(grp){toast('Загружаем набор '+grp+'…');ids=ids.concat((await CQA_API.importGroup(grp)).conversation_ids)}
       $('#evDlg').close();
       /* итог показывает само окно: «Готово N из N», открытие каждого, повтор неудавшихся */
       await beRunBatch(`Оценка: ${ids.length} диал.`,{conversation_ids:ids,checklist_id:+$('#evChk').value||null});

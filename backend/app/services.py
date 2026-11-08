@@ -81,7 +81,12 @@ async def fetch_dataset_api(group_id: str) -> list[dict]:
     sep = "&" if "?" in settings.dataset_api_url else "?"
     async with httpx.AsyncClient(timeout=120) as http:
         r = await http.get(f"{settings.dataset_api_url}{sep}group_id={group_id}")
-    r.raise_for_status()
+    # never put the URL in the message: it carries the organizers' signature and ends up in the UI
+    if r.status_code == 404:
+        raise RuntimeError(f"набор «{group_id}» не найден у организаторов (HTTP 404). Проверьте group_id, "
+                           "регистр важен: например FBroker, Swap")
+    if r.status_code != 200:
+        raise RuntimeError(f"API организаторов вернул HTTP {r.status_code} для набора «{group_id}»")
     data = r.json()
     if not data.get("isSuccess"):
         raise RuntimeError(f"Dataset API error: {data.get('error')}")

@@ -85,7 +85,7 @@ async def import_dataset(body: ImportIn, db: Session = Depends(get_db)):
     try:
         records, source = await services.fetch_dataset_with_source(body.group_id)
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(502, f"Dataset fetch failed: {e}") from e
+        raise HTTPException(502, f"Не удалось загрузить набор: {e}") from e
     ids = services.upsert_conversations(db, records, body.group_id)
     return {"group_id": body.group_id, "imported": len(ids), "conversation_ids": ids, "source": source}
 

@@ -30,7 +30,7 @@ const CQA_API={
   suggestCriterion(body){return this.post('/api/checklists/suggest-criterion',body)},
   createChecklist(body){return this.post('/api/checklists?activate=true',body)},
   importGroup(group_id){return this.post('/api/datasets/import',{group_id})},
-  upload(records){return this.post('/api/conversations',{records,group:'UPLOAD'})},
+  upload(records,group){return this.post('/api/conversations',{records,group:group||'UPLOAD'})},
   /* запись звонка → распознавание на бэкенде (Gemini) → обычный диалог «voice call» */
   async transcribe(file){
     const fd=new FormData();fd.append('file',file);
