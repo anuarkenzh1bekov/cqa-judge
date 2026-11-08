@@ -621,6 +621,11 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 .fbl.rn{margin:0 0 6px;padding-left:10px;border-left:2px solid var(--accent)}
 .fbl.rn li.ev{padding:4px 0;border-top:0;font-size:13px}
 
+/* версии чек-листа и «Новый чек-лист» */
+#clPick{width:auto;max-width:340px;margin-left:12px}
+.nc-kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:12px 0}
+.vn-s.sub-ok{color:var(--yes)}
+
 </style>
 </head>
 <body>
@@ -683,7 +688,7 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="cmpBtn" hidden title="Прогнать две версии на одних и тех же диалогах и посмотреть, что изменилось">Сравнить версии</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><select class="field" id="clPick" hidden aria-label="Версия чек-листа" title="Активная версия: по ней оцениваются новые диалоги"></select><button class="btn" id="newCl" hidden>Новый чек-лист</button><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="cmpBtn" hidden title="Прогнать две версии на одних и тех же диалогах и посмотреть, что изменилось">Сравнить версии</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -726,6 +731,20 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
   <div class="fld"><label for="evChk">Чек-лист</label><select class="field" id="evChk"></select></div>
   <p class="evinfo" id="evInfo"></p>
   <div class="f"><button class="btn" id="evNo">Отмена</button><button class="btn primary" id="evGo" disabled>Запустить оценку</button></div>
+</dialog>
+<dialog id="newClDlg">
+  <h3>Новый чек-лист</h3>
+  <p>Черновик откроется в редакторе. Версия появится только после «Сохранить», старые оценки не меняются.</p>
+  <div class="nc-kinds">
+    <label class="chk"><input type="radio" name="ncKind" value="ai">Собрать с ИИ по описанию</label>
+    <label class="chk"><input type="radio" name="ncKind" value="empty">Пустой</label>
+    <label class="chk"><input type="radio" name="ncKind" value="copy">Копия текущего</label>
+    <label class="chk"><input type="radio" name="ncKind" value="pdf">Исходный из PDF</label>
+  </div>
+  <div class="fld" id="ncAiBox"><label for="ncBrief">Для чего чек-лист и что важно проверять</label><textarea class="field" id="ncBrief" placeholder="Например: звонки отдела продаж — приветствие, выявление интереса, презентация тарифа, работа с возражениями, договорённость о следующем шаге"></textarea></div>
+  <div class="fld"><label for="ncName">Название (необязательно)</label><input class="field" id="ncName" maxlength="80"></div>
+  <p class="evinfo" id="ncInfo"></p>
+  <div class="f"><button class="btn" id="ncNo">Отмена</button><button class="btn primary" id="ncGo">Собрать черновик</button></div>
 </dialog>
 <dialog id="aiDlg">
   <h3>Критерий с помощью ИИ</h3>
@@ -794,6 +813,8 @@ const CQA_API={
   activeChecklist(){return this.get('/api/checklists/active')},
   checklists(){return this.get('/api/checklists')},
   defaultChecklist(){return this.get('/api/checklists/default-template')},
+  generateChecklist(brief){return this.post('/api/checklists/generate',{brief})},
+  activateChecklist(id){return this.post('/api/checklists/'+id+'/activate')},
   conversationSummary(id){return this.get('/api/conversations/'+encodeURIComponent(id)+'/summary')},
   saveReview(evalId,body){return this.put('/api/evaluations/'+evalId+'/review',body)},
   suggestCriterion(body){return this.post('/api/checklists/suggest-criterion',body)},
@@ -1495,7 +1516,7 @@ async function route(){
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
   if(view==='list'){renderList();if(CQA_API.enabled&&reviewer)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
   if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled&&reviewer){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
-  if(view==='checklist'){renderEditor();lockChecklist()}
+  if(view==='checklist'){renderEditor();lockChecklist();loadVersions()}
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
   syncCount();
@@ -2102,7 +2123,7 @@ function renderEditor(){
     const key=BE.groups.join('|');
     if(sel&&sel.dataset.groups!==key){
       const keep=sel.value;
-      sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к набору ${esc(g)}</option>`).join('');
+      sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к ${g==='UPLOAD'?'загруженным вручную':'набору '+esc(g)}</option>`).join('');
       sel.value=BE.groups.includes(keep)?keep:'';sel.dataset.groups=key;
     }
   }
@@ -2126,16 +2147,19 @@ function refreshSide(){
   const changed=CRIT.filter(c=>sigOf(c)!==savedSigs[c.id]).length;
   dirty=dirty||changed>0;
   /* название «Чек-лист качества чатов (Freedom Broker)» очевидно из контекста: показываем только версию */
-  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?verLabel(BE.checklist.name):'v'+ver;
+  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?(BE.checklist.draft?'черновик':verLabel(BE.checklist.name)):'v'+ver;
   const vn=$('#verName');
   $('#verNameBox').hidden=!CQA_API.enabled;
-  if(CQA_API.enabled&&BE.checklist&&document.activeElement!==vn&&vn.dataset.cid!==String(BE.checklist.id)){
+  if(CQA_API.enabled&&BE.checklist&&!BE.checklist.draft&&document.activeElement!==vn&&vn.dataset.cid!==String(BE.checklist.id)){
     vn.value=verLabel(BE.checklist.name);vn.dataset.cid=BE.checklist.id;
   }
   $('#verNote').innerHTML=`<p class="vn ${dirty?'dirty':'clean'}">${dirty?'● Есть несохранённые изменения'+(changed?` (критериев: ${changed})`:''):'✓ Всё сохранено'}</p>`
     +(dirty&&CQA_API.enabled?'<p class="vn-s">При сохранении появится новая версия. Старые оценки остаются со своей версией.</p>':'')
     +(CQA_API.enabled?`<p class="vn-s">Грубые ошибки (${BE.flags.length}) не дают баллов, они только отмечаются в диалоге.</p>`:'')
-    +(sum!==100?`<p class="vn-s">Сумма весов ${sum}, итог всё равно приводится к 100.</p>`:'');
+    +(sum!==100?`<p class="vn-s">Сумма весов ${sum}, итог всё равно приводится к 100.</p>`:'')
+    +(CQA_API.enabled&&BE.checklist?(BE.checklist.submission_ready&&!dirty
+      ?'<p class="vn-s sub-ok">✓ Подходит для файла результатов организаторам</p>'
+      :'<p class="vn-s">Для файла результатов организаторам нужен исходный чек-лист из PDF без изменений.</p>'):'');
 }
 $('#ed').addEventListener('input',e=>{
   const ff=e.target.dataset.ff;
@@ -2203,7 +2227,7 @@ $('#applyBtn').onclick=async()=>{
     $('#applyBtn').disabled=true;
     try{
       const cl=await beSaveChecklist();
-      dirty=false;renderEditor();toast('Сохранено: '+cl.name);
+      clDraft=false;dirty=false;renderEditor();loadVersions();toast('Сохранено: '+cl.name);
       if(grp){
         const s=await beRunBatch(`Применяем «${cl.name}» к набору ${grp}`,{group:grp,checklist_id:cl.id});
         await beRefreshAfterBatch();
@@ -2233,11 +2257,93 @@ $('#resetState').onclick=async()=>{
   if(!confirm('Создать новую версию чек-листа из исходного PDF и сделать её активной?'))return;
   try{
     const t=await CQA_API.defaultChecklist();
-    await CQA_API.createChecklist(t);await beLoadChecklist();dirty=false;renderEditor();toast('Восстановлен исходный чек-лист');
+    await CQA_API.createChecklist(t);await beLoadChecklist();clDraft=false;dirty=false;renderEditor();loadVersions();toast('Восстановлен исходный чек-лист');
   }catch(e){toast('Ошибка: '+e.message)}
 };
 
 $('#verName').addEventListener('input',()=>{dirty=true;refreshSide()});
+
+</script>
+<script>
+/* Версии чек-листа: переключение активной версии и создание нового чек-листа
+   (пустой, копия, исходный из PDF или собранный ИИ по описанию). Новый чек-лист открывается черновиком
+   в редакторе и становится версией только после «Сохранить». */
+let clDraft=false;
+
+async function loadVersions(){
+  const sel=$('#clPick');if(!sel)return;
+  if(!CQA_API.enabled){sel.hidden=true;$('#newCl').hidden=true;return}
+  const canEdit=typeof reviewer==='undefined'||reviewer;  // operator role: view only
+  sel.hidden=false;sel.disabled=!canEdit;$('#newCl').hidden=!canEdit;
+  let list=[];
+  try{list=await CQA_API.checklists()}catch(e){toast('Ошибка: '+e.message);return}
+  sel.innerHTML=(clDraft?'<option value="draft" selected>Черновик — ещё не сохранён</option>':'')
+    +list.slice().reverse().map(c=>`<option value="${c.id}" ${c.is_active&&!clDraft?'selected':''}>${esc(c.name)} · №${c.id}`
+      +`${c.is_active?' · активный':''} · оценок ${c.evaluations||0}${c.submission_ready?' · ✓ для сдачи':''}</option>`).join('');
+}
+
+$('#clPick').addEventListener('change',async e=>{
+  const id=e.target.value;
+  if(id==='draft')return;
+  if(dirty&&!confirm('Несохранённые изменения пропадут. Переключиться на другую версию?')){loadVersions();return}
+  try{
+    const cl=await CQA_API.activateChecklist(+id);
+    clDraft=false;dirty=false;
+    await beLoadChecklist();renderEditor();loadVersions();
+    toast('Активный чек-лист: '+cl.name+' — по нему оцениваются новые диалоги');
+  }catch(err){toast('Ошибка: '+err.message);loadVersions()}
+});
+
+function loadDraft(cl){
+  BE.checklist={id:null,name:'',description:cl.description||'',criteria:cl.criteria,is_active:false,draft:true};
+  BE.flags=JSON.parse(JSON.stringify(cl.criteria.filter(c=>c.type==='flag')));
+  CRIT.splice(0,CRIT.length,...cl.criteria.filter(c=>c.type!=='flag').map(critToFront));
+  Object.keys(savedSigs).forEach(k=>delete savedSigs[k]);
+  clDraft=true;dirty=true;
+  const vn=$('#verName');vn.value=cl.name;vn.dataset.cid='draft';
+  renderEditor();loadVersions();
+  $('#ed').scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'start'});
+}
+
+const ncKind=()=>($('input[name="ncKind"]:checked')||{}).value;
+function ncSync(){
+  const k=ncKind();
+  $('#ncAiBox').hidden=k!=='ai';
+  $('#ncGo').textContent=k==='ai'?'Собрать черновик':'Открыть черновик';
+  $('#ncGo').disabled=k==='ai'&&$('#ncBrief').value.trim().length<5;
+  $('#ncInfo').textContent=k==='pdf'?'Только этот вариант подходит для файла результатов организаторам (8 критериев из PDF).':'';
+}
+$('#newCl').onclick=()=>{
+  if(dirty&&!confirm('Несохранённые изменения в текущем чек-листе пропадут. Продолжить?'))return;
+  $('#ncName').value='';$('#ncBrief').value='';
+  $$('input[name="ncKind"]').forEach(r=>r.checked=r.value==='ai');
+  ncSync();$('#newClDlg').showModal();
+};
+$$('input[name="ncKind"]').forEach(r=>r.onchange=ncSync);
+$('#ncBrief').oninput=ncSync;
+$('#ncNo').onclick=()=>$('#newClDlg').close();
+$('#ncGo').onclick=async()=>{
+  const k=ncKind(),go=$('#ncGo'),name=$('#ncName').value.trim();
+  go.disabled=true;
+  try{
+    let cl;
+    if(k==='empty')cl={name:name||'Новый чек-лист',description:'',criteria:[{key:'k01',section:'',name:'Новый критерий',
+      description:'',type:'binary',weight:100,na_allowed:false,na_condition:null,scale:null,guidance:null}]};
+    else if(k==='copy')cl={name:name||(verLabel(BE.checklist&&BE.checklist.name)+' (копия)'),
+      description:BE.checklist&&BE.checklist.description,criteria:JSON.parse(JSON.stringify(CRIT.map(critToBack).concat(BE.flags)))};
+    else if(k==='pdf'){const t=await CQA_API.defaultChecklist();cl={...t,name:name||t.name}}
+    else{
+      go.innerHTML='<span class="spin"></span>Собираем…';
+      $('#ncInfo').textContent='Модель составляет критерии, веса и шкалы — обычно 20–30 секунд';
+      const r=await CQA_API.generateChecklist($('#ncBrief').value.trim());
+      cl={...r.checklist,name:name||r.checklist.name};
+    }
+    $('#newClDlg').close();
+    loadDraft(cl);
+    toast('Черновик открыт. Проверьте критерии и нажмите «Сохранить»');
+  }catch(e){toast('Ошибка: '+e.message)}
+  finally{go.disabled=false;ncSync()}
+};
 
 </script>
 <script>

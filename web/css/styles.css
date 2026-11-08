@@ -613,3 +613,8 @@ dialog.wide{width:min(860px,94vw);max-height:90vh;overflow:auto}
 
 .fbl.rn{margin:0 0 6px;padding-left:10px;border-left:2px solid var(--accent)}
 .fbl.rn li.ev{padding:4px 0;border-top:0;font-size:13px}
+
+/* версии чек-листа и «Новый чек-лист» */
+#clPick{width:auto;max-width:340px;margin-left:12px}
+.nc-kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin:12px 0}
+.vn-s.sub-ok{color:var(--yes)}

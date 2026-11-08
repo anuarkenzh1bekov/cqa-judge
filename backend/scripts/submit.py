@@ -73,6 +73,12 @@ def main():
     api = Api(a.api)
     t_all = time.time()
     print("сервер:", api.call("GET", "/api/health"))
+    cl = api.call("GET", "/api/checklists/active")
+    if not cl.get("submission_ready", True):
+        ready = [f"{c['id']} «{c['name']}»" for c in api.call("GET", "/api/checklists") if c.get("submission_ready")]
+        raise SystemExit(f"Активный чек-лист «{cl['name']}» не подходит для сдачи: {cl.get('submission_note')}.\n"
+                         f"Сделайте активным чек-лист из PDF (экран «Чек-лист» → версия), подходящие: {ready}")
+    print(f"чек-лист: «{cl['name']}» (id {cl['id']}) — подходит для сдачи")
 
     # 1. the set
     if a.file:

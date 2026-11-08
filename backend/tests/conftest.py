@@ -72,6 +72,15 @@ class FakeModels:
                 {"start": "0:03", "speaker": "operator", "text": "Фридом брокер, здравствуйте, меня зовут [Имя скрыто]."},
                 {"start": "00:09", "speaker": "client", "text": "Где  посмотреть тариф?"},
                 {"start": "1:02", "speaker": "operator", "text": "В разделе «Профиль». До свидания!"}]}
+        elif "gross_errors" in props:  # whole-checklist draft ("New checklist -> with AI")
+            crit = lambda name, typ, w, scale=(): {  # noqa: E731
+                "section": "Начало", "name": name, "description": f"Да — {name.lower()}", "type": typ, "weight": w,
+                "na_allowed": False, "na_condition": "", "guidance": "",
+                "scale": [{"value": v, "description": f"{v} баллов"} for v in scale]}
+            data = {"name": "Звонки продаж", "description": "Для отдела продаж", "gross_errors": "обман клиента",
+                    "criteria": [crit("Приветствие", "binary", 20), crit("Выявление интереса", "binary", 30),
+                                 crit("Презентация продукта", "scale", 30, (10, 5, 0)),
+                                 crit("Следующий шаг", "binary", 15)]}  # 95 on purpose: the server rescales to 100
         elif "trajectory" in props:  # client mood
             self.calls["mood"] += 1
             if self.mood_fail:

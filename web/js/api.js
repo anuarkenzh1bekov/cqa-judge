@@ -23,6 +23,8 @@ const CQA_API={
   activeChecklist(){return this.get('/api/checklists/active')},
   checklists(){return this.get('/api/checklists')},
   defaultChecklist(){return this.get('/api/checklists/default-template')},
+  generateChecklist(brief){return this.post('/api/checklists/generate',{brief})},
+  activateChecklist(id){return this.post('/api/checklists/'+id+'/activate')},
   conversationSummary(id){return this.get('/api/conversations/'+encodeURIComponent(id)+'/summary')},
   saveReview(evalId,body){return this.put('/api/evaluations/'+evalId+'/review',body)},
   suggestCriterion(body){return this.post('/api/checklists/suggest-criterion',body)},

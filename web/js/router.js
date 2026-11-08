@@ -34,7 +34,7 @@ async function route(){
   if(seq!==routeSeq)return;  // пользователь уже ушёл на другой экран
   if(view==='list'){renderList();if(CQA_API.enabled&&reviewer)beWarm([...rowsCache.map(r=>r.key),...Object.keys(D)])}
   if(view==='card'){syncPick();if(cur){renderCard();if(CQA_API.enabled&&reviewer){beAutoEvaluate(cur);const ks=Object.keys(D),i=ks.indexOf(cur);beWarm([...ks.slice(i+1),...ks.slice(0,i)])}}else $('#chat').innerHTML='<div class="empty">Диалогов нет. Загрузите набор на экране «Диалоги».</div>'}
-  if(view==='checklist'){renderEditor();lockChecklist()}
+  if(view==='checklist'){renderEditor();lockChecklist();loadVersions()}
   if(view==='appeals')renderAppeals();
   if(view==='stats')renderStats();
   syncCount();

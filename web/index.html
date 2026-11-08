@@ -67,7 +67,7 @@
 
   <!-- ЧЕК-ЛИСТ -->
   <section id="v-checklist" hidden>
-    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="cmpBtn" hidden title="Прогнать две версии на одних и тех же диалогах и посмотреть, что изменилось">Сравнить версии</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
+    <div class="page-h"><h1>Чек-лист</h1><span class="meta" id="verTitle"></span><select class="field" id="clPick" hidden aria-label="Версия чек-листа" title="Активная версия: по ней оцениваются новые диалоги"></select><button class="btn" id="newCl" hidden>Новый чек-лист</button><span class="grow"></span><button class="btn" id="aiCrit" hidden>Помощь ИИ</button><button class="btn" id="cmpBtn" hidden title="Прогнать две версии на одних и тех же диалогах и посмотреть, что изменилось">Сравнить версии</button><button class="btn" id="addCrit">Добавить критерий</button><select class="field" id="applyTo" aria-label="К какому набору применить"></select><button class="btn primary" id="applyBtn">Сохранить и применить</button></div>
     <div class="ed-grid">
       <div id="ed"></div>
       <aside class="side">
@@ -111,6 +111,20 @@
   <p class="evinfo" id="evInfo"></p>
   <div class="f"><button class="btn" id="evNo">Отмена</button><button class="btn primary" id="evGo" disabled>Запустить оценку</button></div>
 </dialog>
+<dialog id="newClDlg">
+  <h3>Новый чек-лист</h3>
+  <p>Черновик откроется в редакторе. Версия появится только после «Сохранить», старые оценки не меняются.</p>
+  <div class="nc-kinds">
+    <label class="chk"><input type="radio" name="ncKind" value="ai">Собрать с ИИ по описанию</label>
+    <label class="chk"><input type="radio" name="ncKind" value="empty">Пустой</label>
+    <label class="chk"><input type="radio" name="ncKind" value="copy">Копия текущего</label>
+    <label class="chk"><input type="radio" name="ncKind" value="pdf">Исходный из PDF</label>
+  </div>
+  <div class="fld" id="ncAiBox"><label for="ncBrief">Для чего чек-лист и что важно проверять</label><textarea class="field" id="ncBrief" placeholder="Например: звонки отдела продаж — приветствие, выявление интереса, презентация тарифа, работа с возражениями, договорённость о следующем шаге"></textarea></div>
+  <div class="fld"><label for="ncName">Название (необязательно)</label><input class="field" id="ncName" maxlength="80"></div>
+  <p class="evinfo" id="ncInfo"></p>
+  <div class="f"><button class="btn" id="ncNo">Отмена</button><button class="btn primary" id="ncGo">Собрать черновик</button></div>
+</dialog>
 <dialog id="aiDlg">
   <h3>Критерий с помощью ИИ</h3>
   <p>Опишите своими словами, что нужно проверять. Модель предложит формулировку, тип ответа и вес; их можно поправить.</p>
@@ -147,6 +161,7 @@
 <script src="js/list.js"></script>
 <script src="js/card.js"></script>
 <script src="js/checklist.js"></script>
+<script src="js/versions.js"></script>
 <script src="js/compare.js"></script>
 <script src="js/appeals.js"></script>
 <script src="js/stats.js"></script>

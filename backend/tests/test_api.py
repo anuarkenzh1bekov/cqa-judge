@@ -160,3 +160,20 @@ def test_operator_can_withdraw_only_an_open_appeal(client, fake):
 def test_index_links_carry_a_version_so_browsers_never_run_stale_scripts(client):
     html = client.get("/").text
     assert 'src="js/app.js?v=' in html and 'href="css/styles.css?v=' in html
+
+
+def test_checklist_versions_and_ai_draft(client, fake):
+    lst = client.get("/api/checklists").json()
+    pdf = next(c for c in lst if c["is_active"])
+    assert pdf["submission_ready"] and "evaluations" in pdf
+    d = client.post("/api/checklists/generate", json={"brief": "чек-лист для звонков отдела продаж"}).json()["checklist"]
+    keys = [c["key"] for c in d["criteria"]]
+    assert d["name"] == "Звонки продаж" and len(keys) == len(set(keys)) == 5
+    assert sum(c["weight"] for c in d["criteria"]) == 100 and d["criteria"][-1]["type"] == "flag"
+    assert [s["value"] for s in d["criteria"][2]["scale"]] == [10, 5, 0]
+    saved = client.post("/api/checklists?activate=true", json=d).json()  # the draft is a valid checklist
+    active = client.get("/api/checklists/active").json()
+    assert active["id"] == saved["id"] and not active["submission_ready"]
+    assert client.post(f"/api/checklists/{pdf['id']}/activate").status_code == 200
+    assert client.get("/api/checklists/active").json()["submission_ready"]
+    assert client.post("/api/checklists/generate", json={"brief": "x"}).status_code == 422

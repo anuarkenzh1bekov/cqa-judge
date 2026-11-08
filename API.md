@@ -51,7 +51,7 @@ CORS открыт (`CORS_ORIGINS` в `.env`). Авторизации нет. В�
 
 | Метод | Путь | Назначение |
 |---|---|---|
-| GET | `/api/checklists` | все |
+| GET | `/api/checklists` | все; у каждого `evaluations` (сколько оценок) и `submission_ready` (годится ли для results.json) |
 | GET | `/api/checklists/active` | активный (используется по умолчанию) |
 | GET | `/api/checklists/default-template` | исходный чек-лист из PDF (кнопка «сбросить») |
 | GET | `/api/checklists/{id}` | один |
@@ -59,6 +59,7 @@ CORS открыт (`CORS_ORIGINS` в `.env`). Авторизации нет. В�
 | PUT | `/api/checklists/{id}` | изменить (старые оценки не меняются: у каждой свой снимок чек-листа) |
 | POST | `/api/checklists/{id}/activate` | сделать активным |
 | POST | `/api/checklists/{id}/duplicate` | копия |
+| POST | `/api/checklists/generate` | `{brief}` → черновик целого чек-листа от ИИ (веса в сумме 100, шкалы, N/A, флаг грубых ошибок); ничего не сохраняет |
 | DELETE | `/api/checklists/{id}` | удалить (не активный) |
 | GET | `/api/checklists/{id}/prompt-preview?conversation_id=` | точный промпт и вопросы Jev (прозрачность) |
 

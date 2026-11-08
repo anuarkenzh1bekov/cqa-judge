@@ -37,7 +37,7 @@ docker compose up -d
 
 ## What it does
 
-- Scores chats and calls in RU, KZ and EN. Criteria are edited in the interface, with no code change, and every evaluation keeps a snapshot of the checklist version it used. Versions have names (v1, v2 or your own) and can be compared on the same conversations.
+- Scores chats and calls in RU, KZ and EN. Criteria are edited in the interface, with no code change, and every evaluation keeps a snapshot of the checklist version it used. Versions have names (v1, v2 or your own) and can be compared on the same conversations. A version switcher shows every checklist with its evaluation count; "Новый чек-лист" (New checklist) starts a blank one, a copy, the PDF original, or a whole checklist drafted by AI from a description (for example, sales calls) that opens as an unsaved draft. The screen marks which checklist can feed the organizers' `results.json`, and `submit.py` refuses to run with any other.
 - Explains each answer with links to messages. Call recordings play in the card and a click on a message seeks to it. An uploaded recording is transcribed by Gemini with personal data masked.
 - Streams the evaluation: the card fills in while the model is still writing.
 - Has two roles, switched in the header. An operator sees only their own dialogs, can appeal a criterion once the reviewer publishes the evaluation, reads the checklist without editing it, sees a list of their appeals (an open one can be deleted) and their own analytics. A reviewer comments, publishes, edits the checklist and decides appeals: accept with a new answer, or reject with a written reason the operator sees.

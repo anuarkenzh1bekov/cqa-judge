@@ -24,7 +24,7 @@ function renderEditor(){
     const key=BE.groups.join('|');
     if(sel&&sel.dataset.groups!==key){
       const keep=sel.value;
-      sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к набору ${esc(g)}</option>`).join('');
+      sel.innerHTML='<option value="">Только сохранить</option>'+BE.groups.map(g=>`<option value="${esc(g)}">Применить к ${g==='UPLOAD'?'загруженным вручную':'набору '+esc(g)}</option>`).join('');
       sel.value=BE.groups.includes(keep)?keep:'';sel.dataset.groups=key;
     }
   }
@@ -48,16 +48,19 @@ function refreshSide(){
   const changed=CRIT.filter(c=>sigOf(c)!==savedSigs[c.id]).length;
   dirty=dirty||changed>0;
   /* название «Чек-лист качества чатов (Freedom Broker)» очевидно из контекста: показываем только версию */
-  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?verLabel(BE.checklist.name):'v'+ver;
+  $('#verTitle').textContent=CQA_API.enabled&&BE.checklist?(BE.checklist.draft?'черновик':verLabel(BE.checklist.name)):'v'+ver;
   const vn=$('#verName');
   $('#verNameBox').hidden=!CQA_API.enabled;
-  if(CQA_API.enabled&&BE.checklist&&document.activeElement!==vn&&vn.dataset.cid!==String(BE.checklist.id)){
+  if(CQA_API.enabled&&BE.checklist&&!BE.checklist.draft&&document.activeElement!==vn&&vn.dataset.cid!==String(BE.checklist.id)){
     vn.value=verLabel(BE.checklist.name);vn.dataset.cid=BE.checklist.id;
   }
   $('#verNote').innerHTML=`<p class="vn ${dirty?'dirty':'clean'}">${dirty?'● Есть несохранённые изменения'+(changed?` (критериев: ${changed})`:''):'✓ Всё сохранено'}</p>`
     +(dirty&&CQA_API.enabled?'<p class="vn-s">При сохранении появится новая версия. Старые оценки остаются со своей версией.</p>':'')
     +(CQA_API.enabled?`<p class="vn-s">Грубые ошибки (${BE.flags.length}) не дают баллов, они только отмечаются в диалоге.</p>`:'')
-    +(sum!==100?`<p class="vn-s">Сумма весов ${sum}, итог всё равно приводится к 100.</p>`:'');
+    +(sum!==100?`<p class="vn-s">Сумма весов ${sum}, итог всё равно приводится к 100.</p>`:'')
+    +(CQA_API.enabled&&BE.checklist?(BE.checklist.submission_ready&&!dirty
+      ?'<p class="vn-s sub-ok">✓ Подходит для файла результатов организаторам</p>'
+      :'<p class="vn-s">Для файла результатов организаторам нужен исходный чек-лист из PDF без изменений.</p>'):'');
 }
 $('#ed').addEventListener('input',e=>{
   const ff=e.target.dataset.ff;
@@ -125,7 +128,7 @@ $('#applyBtn').onclick=async()=>{
     $('#applyBtn').disabled=true;
     try{
       const cl=await beSaveChecklist();
-      dirty=false;renderEditor();toast('Сохранено: '+cl.name);
+      clDraft=false;dirty=false;renderEditor();loadVersions();toast('Сохранено: '+cl.name);
       if(grp){
         const s=await beRunBatch(`Применяем «${cl.name}» к набору ${grp}`,{group:grp,checklist_id:cl.id});
         await beRefreshAfterBatch();
@@ -155,7 +158,7 @@ $('#resetState').onclick=async()=>{
   if(!confirm('Создать новую версию чек-листа из исходного PDF и сделать её активной?'))return;
   try{
     const t=await CQA_API.defaultChecklist();
-    await CQA_API.createChecklist(t);await beLoadChecklist();dirty=false;renderEditor();toast('Восстановлен исходный чек-лист');
+    await CQA_API.createChecklist(t);await beLoadChecklist();clDraft=false;dirty=false;renderEditor();loadVersions();toast('Восстановлен исходный чек-лист');
   }catch(e){toast('Ошибка: '+e.message)}
 };
 

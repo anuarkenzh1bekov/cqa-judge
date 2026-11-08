@@ -27,6 +27,24 @@ ALLOWED = {  # criterion_id -> (allowed values, kind); kind "bool" means true/fa
 }
 
 
+def submission_ready(criteria: list[dict]) -> tuple[bool, str]:
+    """The organizers' format fixes eight criteria with the PDF's weights and scales. A checklist that differs can
+    still be used in the product, but its evaluations cannot go into results.json."""
+    from .checklist import DEFAULT_CHECKLIST
+    by_key = {c["key"]: c for c in criteria}
+    if set(by_key) != set(CRITERION_IDS):
+        return False, "нужны ровно 8 критериев чек-листа из PDF"
+    for d in DEFAULT_CHECKLIST["criteria"]:
+        c = by_key[d["key"]]
+        if c["type"] != d["type"] or float(c["weight"]) != float(d["weight"]) or \
+                bool(c.get("na_allowed")) != bool(d.get("na_allowed")):
+            return False, f"«{d['name']}»: тип, вес или N/A отличаются от PDF"
+        if d["type"] == "scale" and sorted(float(s["value"]) for s in c["scale"]) != \
+                sorted(float(s["value"]) for s in d["scale"]):
+            return False, f"«{d['name']}»: ступени шкалы отличаются от PDF"
+    return True, "подходит для сдачи результатов"
+
+
 def _value(answer: str):
     if answer == "na":
         return None
