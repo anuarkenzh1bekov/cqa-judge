@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from .models import Conversation, Evaluation
 from .scoring import round2
 
+TEAM_NAME = "Я не отвратимость"  # as registered with the organizers
+
 # our checklist keys -> criterion_id of the submission format (the format fixes eight criteria)
 CRITERION_IDS = {
     "c01_contact": "contact", "c02_needs": "discovery", "c03_identification": "identification",
@@ -74,7 +76,7 @@ def _record(ev: Evaluation) -> dict:
                       "critical_flag": bool(fs["gross_error"])}}
 
 
-def build(db: Session, group: str, team_name: str = "CQA Judge") -> dict:
+def build(db: Session, group: str, team_name: str = TEAM_NAME) -> dict:
     cids = db.scalars(select(Conversation.id).where(Conversation.dataset_group == group)
                       .order_by(Conversation.id)).all()
     latest: dict[str, Evaluation] = {}

@@ -128,6 +128,22 @@ With 4 dialogs in parallel the 65 DEV dialogs take 6.5 to 7 minutes and about $0
 
 The organizers' format 1.0 is built from the latest evaluation of each conversation with final answers after appeals. Turn numbers are 1-based, also inside explanations. A conversation that was not evaluated is written as `status: "error"`, never as a zero.
 
+**Submission hour (server running in Docker):** one command loads the set through the running server, evaluates
+it, retries failures once, writes `results/prod/results.json` and runs a strict check (IDs against the set, turn
+numbers inside each transcript, `final_score` recomputed with the official weights, team name). About 2 minutes for
+10 dialogs.
+
+```bash
+python backend/scripts/submit.py --group <prod group_id> --expect 10
+python backend/scripts/submit.py --file prod.json --group PROD --expect 10   # if the set comes as a file
+git add results && git commit -m "PROD results" && git push
+```
+
+`python backend/scripts/check_results.py results/dev/results.json --dataset datasets/DEV.json --expect 65` checks a
+finished file on its own.
+
+Without Docker, the same file can be written straight from the local database:
+
 ```bash
 cd backend
 python scripts/export_results.py --group DEV --set dev --expect 65

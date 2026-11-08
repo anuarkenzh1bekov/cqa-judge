@@ -22,7 +22,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--group", required=True, help="dataset group_id of the conversations (DEV, ...)")
     ap.add_argument("--set", required=True, choices=["dev", "prod"], help="target folder under results/")
-    ap.add_argument("--team", default="CQA Judge")
+    ap.add_argument("--team", default=results_export.TEAM_NAME)
     ap.add_argument("--expect", type=int, help="expected number of records (prod: 10)")
     ap.add_argument("--force", action="store_true", help="write even if validation fails")
     a = ap.parse_args()

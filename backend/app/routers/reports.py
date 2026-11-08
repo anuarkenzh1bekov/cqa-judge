@@ -255,7 +255,7 @@ def export_report(format: str = Query("xlsx", pattern="^(xlsx|csv)$"), checklist
 
 
 @router.get("/results")
-def submission_results(group: str, team_name: str = "CQA Judge", expect: int | None = None,
+def submission_results(group: str, team_name: str = results_export.TEAM_NAME, expect: int | None = None,
                        db: Session = Depends(get_db)):
     """results.json for the organizers (schema 1.0): `results` plus `problems` found by the validator."""
     doc = results_export.build(db, group, team_name)

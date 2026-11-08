@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "team_name": "CQA Judge",
+  "team_name": "Я не отвратимость",
   "model": {
     "mode": "external_api",
     "name": "gemini-3.8-flash + jev-1.14.0"
