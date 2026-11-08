@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import re
 import uuid
@@ -16,7 +17,7 @@ from .. import audio, live, services, transcribe
 from ..config import settings
 from ..db import get_db
 from ..llm import gemini
-from ..models import Conversation, Evaluation
+from ..models import Conversation, ConversationSummary, Evaluation
 from ..prompts import format_transcript
 
 router = APIRouter(prefix="/api", tags=["conversations"])
@@ -164,7 +165,6 @@ def get_conversation(cid: str, db: Session = Depends(get_db)):
             "evaluations": [services.eval_summary(e) for e in evs]}
 
 
-_SUMMARY_CACHE: dict[str, dict] = {}
 _SUMMARY_SCHEMA = {"type": "object", "properties": {
     "summary": {"type": "string"},
     "mood": {"type": "string", "enum": ["positive", "neutral", "negative"]}},
@@ -177,20 +177,31 @@ _SUMMARY_SYSTEM = (
 )
 
 
+def _transcript_hash(transcript: list) -> str:
+    return hashlib.sha256(json.dumps(transcript, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
 @router.get("/conversations/{cid}/summary")
 async def conversation_summary(cid: str, db: Session = Depends(get_db)):
-    """One-two sentence retelling of what the dialog was about (shown above the transcript). Cached in memory."""
+    """One-two sentence retelling of what the dialog was about (shown above the transcript).
+    Generated once and stored in the database; regenerated only when the transcript changes."""
     conv = db.get(Conversation, cid)
     if not conv:
         raise HTTPException(404, "conversation not found")
-    if cid not in _SUMMARY_CACHE:
-        try:
-            data, _ = await gemini.generate_json(format_transcript(conv.transcript), _SUMMARY_SCHEMA, system=_SUMMARY_SYSTEM)
-        except Exception as e:  # noqa: BLE001
-            raise HTTPException(502, f"Не удалось получить краткое содержание: {e}") from e
-        _SUMMARY_CACHE[cid] = {"summary": " ".join(str(data.get("summary", "")).split()),
-                               "mood": data.get("mood", "neutral")}
-    return _SUMMARY_CACHE[cid]
+    h = _transcript_hash(conv.transcript)
+    row = db.get(ConversationSummary, cid)
+    if row and row.transcript_hash == h:
+        return {"summary": row.summary, "mood": row.mood, "cached": True}
+    try:
+        data, _ = await gemini.generate_json(format_transcript(conv.transcript), _SUMMARY_SCHEMA, system=_SUMMARY_SYSTEM)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"Не удалось получить краткое содержание: {e}") from e
+    summary, mood = " ".join(str(data.get("summary", "")).split()), data.get("mood", "neutral")
+    row = row or ConversationSummary(conversation_id=cid)
+    row.transcript_hash, row.summary, row.mood = h, summary, mood
+    db.merge(row)
+    db.commit()
+    return {"summary": summary, "mood": mood, "cached": False}
 
 
 @router.get("/conversations/{cid}/audio")

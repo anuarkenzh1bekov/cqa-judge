@@ -152,3 +152,25 @@ def test_submission_results(client, fake):
     assert client.get("/api/results?group=SUB&expect=10").json()["problems"]
     broken = {"results": [{"conversation_id": "x", "status": "ok", "criteria": [], "score": {"critical_flag": False}}]}
     assert results_export.validate(broken)
+
+
+def test_summary_is_stored_and_regenerated_only_when_transcript_changes(client, monkeypatch):
+    from app.llm import gemini
+    calls = []
+
+    async def fake_summary(prompt, schema, **kw):
+        calls.append(prompt)
+        return {"summary": f"пересказ {len(calls)}", "mood": "positive"}, {}
+
+    monkeypatch.setattr(gemini, "generate_json", fake_summary)
+    upload(client, "sum-1")
+    first = client.get("/api/conversations/sum-1/summary").json()
+    again = client.get("/api/conversations/sum-1/summary").json()
+    assert (first["summary"], first["cached"], again["summary"], again["cached"]) == ("пересказ 1", False, "пересказ 1", True)
+    assert len(calls) == 1
+
+    client.post("/api/conversations", json={"group": "TEST", "records": [
+        {"conversation_id": "sum-1", "channel": "agent chat", "language": "RU",
+         "transcript": TRANSCRIPT + [{"timestamp": "09:59", "speaker": "client", "text": "ещё вопрос"}]}]})
+    changed = client.get("/api/conversations/sum-1/summary").json()
+    assert (changed["summary"], changed["cached"], len(calls)) == ("пересказ 2", False, 2)

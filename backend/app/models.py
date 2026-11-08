@@ -21,6 +21,17 @@ class Conversation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class ConversationSummary(Base):
+    """Short retelling and client mood shown above the transcript. Generated once and kept; regenerated
+    only if the transcript changes (re-import), detected by its hash."""
+    __tablename__ = "conversation_summaries"
+    conversation_id: Mapped[str] = mapped_column(String, primary_key=True)
+    transcript_hash: Mapped[str] = mapped_column(String)
+    summary: Mapped[str] = mapped_column(Text)
+    mood: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class Checklist(Base):
     __tablename__ = "checklists"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
