@@ -2462,7 +2462,7 @@ function bar(v,max){const w=max?Math.max(2,Math.round(v/max*100)):0;return `<spa
 function heatmapHtml(h){
   if(!h||!h.operators.length||!h.criteria.length)return '';
   const cell=v=>v==null?'<td class="c nil">—</td>':`<td class="c" style="--v:${Math.max(0,Math.min(1,v/100)).toFixed(2)}" title="${fmt(v)}%">${Math.round(v)}</td>`;
-  return `<div class="panel box hm"><h3>Карта слабых мест: оператор × критерий <small class="mut">— средний % балла, нажмите на оператора</small></h3>
+  return `<div class="panel box hm"><h3>Карта слабых мест: оператор × критерий <small class="mut">— средний % балла, нажмите на оператора, чтобы открыть его диалоги</small></h3>
     <table><thead><tr><th></th>${h.criteria.map(c=>`<th title="${esc(c.name)}">${esc(c.name.length>22?c.name.slice(0,21)+'…':c.name)}</th>`).join('')}<th>Итого</th></tr></thead><tbody>
     ${h.operators.map(o=>`<tr><td class="op" data-op="${esc(o.operator)}">${esc(o.operator)} <small class="mut">· ${o.count}</small></td>${h.criteria.map(c=>cell(o.cells[c.key])).join('')}${cell(o.avg)}</tr>`).join('')}</tbody></table>
     <div class="leg"><span>слабо</span><i></i><span>хорошо</span></div></div>`;
@@ -2576,7 +2576,14 @@ async function loadCoaching(name,refresh){
     $('#coachRefresh').onclick=()=>loadCoaching(name,true)}
   catch(e){box.innerHTML=`<p class="mut">План коучинга недоступен: ${esc(e.message)}</p>`}
 }
+/* клик по оператору в карте: один диалог — сразу карточка, несколько — список его диалогов, худшие сверху */
+function openOperatorDialogs(name){
+  const keys=Object.keys(D).filter(k=>D[k].operator===name);
+  if(keys.length===1){go('#/card/'+encodeURIComponent(keys[0]));return}
+  $('#q').value=name;sortDir=1;fKind='all';fLang.clear();fGroup='';listUI.has=false;go('#/list');
+}
 $('#v-stats').addEventListener('click',e=>{
+  const hm=e.target.closest('.hm [data-op]');if(hm){openOperatorDialogs(hm.dataset.op);return}
   const op=e.target.closest('[data-op]');if(op){renderOperator(op.dataset.op);return}
   const cv=e.target.closest('[data-conv]');if(cv&&D[cv.dataset.conv])go('#/card/'+encodeURIComponent(cv.dataset.conv));
 });
