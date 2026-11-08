@@ -1,5 +1,7 @@
 # CQA Judge
 
+**Team: «Я не отвратимость»** · Freedom Broker CQA hackathon
+
 Scores operator chats and calls against a checklist you can edit. Every answer points to the message it rests on, and for calls to the moment in the recording. Built for the Freedom Broker hackathon. The interface is in Russian.
 
 ![CQA Judge demo](docs/demo.gif)
